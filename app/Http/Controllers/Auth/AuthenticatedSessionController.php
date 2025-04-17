@@ -96,7 +96,8 @@ class AuthenticatedSessionController extends Controller
                 [
                     'egat_id' => $username,
                     'name' => $username,
-                    'password' => Hash::make($password)
+                    'password' => Hash::make($password),
+                    'email_verified_at' => now(),
                 ]
             );
 

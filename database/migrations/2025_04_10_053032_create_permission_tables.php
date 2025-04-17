@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -50,6 +51,15 @@ return new class extends Migration
                 $table->unique(['name', 'guard_name']);
             }
         });
+
+        // เพิ่มโค้ดนี้ต่อท้าย Schema::create เพื่อเพิ่ม roles
+        DB::table($tableNames['roles'])->insert([
+            ['name' => 'admin',    'guard_name' => 'web'],
+            ['name' => 'head',     'guard_name' => 'web'],
+            ['name' => 'chief',    'guard_name' => 'web'],
+            ['name' => 'director', 'guard_name' => 'web'],
+            ['name' => 'egat',     'guard_name' => 'web'],
+        ]);
 
         Schema::create($tableNames['model_has_permissions'], static function (Blueprint $table) use ($tableNames, $columnNames, $pivotPermission, $teams) {
             $table->unsignedBigInteger($pivotPermission);
