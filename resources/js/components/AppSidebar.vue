@@ -15,13 +15,23 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'Data Table',
-        href: '/data_table',
+        title: 'Organizational Risk',
+        href: '/organization_risk',
         icon: LayoutGrid,
     },
     {
-        title: 'Upload Download',
-        href: '/dashboard',
+        title: 'Department Risk',
+        href: '/department_risk',
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Risk Assessment',
+        href: '/risk_assessment',
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Reports',
+        href: '/reports',
         icon: LayoutGrid,
     },
 ];
