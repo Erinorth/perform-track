@@ -1,6 +1,5 @@
 <script setup lang="ts" generic="TData, TValue">
-import { ref } from 'vue'
-import { ChevronDown } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -28,33 +27,36 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-
 import { Button } from '@/components/ui/button'
 
 import { valueUpdater } from '@/lib/utils'
 
 import { Input } from '@/components/ui/input'
 
-import DataTablePagination from './DataTablePagination.vue'
+import DataTablePagination from '@/components/ui/data-table/DataTablePagination.vue'
 
-import DataTableViewOptions from './DataTableViewOptions.vue'
+import DataTableViewOptions from '@/components/ui/data-table/DataTableViewOptions.vue'
 
 const props = defineProps<{
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  meta?: any
 }>()
 
 const sorting = ref<SortingState>([])
 const columnFilters = ref<ColumnFiltersState>([])
-const columnVisibility = ref<VisibilityState>({})
+const columnVisibility = ref<VisibilityState>({
+  created_at: false,
+  updated_at: false
+})
 const rowSelection = ref({})
 const expanded = ref<ExpandedState>({})
+
+const searchQuery = ref('')
+
+watch(searchQuery, (value) => {
+  table.setGlobalFilter(value)
+})
 
 const table = useVueTable({
   get data() { return props.data },
@@ -63,27 +65,46 @@ const table = useVueTable({
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getExpandedRowModel: getExpandedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
   onSortingChange: updaterOrValue => valueUpdater(updaterOrValue, sorting),
   onColumnFiltersChange: updaterOrValue => valueUpdater(updaterOrValue, columnFilters),
   onColumnVisibilityChange: updaterOrValue => valueUpdater(updaterOrValue, columnVisibility),
   onRowSelectionChange: updaterOrValue => valueUpdater(updaterOrValue, rowSelection),
   onExpandedChange: updaterOrValue => valueUpdater(updaterOrValue, expanded),
-  getFilteredRowModel: getFilteredRowModel(),
   state: {
     get sorting() { return sorting.value },
     get columnFilters() { return columnFilters.value },
     get columnVisibility() { return columnVisibility.value },
     get rowSelection() { return rowSelection.value },
     get expanded() { return expanded.value },
+    get globalFilter() { return searchQuery.value }
   },
+  globalFilterFn: (row, columnId, filterValue) => {
+    const searchValue = String(filterValue).toLowerCase();
+    const idMatch = String(row.getValue('egat_id')).toLowerCase().includes(searchValue);
+    const nameMatch = String(row.getValue('name') || '').toLowerCase().includes(searchValue);
+    return idMatch || nameMatch;
+  },
+  meta: props.meta,
 })
 </script>
 
 <template>
   <div class="flex items-center py-4">
-            <Input class="max-w-sm" placeholder="Filter emails..."
-                :model-value="table.getColumn('email')?.getFilterValue() as string"
-                @update:model-value=" table.getColumn('email')?.setFilterValue($event)" />
+      <Input
+      class="max-w-sm"
+      placeholder="Search ID or Name..."
+      v-model="searchQuery"
+    />
+    <Button
+      v-if="searchQuery"
+      variant="ghost"
+      class="ml-2"
+      @click="searchQuery = ''"
+      size="sm"
+    >
+      Clear
+    </Button>
             
       <DataTableViewOptions :table="table" />
         </div>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Table } from '@tanstack/vue-table'
 import { computed } from 'vue'
-import { type Task } from '../data/schema'
 import { SlidersHorizontal as MixerHorizontalIcon } from 'lucide-vue-next'
 
 import { Button } from '@/components/ui/button'
@@ -15,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 interface DataTableViewOptionsProps {
-  table: Table<Task>
+  table: Table<any>
 }
 
 const props = defineProps<DataTableViewOptionsProps>()

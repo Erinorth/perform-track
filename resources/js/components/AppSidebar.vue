@@ -16,17 +16,17 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Organizational Risk',
-        href: '/organization_risk',
+        href: '/organizational-risks',
         icon: LayoutGrid,
     },
     {
         title: 'Department Risk',
-        href: '/department_risk',
+        href: '/department-risks',
         icon: LayoutGrid,
     },
     {
         title: 'Risk Assessment',
-        href: '/risk_assessment',
+        href: '/risk-assessments',
         icon: LayoutGrid,
     },
     {

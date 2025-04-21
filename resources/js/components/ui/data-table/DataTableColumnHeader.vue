@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Column } from '@tanstack/vue-table'
-import { type Task } from '../data/schema'
 import { 
   ArrowDown as ArrowDownIcon,
   ArrowUp as ArrowUpIcon,
@@ -19,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 interface DataTableColumnHeaderProps {
-  column: Column<Task, any>
+  column: Column<any>
   title: string
 }
 

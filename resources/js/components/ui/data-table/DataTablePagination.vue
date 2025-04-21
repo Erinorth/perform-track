@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { type Table } from '@tanstack/vue-table'
-import { type Task } from '../data/schema'
 import { 
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
@@ -18,17 +17,18 @@ import {
 } from '@/components/ui/select'
 
 interface DataTablePaginationProps {
-  table: Table<Task>
+  table: Table<any>
 }
+
 defineProps<DataTablePaginationProps>()
 </script>
 
 <template>
-  <div class="flex items-center justify-between px-2">
-    <div class="flex-1 text-sm text-muted-foreground">
+  <div class="flex-1 text-sm text-muted-foreground">
       {{ table.getFilteredSelectedRowModel().rows.length }} of
       {{ table.getFilteredRowModel().rows.length }} row(s) selected.
     </div>
+  <div class="flex items-center justify-between px-2">
     <div class="flex items-center space-x-6 lg:space-x-8">
       <div class="flex items-center space-x-2">
         <p class="text-sm font-medium">
@@ -36,7 +36,7 @@ defineProps<DataTablePaginationProps>()
         </p>
         <Select
           :model-value="`${table.getState().pagination.pageSize}`"
-          @update:model-value="table.setPageSize"
+          @update:model-value="(value) => value !== null && table.setPageSize(Number(value))"
         >
           <SelectTrigger class="h-8 w-[70px]">
             <SelectValue :placeholder="`${table.getState().pagination.pageSize}`" />
