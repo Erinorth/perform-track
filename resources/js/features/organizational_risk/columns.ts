@@ -1,7 +1,8 @@
 import { h } from 'vue'
 import { ColumnDef } from '@tanstack/vue-table'
-import DataTableColumnHeader from '@/components/ui/data-table/DataTableColumnHeader.vue'
+import DataTableColumnHeader from './DataTableColumnHeader.vue'
 import type { OrganizationalRisk } from './organizational_risk.ts';
+import DropdownAction from './DataTableDropDown.vue'
 
 export const columns: ColumnDef<OrganizationalRisk>[] = [
   {
@@ -83,5 +84,18 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
       })
     },
     enableHiding: true,
-  }
+  },
+  {
+    id: "actions",
+    enableHiding: false,
+    cell: ({ row }) => {
+      const payment = row.original;
+      return h('div', { class: 'relative' }, [
+        h(DropdownAction, {
+          payment: { ...payment, id: payment.id.toString() },
+          onExpand: () => row.toggleExpanded(),
+        }),
+      ]);
+    },
+  },
 ]
