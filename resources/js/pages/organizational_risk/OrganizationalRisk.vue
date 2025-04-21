@@ -2,10 +2,10 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { type BreadcrumbItem } from '@/types';
-import { columns } from '@/components/organizational_risk/components/data-table/columns';
-import DataTable from '@/components/organizational_risk/components/data-table/DataTable.vue';
-import { useOrganizationalRiskData } from '@/components/organizational_risk/composables/useOrganizationalRiskData';
-import type { OrganizationalRisk } from '@/components/organizational_risk/types/organizational_risk';
+import { columns } from '@/features/organizational_risk/columns';
+import DataTable from '@/features/organizational_risk/DataTable.vue';
+import { useOrganizationalRiskData } from '@/features/organizational_risk/useOrganizationalRiskData';
+import type { OrganizationalRisk } from '@/features/organizational_risk/organizational_risk';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {

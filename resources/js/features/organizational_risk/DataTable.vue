@@ -46,6 +46,7 @@ const props = defineProps<{
 const sorting = ref<SortingState>([])
 const columnFilters = ref<ColumnFiltersState>([])
 const columnVisibility = ref<VisibilityState>({
+  id: false,
   created_at: false,
   updated_at: false
 })
@@ -81,9 +82,9 @@ const table = useVueTable({
   },
   globalFilterFn: (row, columnId, filterValue) => {
     const searchValue = String(filterValue).toLowerCase();
-    const idMatch = String(row.getValue('egat_id')).toLowerCase().includes(searchValue);
-    const nameMatch = String(row.getValue('name') || '').toLowerCase().includes(searchValue);
-    return idMatch || nameMatch;
+    const riskNameMatch = String(row.getValue('risk_name')).toLowerCase().includes(searchValue);
+    const descriptionMatch = String(row.getValue('description') || '').toLowerCase().includes(searchValue);
+    return riskNameMatch || descriptionMatch;
   },
   meta: props.meta,
 })
@@ -93,7 +94,7 @@ const table = useVueTable({
   <div class="flex items-center py-4">
       <Input
       class="max-w-sm"
-      placeholder="Search ID or Name..."
+      placeholder="Search Risk Name or Description..."
       v-model="searchQuery"
     />
     <Button
