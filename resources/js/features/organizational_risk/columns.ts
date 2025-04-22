@@ -22,6 +22,11 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
         title: 'Year'
       })
     ),
+    filterFn: (row, id, filterValues) => {
+      if (!filterValues || filterValues.length === 0) return true;
+      const rowValue = row.getValue(id);
+      return filterValues.includes(rowValue?.toString());
+    },
   },
   {
     accessorKey: "risk_name",

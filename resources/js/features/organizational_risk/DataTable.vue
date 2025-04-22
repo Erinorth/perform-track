@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="TData, TValue">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -36,6 +36,9 @@ import { Input } from '@/components/ui/input'
 import DataTablePagination from '@/components/ui/data-table/DataTablePagination.vue'
 
 import DataTableViewOptions from '@/components/ui/data-table/DataTableViewOptions.vue'
+
+// เพิ่ม import นี้
+import TagFilter from '@/components/ui/tag-filter/TagFilter.vue'
 
 const props = defineProps<{
   columns: ColumnDef<TData, TValue>[]
@@ -88,6 +91,24 @@ const table = useVueTable({
   },
   meta: props.meta,
 })
+
+// เพิ่ม function นี้ใน script setup
+const getUniqueYears = computed(() => {
+  const years = new Set<string>();
+  props.data.forEach((item: any) => {
+    if (item.year) {
+      years.add(item.year.toString());
+    }
+  });
+  
+  const yearOptions = Array.from(years).map(year => ({
+    value: year,
+    label: year,
+    count: props.data.filter((item: any) => item.year?.toString() === year).length
+  }));
+  
+  return yearOptions.sort((a, b) => b.value.localeCompare(a.value)); // เรียงจากใหม่ไปเก่า
+});
 </script>
 
 <template>
@@ -106,6 +127,14 @@ const table = useVueTable({
     >
       Clear
     </Button>
+
+    <!-- เพิ่ม TagFilter สำหรับปีที่นี่ -->
+    <TagFilter 
+      title="Year" 
+      column="year" 
+      :options="getUniqueYears" 
+      :table="table" 
+    />
             
       <DataTableViewOptions :table="table" />
         </div>
