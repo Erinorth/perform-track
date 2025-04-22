@@ -5,7 +5,8 @@ import { Check, Search, Plus } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator'
+import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 
 interface FilterOption {
   value: string;
@@ -26,11 +27,22 @@ const isOpen = ref(false);
 
 const selectedValues = ref<string[]>([]);
 
+const searchQuery = ref('');
+
 // ติดตามการเปลี่ยนแปลงของ filter จาก table
 watch(() => props.table.getColumn(props.column)?.getFilterValue(), (value) => {
   selectedValues.value = value || [];
   emit('update:selectedTags', selectedValues.value);
 }, { immediate: true });
+
+// กรองตัวเลือกตามข้อความค้นหา
+const filteredOptions = computed(() => {
+  if (!searchQuery.value) return props.options;
+  
+  return props.options.filter(option => 
+    option.label.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
 
 const handleSelect = (value: string) => {
   const values = [...selectedValues.value];
@@ -74,7 +86,7 @@ const getSelectedTags = computed(() => {
           {{ title }}
           <!-- แสดง Selected Tags -->
         <div v-if="selectedCount > 0" class="flex flex-wrap gap-1.5">
-            <Separator orientation="vertical" />
+            <Separator class="space-x-4" orientation="vertical" />
         <Badge 
             v-for="tag in getSelectedTags" 
             :key="tag.value"
@@ -89,15 +101,21 @@ const getSelectedTags = computed(() => {
       
       <PopoverContent class="w-[200px] p-0" align="start">
         <div class="p-2">
-          <div class="px-2 py-1.5 text-sm font-semibold">
-            {{ title }}
-          </div>
-          <div class="space-y-1 mt-2">
+          <!-- ช่องค้นหา -->
+        <div class="relative px-2 mb-2">
+          <Search class="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            v-model="searchQuery"
+            class="h-8 pl-8"
+            :placeholder="title"
+          />
+        </div>
+        <div class="border-t pt-2 space-y-1 mt-2">
             <div
-              v-for="option in options"
-              :key="option.value"
-              @click="handleSelect(option.value)"
-              class="flex items-center justify-between px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-accent"
+                v-for="option in filteredOptions"
+                :key="option.value"
+                @click="handleSelect(option.value)"
+                class="flex items-center justify-between px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-accent"
             >
               <div class="flex items-center gap-2">
                 <div class="flex-shrink-0 w-4 h-4 border rounded-sm" :class="selectedValues.includes(option.value) ? 'bg-primary border-primary' : 'border-input'">

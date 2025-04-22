@@ -109,6 +109,14 @@ const getUniqueYears = computed(() => {
   
   return yearOptions.sort((a, b) => b.value.localeCompare(a.value)); // เรียงจากใหม่ไปเก่า
 });
+
+const clearAllFilters = () => {
+  // ล้าง search query
+  searchQuery.value = ''
+  
+  // ล้าง column filter สำหรับ year
+  table.getColumn('year')?.setFilterValue(null)
+}
 </script>
 
 <template>
@@ -118,16 +126,7 @@ const getUniqueYears = computed(() => {
       placeholder="Search Risk Name or Description..."
       v-model="searchQuery"
     />
-    <Button
-      v-if="searchQuery"
-      variant="ghost"
-      class="ml-2"
-      @click="searchQuery = ''"
-      size="sm"
-    >
-      Clear
-    </Button>
-
+    
     <div class="ml-2" size="sm">
       <!-- เพิ่ม TagFilter สำหรับปีที่นี่ -->
       <TagFilter 
@@ -137,6 +136,15 @@ const getUniqueYears = computed(() => {
         :table="table" 
       />
     </div>
+    <Button
+      v-if="searchQuery || table.getColumn('year')?.getFilterValue()"
+      variant="ghost"
+      class="ml-2"
+      @click="clearAllFilters"
+      size="sm"
+    >
+      Clear
+    </Button>
 
     
             
