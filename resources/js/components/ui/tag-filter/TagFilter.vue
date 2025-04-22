@@ -1,10 +1,11 @@
 // ไฟล์: resources/js/components/ui/TagFilter.vue
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Check, X } from 'lucide-vue-next';
+import { Check, Search, Plus } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator'
 
 interface FilterOption {
   value: string;
@@ -64,7 +65,7 @@ const getSelectedTags = computed(() => {
     <Popover v-model:open="isOpen">
       <PopoverTrigger as-child>
         <Button 
-          variant="outline" 
+          variant="outline"
           :class="[
             'h-9 border-dashed',
             selectedCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'
@@ -73,6 +74,7 @@ const getSelectedTags = computed(() => {
           {{ title }}
           <!-- แสดง Selected Tags -->
         <div v-if="selectedCount > 0" class="flex flex-wrap gap-1.5">
+            <Separator orientation="vertical" />
         <Badge 
             v-for="tag in getSelectedTags" 
             :key="tag.value"
