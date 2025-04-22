@@ -113,7 +113,7 @@ const getUniqueYears = computed(() => {
 
 <template>
   <div class="flex items-center py-4">
-      <Input
+    <Input
       class="max-w-sm"
       placeholder="Search Risk Name or Description..."
       v-model="searchQuery"
@@ -128,13 +128,17 @@ const getUniqueYears = computed(() => {
       Clear
     </Button>
 
-    <!-- เพิ่ม TagFilter สำหรับปีที่นี่ -->
-    <TagFilter 
-      title="Year" 
-      column="year" 
-      :options="getUniqueYears" 
-      :table="table" 
-    />
+    <div class="ml-2" size="sm">
+      <!-- เพิ่ม TagFilter สำหรับปีที่นี่ -->
+      <TagFilter 
+        title="Year" 
+        column="year" 
+        :options="getUniqueYears" 
+        :table="table" 
+      />
+    </div>
+
+    
             
       <DataTableViewOptions :table="table" />
         </div>
