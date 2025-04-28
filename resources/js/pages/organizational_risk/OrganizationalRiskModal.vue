@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { toast } from 'vue-sonner'
+import { toast } from 'vue-sonner';
 import { SaveIcon, XIcon } from 'lucide-vue-next';
 import type { OrganizationalRisk } from '@/features/organizational_risk/organizational_risk';
 
@@ -77,6 +77,7 @@ const submitForm = () => {
     <DialogContent class="sm:max-w-[550px]">
       <DialogHeader>
         <DialogTitle>{{ modalTitle }}</DialogTitle>
+        <DialogDescription class="sr-only">รายละเอียดฟอร์มสำหรับการจัดการความเสี่ยงองค์กร</DialogDescription>
       </DialogHeader>
       
       <form @submit.prevent="submitForm" class="space-y-4 mt-4">
