@@ -33,9 +33,9 @@ import { valueUpdater } from '@/lib/utils'
 
 import { Input } from '@/components/ui/input'
 
-import DataTablePagination from '@/components/ui/data-table/DataTablePagination.vue'
+import DataTablePagination from './DataTablePagination.vue'
 
-import DataTableViewOptions from '@/components/ui/data-table/DataTableViewOptions.vue'
+import DataTableViewOptions from './DataTableViewOptions.vue'
 
 // เพิ่ม import นี้
 import TagFilter from '@/components/ui/tag-filter/TagFilter.vue'
@@ -170,11 +170,31 @@ const clearAllFilters = () => {
                                 <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                             </TableCell>
                         </TableRow>
-                        <TableRow v-if="row.getIsExpanded()">
-                          <TableCell :colspan="row.getAllCells().length">
-                            {{ JSON.stringify(row.original) }}
-                          </TableCell>
-                        </TableRow>
+                        <!-- แก้ไขในส่วนขยายแถวของ DataTable.vue -->
+<TableRow v-if="row.getIsExpanded()">
+  <TableCell :colspan="row.getAllCells().length">
+    <div class="p-4 bg-muted/30 rounded-md">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <h3 class="text-sm font-medium">รายละเอียดความเสี่ยง</h3>
+          <p class="mt-1 whitespace-pre-wrap">{{ row.original.description }}</p>
+        </div>
+        <div v-if="row.original.department_risks && row.original.department_risks.length > 0">
+          <h3 class="text-sm font-medium">ความเสี่ยงระดับสายงานที่เกี่ยวข้อง</h3>
+          <ul class="mt-1 space-y-1">
+            <li v-for="dept in row.original.department_risks" :key="dept.id" class="text-sm">
+              {{ dept.risk_name }}
+            </li>
+          </ul>
+        </div>
+        <div v-else>
+          <h3 class="text-sm font-medium">ความเสี่ยงระดับสายงานที่เกี่ยวข้อง</h3>
+          <p class="text-sm text-muted-foreground mt-1">ไม่มีความเสี่ยงระดับสายงานที่เกี่ยวข้อง</p>
+        </div>
+      </div>
+    </div>
+  </TableCell>
+</TableRow>
                       </template>
                     </template>
         <template v-else>

@@ -109,5 +109,5 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
         }),
       ]);
     },
-  },  
+  },
 ]
