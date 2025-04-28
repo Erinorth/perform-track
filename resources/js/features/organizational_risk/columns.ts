@@ -93,14 +93,21 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const organization_risk = row.original;
+      const meta = table.options.meta;
+      
       return h('div', { class: 'relative' }, [
         h(DropdownAction, {
-          organization_risk: { ...organization_risk, id: organization_risk.id.toString() },
+          organization_risk: { ...organization_risk, id: Number(organization_risk.id) },
           onExpand: () => row.toggleExpanded(),
+          onEdit: (id) => {
+            if (meta?.onEdit) {
+              meta.onEdit(organization_risk);
+            }
+          },
         }),
       ]);
     },
-  },
+  },  
 ]

@@ -5,17 +5,14 @@ import { MoreHorizontal } from 'lucide-vue-next'
 
 defineProps<{
   organization_risk: {
-    id: string
+    id: number
   }
 }>()
 
 defineEmits<{
   (e: 'expand'): void
+  (e: 'edit', id: number): void
 }>()
-
-function copy(id: string) {
-  navigator.clipboard.writeText(id)
-}
 </script>
 
 <template>
@@ -28,15 +25,14 @@ function copy(id: string) {
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-      <DropdownMenuItem @click="copy(organization_risk.id)">
-        Copy organization_risk ID
+      <DropdownMenuItem @click="$emit('edit', organization_risk.id)">
+        Edit
       </DropdownMenuItem>
       <DropdownMenuItem @click="$emit('expand')">
         Expand
       </DropdownMenuItem>
       <DropdownMenuSeparator />
-      <DropdownMenuItem>View customer</DropdownMenuItem>
-      <DropdownMenuItem>View organization_risk details</DropdownMenuItem>
+      <DropdownMenuItem>View Organizational Risk</DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 </template>
