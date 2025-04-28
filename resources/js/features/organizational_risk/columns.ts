@@ -94,10 +94,10 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
-      const payment = row.original;
+      const organization_risk = row.original;
       return h('div', { class: 'relative' }, [
         h(DropdownAction, {
-          payment: { ...payment, id: payment.id.toString() },
+          organization_risk: { ...organization_risk, id: organization_risk.id.toString() },
           onExpand: () => row.toggleExpanded(),
         }),
       ]);
