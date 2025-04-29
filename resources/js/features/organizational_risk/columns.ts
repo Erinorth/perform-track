@@ -1,8 +1,16 @@
+/* resources\js\features\organizational_risk\columns.ts */
 import { h } from 'vue'
 import { ColumnDef } from '@tanstack/vue-table'
 import DataTableColumnHeader from './DataTableColumnHeader.vue'
 import type { OrganizationalRisk } from './organizational_risk.ts';
 import DropdownAction from './DataTableDropDown.vue'
+import type { TableMeta, RowData } from '@tanstack/vue-table'
+
+declare module '@tanstack/vue-table' {
+  interface TableMeta<TData extends RowData> {
+    onEdit?: (organization_risk: TData) => void
+  }
+}
 
 export const columns: ColumnDef<OrganizationalRisk>[] = [
   {
@@ -95,17 +103,13 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
     enableHiding: false,
     cell: ({ row, table }) => {
       const organization_risk = row.original;
-      const meta = table.options.meta;
+      const meta = table.options.meta as TableMeta<OrganizationalRisk>
       
       return h('div', { class: 'relative' }, [
         h(DropdownAction, {
-          organization_risk: { ...organization_risk, id: Number(organization_risk.id) },
+          organization_risk: organization_risk,
           onExpand: () => row.toggleExpanded(),
-          onEdit: (id) => {
-            if (meta?.onEdit) {
-              meta.onEdit(organization_risk);
-            }
-          },
+          onEdit: () => meta?.onEdit?.(organization_risk),
         }),
       ]);
     },
