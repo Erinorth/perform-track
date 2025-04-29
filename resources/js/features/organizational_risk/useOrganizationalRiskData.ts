@@ -1,3 +1,4 @@
+/* resources\js\features\organizational_risk\useOrganizationalRiskData.ts */
 import { ref, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import type { OrganizationalRisk } from './organizational_risk.ts';

@@ -1,3 +1,4 @@
+<!-- resources\js\features\organizational_risk\DataTableViewOptions.vue -->
 <script setup lang="ts">
 import type { Table } from '@tanstack/vue-table'
 import { computed } from 'vue'

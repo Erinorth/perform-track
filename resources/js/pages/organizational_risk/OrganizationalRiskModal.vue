@@ -1,3 +1,4 @@
+<!-- resources\js\pages\organizational_risk\OrganizationalRiskModal.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';

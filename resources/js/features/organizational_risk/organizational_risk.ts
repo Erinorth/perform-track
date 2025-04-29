@@ -1,4 +1,4 @@
-// resources/js/features/organizational_risk/organizational_risk.ts
+/* resources/js/features/organizational_risk/organizational_risk.ts */
 export interface DepartmentRisk {
   id: number
   risk_name: string

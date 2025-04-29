@@ -1,3 +1,4 @@
+<!-- resources\js\features\organizational_risk\DataTableColumnHeader.vue -->
 <script setup lang="ts">
 import type { Column } from '@tanstack/vue-table'
 import { 
