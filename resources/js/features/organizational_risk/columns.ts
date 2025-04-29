@@ -1,4 +1,8 @@
-/* resources\js\features\organizational_risk\columns.ts */
+/* 
+  ไฟล์: resources\js\features\organizational_risk\columns.ts
+  หน้านี้กำหนดคอลัมน์สำหรับ DataTable ของ Organizational Risk
+  เพิ่ม event สำหรับลบ (delete) ข้อมูลใน action
+*/
 
 import { h } from 'vue'
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'

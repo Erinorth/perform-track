@@ -1,9 +1,19 @@
-<!-- resources\js\features\organizational_risk\DataTableViewOptions.vue -->
+<!-- 
+  ไฟล์: resources\js\features\organizational_risk\DataTableViewOptions.vue
+  Component สำหรับจัดการการแสดงผลคอลัมน์ของตาราง
+  รองรับการเปิด/ปิดการแสดงคอลัมน์ต่าง ๆ ตามความต้องการของผู้ใช้
+  ใช้ร่วมกับ @tanstack/vue-table และ shadcn-vue
+-->
+
 <script setup lang="ts">
+// นำเข้า type Table จาก @tanstack/vue-table สำหรับจัดการข้อมูลตาราง
 import type { Table } from '@tanstack/vue-table'
+// นำเข้า computed จาก Vue เพื่อสร้าง computed property
 import { computed } from 'vue'
+// นำเข้า icon สำหรับปุ่มแสดงตัวเลือกการแสดงผล
 import { SlidersHorizontal as MixerHorizontalIcon } from 'lucide-vue-next'
 
+// นำเข้า UI components จาก shadcn-vue
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -14,12 +24,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
+// กำหนด props ที่ต้องการรับ: table (ข้อมูลตารางทั้งหมด)
 interface DataTableViewOptionsProps {
   table: Table<any>
 }
-
 const props = defineProps<DataTableViewOptionsProps>()
 
+// สร้าง computed property เพื่อกรองเฉพาะคอลัมน์ที่สามารถซ่อนได้
+// (มี accessorFn และ getCanHide() เป็น true)
 const columns = computed(() => props.table.getAllColumns()
   .filter(
     column =>
@@ -28,7 +40,9 @@ const columns = computed(() => props.table.getAllColumns()
 </script>
 
 <template>
+  <!-- Dropdown Menu สำหรับการเลือกคอลัมน์ที่จะแสดง -->
   <DropdownMenu>
+    <!-- ปุ่มเปิดเมนูตัวเลือก จะแสดงเฉพาะบนหน้าจอขนาด lg ขึ้นไป -->
     <DropdownMenuTrigger as-child>
       <Button
         variant="outline"
@@ -39,18 +53,20 @@ const columns = computed(() => props.table.getAllColumns()
         View
       </Button>
     </DropdownMenuTrigger>
+    <!-- เนื้อหาเมนู dropdown -->
     <DropdownMenuContent align="end" class="w-[150px]">
       <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
       <DropdownMenuSeparator />
 
+      <!-- รายการคอลัมน์ต่าง ๆ ที่สามารถเปิด/ปิดการแสดงผลได้ -->
       <DropdownMenuCheckboxItem
         v-for="column in columns"
         :key="column.id"
         class="capitalize"
-        :modelValue="column.getIsVisible()"
-        @update:modelValue="(value) => column.toggleVisibility(!!value)"
+        :modelValue="column.getIsVisible()" <!-- ค่าการแสดงผลปัจจุบันของคอลัมน์ -->
+        @update:modelValue="(value) => column.toggleVisibility(!!value)" <!-- สลับการแสดงผลของคอลัมน์ -->
       >
-        {{ column.id }}
+        {{ column.id }} <!-- ชื่อคอลัมน์ -->
       </DropdownMenuCheckboxItem>
     </DropdownMenuContent>
   </DropdownMenu>
