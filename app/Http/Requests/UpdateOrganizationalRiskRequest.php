@@ -1,4 +1,9 @@
 <?php
+/**
+ * ไฟล์: app\Http\Requests\UpdateOrganizationalRiskRequest.php
+ * คลาสสำหรับตรวจสอบข้อมูลคำขอในการอัปเดตความเสี่ยงระดับองค์กร
+ * ใช้เพื่อแยกกฎการตรวจสอบข้อมูล (validation rules) ออกจาก Controller
+ */
 
 namespace App\Http\Requests;
 
@@ -7,37 +12,92 @@ use Illuminate\Foundation\Http\FormRequest;
 class UpdateOrganizationalRiskRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * ตรวจสอบว่าผู้ใช้มีสิทธิ์ที่จะทำคำขออัปเดตข้อมูลหรือไม่
+     * 
+     * @return bool true หากผู้ใช้มีสิทธิ์, false หากไม่มีสิทธิ์
      */
     public function authorize(): bool
     {
-        return false;
+        // ควรแก้ไขเป็น true หรือใส่ตรรกะการตรวจสอบสิทธิ์ที่เหมาะสม
+        // เช่น ตรวจสอบว่าผู้ใช้มีสิทธิ์ในการแก้ไขข้อมูลนี้หรือไม่
+        // return auth()->user()->can('update', $this->route('organizationalRisk'));
+        return true; // อนุญาตให้ทุกคนสามารถอัปเดตข้อมูลได้
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * กำหนดกฎการตรวจสอบความถูกต้องของข้อมูลสำหรับการอัปเดต
+     * 
+     * @return array กฎการตรวจสอบสำหรับแต่ละฟิลด์
      */
     public function rules(): array
     {
         return [
-            'risk_name' => 'required|string|max:255',
-            'description' => 'required|string',
-            'year' => 'required|integer|min:2000|max:2100',
+            'risk_name' => 'required|string|max:255',  // ชื่อความเสี่ยง: จำเป็น, เป็นข้อความ, ความยาวไม่เกิน 255 ตัวอักษร
+            'description' => 'required|string',        // รายละเอียดความเสี่ยง: จำเป็น, เป็นข้อความ
+            'year' => 'required|integer|min:2000|max:2100', // ปี: จำเป็น, เป็นตัวเลขจำนวนเต็ม, อยู่ในช่วง 2000-2100
+            'active' => 'boolean',                     // สถานะการใช้งาน: เป็นค่าบูลีน (true/false)
         ];
     }
 
-    public function messages()
+    /**
+     * กำหนดข้อความแจ้งเตือนที่กำหนดเองเมื่อการตรวจสอบล้มเหลว
+     * แสดงข้อความภาษาไทยที่เข้าใจง่ายสำหรับผู้ใช้
+     * 
+     * @return array ข้อความแจ้งเตือนสำหรับแต่ละกฎการตรวจสอบ
+     */
+    public function messages(): array
     {
         return [
+            // ข้อความสำหรับฟิลด์ risk_name
             'risk_name.required' => 'กรุณาระบุชื่อความเสี่ยง',
             'risk_name.max' => 'ชื่อความเสี่ยงต้องมีความยาวไม่เกิน 255 ตัวอักษร',
+            
+            // ข้อความสำหรับฟิลด์ description
             'description.required' => 'กรุณาระบุรายละเอียดความเสี่ยง',
+            
+            // ข้อความสำหรับฟิลด์ year
             'year.required' => 'กรุณาระบุปี',
             'year.integer' => 'ปีต้องเป็นตัวเลขเท่านั้น',
             'year.min' => 'ปีต้องมากกว่าหรือเท่ากับ 2000',
             'year.max' => 'ปีต้องน้อยกว่าหรือเท่ากับ 2100',
+            
+            // ข้อความสำหรับฟิลด์ active
+            'active.boolean' => 'สถานะการใช้งานต้องเป็น true หรือ false เท่านั้น',
         ];
+    }
+    
+    /**
+     * ดำเนินการเมื่อการตรวจสอบล้มเหลว
+     * บันทึกข้อมูลเพิ่มเติมลง log สำหรับการติดตามและแก้ไขปัญหา
+     */
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    {
+        // ดึงข้อมูลความเสี่ยงที่กำลังอัปเดต
+        $risk = $this->route('organizationalRisk');
+        
+        // บันทึก log เมื่อการตรวจสอบล้มเหลว
+        \Log::info('การตรวจสอบข้อมูลการอัปเดตความเสี่ยงระดับองค์กรล้มเหลว', [
+            'risk_id' => $risk ? $risk->id : null,
+            'risk_name' => $risk ? $risk->risk_name : null,
+            'errors' => $validator->errors()->toArray(),
+            'input' => $this->except(['_token', '_method']), // ข้อมูลที่ผู้ใช้ส่งมา (ยกเว้นข้อมูล token)
+            'user' => auth()->user()->name ?? 'ไม่ระบุ',
+            'ip' => $this->ip()
+        ]);
+        
+        // เรียกใช้ parent method ตามปกติ
+        parent::failedValidation($validator);
+    }
+    
+    /**
+     * เตรียมข้อมูลสำหรับการตรวจสอบ
+     * ทำความสะอาดหรือปรับแต่งข้อมูลก่อนนำไปตรวจสอบ
+     */
+    protected function prepareForValidation()
+    {
+        // ถ้าไม่มีการส่งค่า active มา ให้กำหนดเป็น true โดยค่าเริ่มต้น
+        if (!$this->has('active') && $this->isMethod('PUT')) {
+            $this->merge(['active' => true]);
+        }
     }
 }
