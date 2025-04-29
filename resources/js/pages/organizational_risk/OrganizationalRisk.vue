@@ -63,8 +63,8 @@ const handleSaved = () => {
         </div>
         <DataTable 
           :columns="columns" 
-          :data="data" 
-          :meta="{ updateRiskStatus, onEdit: openEditModal }" 
+          :data="data"
+          :meta="{ updateRiskStatus, onEdit: openEditModal }"
         />
         
         <!-- เพิ่ม Modal สำหรับเพิ่ม/แก้ไขข้อมูล -->

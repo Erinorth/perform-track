@@ -1,4 +1,6 @@
-<script setup lang="ts" generic="TData, TValue">
+<!-- resources\js\features\organizational_risk\DataTable.vue -->
+<script setup lang="ts" generic="TData extends OrganizationalRisk, TValue">
+import type { OrganizationalRisk, DepartmentRisk } from './organizational_risk';
 import { ref, watch, computed } from 'vue'
 import type {
   ColumnDef,
@@ -40,6 +42,8 @@ import DataTableViewOptions from './DataTableViewOptions.vue'
 // เพิ่ม import นี้
 import TagFilter from '@/components/ui/tag-filter/TagFilter.vue'
 
+import { useMediaQuery } from '@/composables/useMediaQuery'
+
 const props = defineProps<{
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -48,10 +52,12 @@ const props = defineProps<{
 
 const sorting = ref<SortingState>([])
 const columnFilters = ref<ColumnFiltersState>([])
+const isMobile = useMediaQuery('(max-width: 768px)')
 const columnVisibility = ref<VisibilityState>({
   id: false,
   created_at: false,
-  updated_at: false
+  updated_at: false,
+  description: isMobile.value
 })
 const rowSelection = ref({})
 const expanded = ref<ExpandedState>({})
@@ -85,9 +91,9 @@ const table = useVueTable({
   },
   globalFilterFn: (row, columnId, filterValue) => {
     const searchValue = String(filterValue).toLowerCase();
-    const riskNameMatch = String(row.getValue('risk_name')).toLowerCase().includes(searchValue);
-    const descriptionMatch = String(row.getValue('description') || '').toLowerCase().includes(searchValue);
-    return riskNameMatch || descriptionMatch;
+    const riskName = row.original.risk_name.toLowerCase();
+    const description = row.original.description?.toLowerCase() || '';
+    return riskName.includes(searchValue) || description.includes(searchValue);
   },
   meta: props.meta,
 })
@@ -117,6 +123,21 @@ const clearAllFilters = () => {
   // ล้าง column filter สำหรับ year
   table.getColumn('year')?.setFilterValue(null)
 }
+
+// ติดตามการเปลี่ยนแปลงของขนาดหน้าจอ
+watch(isMobile, (mobile) => {
+  if (mobile) {
+    columnVisibility.value = {
+      ...columnVisibility.value,
+      description: true
+    }
+  } else {
+    columnVisibility.value = {
+      ...columnVisibility.value,
+      description: false
+    }
+  }
+})
 </script>
 
 <template>
@@ -179,10 +200,15 @@ const clearAllFilters = () => {
           <h3 class="text-sm font-medium">รายละเอียดความเสี่ยง</h3>
           <p class="mt-1 whitespace-pre-wrap">{{ row.original.description }}</p>
         </div>
+        <!-- แก้ไขในส่วน expanded row -->
         <div v-if="row.original.department_risks && row.original.department_risks.length > 0">
           <h3 class="text-sm font-medium">ความเสี่ยงระดับสายงานที่เกี่ยวข้อง</h3>
           <ul class="mt-1 space-y-1">
-            <li v-for="dept in row.original.department_risks" :key="dept.id" class="text-sm">
+            <li 
+              v-for="dept in (row.original.department_risks as DepartmentRisk[])" 
+              :key="dept.id" 
+              class="text-sm"
+            >
               {{ dept.risk_name }}
             </li>
           </ul>
