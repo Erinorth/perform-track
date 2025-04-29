@@ -1,7 +1,6 @@
 <!-- resources\js\features\organizational_risk\DataTable.vue -->
 <script setup lang="ts" generic="TData extends OrganizationalRisk, TValue">
-import type { OrganizationalRisk } from './organizational_risk';
-import type { DepartmentRisk } from '@/features/department_risk/department_risk';
+import type { OrganizationalRisk, DepartmentRisk } from './department_risk';
 import { ref, watch, computed } from 'vue'
 import type {
   ColumnDef,
