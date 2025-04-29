@@ -1,21 +1,24 @@
 /* resources\js\features\organizational_risk\columns.ts */
+
 import { h } from 'vue'
-import { ColumnDef } from '@tanstack/vue-table'
+import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
 import DataTableColumnHeader from './DataTableColumnHeader.vue'
 import type { OrganizationalRisk } from './organizational_risk.ts';
 import DropdownAction from './DataTableDropDown.vue'
-import type { TableMeta, RowData } from '@tanstack/vue-table'
 
+// ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล
 declare module '@tanstack/vue-table' {
   interface TableMeta<TData extends RowData> {
     onEdit?: (organization_risk: TData) => void
   }
 }
 
+// กำหนด columns สำหรับ DataTable
 export const columns: ColumnDef<OrganizationalRisk>[] = [
   {
-    accessorKey: "id",
+    accessorKey: "id", // คีย์หลักของข้อมูล
     header: ({ column }) => (
+      // ใช้ component DataTableColumnHeader สำหรับหัวตาราง
       h(DataTableColumnHeader, {
         column: column,
         title: 'ID'
@@ -23,13 +26,14 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
     ),
   },
   {
-    accessorKey: "year",
+    accessorKey: "year", // ปีของความเสี่ยง
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
         title: 'Year'
       })
     ),
+    // ฟังก์ชันกรองข้อมูลตามปี
     filterFn: (row, id, filterValues) => {
       if (!filterValues || filterValues.length === 0) return true;
       const rowValue = row.getValue(id);
@@ -37,7 +41,7 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
     },
   },
   {
-    accessorKey: "risk_name",
+    accessorKey: "risk_name", // ชื่อความเสี่ยง
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
@@ -46,26 +50,28 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
     ),
   },
   {
-    accessorKey: "description",
+    accessorKey: "description", // รายละเอียดความเสี่ยง
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
         title: 'Description'
       })
     ),
+    // แสดงรายละเอียดไม่เกิน 50 ตัวอักษร ถ้ายาวให้เติม ...
     cell: ({ row }) => {
       const description = row.getValue("description") as string
       return description.length > 50 ? `${description.substring(0, 50)}...` : description
     }
   },
   {
-    accessorKey: "created_at",
+    accessorKey: "created_at", // วันที่สร้างข้อมูล
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
         title: 'Created Date'
       })
     ),
+    // แปลงวันที่ให้อยู่ในรูปแบบไทย พร้อมแสดงเวลา
     cell: ({ row }) => {
       const date = new Date(row.getValue("created_at"))
       return date.toLocaleDateString('th-TH', {
@@ -76,16 +82,17 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
         minute: '2-digit'
       })
     },
-    enableHiding: true
+    enableHiding: true // สามารถซ่อนคอลัมน์นี้ได้
   },
   {
-    accessorKey: "updated_at",
+    accessorKey: "updated_at", // วันที่แก้ไขล่าสุด
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
         title: 'Last Updated'
       })
     ),
+    // แปลงวันที่ให้อยู่ในรูปแบบไทย พร้อมแสดงเวลา
     cell: ({ row }) => {
       const date = new Date(row.getValue("updated_at"))
       return date.toLocaleDateString('th-TH', {
@@ -96,11 +103,12 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
         minute: '2-digit'
       })
     },
-    enableHiding: true,
+    enableHiding: true, // สามารถซ่อนคอลัมน์นี้ได้
   },
   {
-    id: "actions",
-    enableHiding: false,
+    id: "actions", // คอลัมน์สำหรับปุ่ม action ต่าง ๆ เช่น แก้ไข/ขยาย
+    enableHiding: false, // ห้ามซ่อนคอลัมน์นี้
+    // แสดง DropdownAction component สำหรับแต่ละแถว
     cell: ({ row, table }) => {
       const organization_risk = row.original;
       const meta = table.options.meta as TableMeta<OrganizationalRisk>
@@ -108,8 +116,8 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
       return h('div', { class: 'relative' }, [
         h(DropdownAction, {
           organization_risk: organization_risk,
-          onExpand: () => row.toggleExpanded(),
-          onEdit: () => meta?.onEdit?.(organization_risk),
+          onExpand: () => row.toggleExpanded(), // ฟังก์ชันขยายแถว
+          onEdit: () => meta?.onEdit?.(organization_risk), // ฟังก์ชันแก้ไขข้อมูล
         }),
       ]);
     },
