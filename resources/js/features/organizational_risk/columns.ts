@@ -10,6 +10,7 @@ import DropdownAction from './DataTableDropDown.vue'
 declare module '@tanstack/vue-table' {
   interface TableMeta<TData extends RowData> {
     onEdit?: (organization_risk: TData) => void
+    onDelete?: (organization_risk: TData) => void
   }
 }
 
@@ -118,6 +119,7 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
           organization_risk: organization_risk,
           onExpand: () => row.toggleExpanded(), // ฟังก์ชันขยายแถว
           onEdit: () => meta?.onEdit?.(organization_risk), // ฟังก์ชันแก้ไขข้อมูล
+          onDelete: () => meta?.onDelete?.(organization_risk), // ฟังก์ชันลบข้อมูล 
         }),
       ]);
     },
