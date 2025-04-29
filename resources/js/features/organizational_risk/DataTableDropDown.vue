@@ -1,3 +1,4 @@
+<!-- resources\js\features\organizational_risk\DataTableDropDown.vue -->
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -12,6 +13,7 @@ defineProps<{
 defineEmits<{
   (e: 'expand'): void
   (e: 'edit', id: number): void
+  (e: 'delete', id: number): void
 }>()
 </script>
 
@@ -23,16 +25,16 @@ defineEmits<{
         <MoreHorizontal class="w-4 h-4" />
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
+    <DropdownMenuContent min-w-[120px] align="end">
       <DropdownMenuLabel>Actions</DropdownMenuLabel>
       <DropdownMenuItem @click="$emit('edit', organization_risk.id)">
         Edit
       </DropdownMenuItem>
-      <DropdownMenuItem @click="$emit('expand')">
-        Expand
+      <DropdownMenuItem @click="$emit('delete', organization_risk.id)">
+        Delete
       </DropdownMenuItem>
       <DropdownMenuSeparator />
-      <DropdownMenuItem>View Organizational Risk</DropdownMenuItem>
+      <DropdownMenuItem @click="$emit('expand')">View Organizational Risk</DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 </template>
