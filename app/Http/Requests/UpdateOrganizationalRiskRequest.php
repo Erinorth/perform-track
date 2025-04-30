@@ -8,6 +8,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;  // นำเข้า Log facade สำหรับบันทึก log
+use Illuminate\Support\Facades\Auth;
 
 class UpdateOrganizationalRiskRequest extends FormRequest
 {
@@ -76,12 +78,12 @@ class UpdateOrganizationalRiskRequest extends FormRequest
         $risk = $this->route('organizationalRisk');
         
         // บันทึก log เมื่อการตรวจสอบล้มเหลว
-        \Log::info('การตรวจสอบข้อมูลการอัปเดตความเสี่ยงระดับองค์กรล้มเหลว', [
+        Log::info('การตรวจสอบข้อมูลการอัปเดตความเสี่ยงระดับองค์กรล้มเหลว', [
             'risk_id' => $risk ? $risk->id : null,
             'risk_name' => $risk ? $risk->risk_name : null,
             'errors' => $validator->errors()->toArray(),
             'input' => $this->except(['_token', '_method']), // ข้อมูลที่ผู้ใช้ส่งมา (ยกเว้นข้อมูล token)
-            'user' => auth()->user()->name ?? 'ไม่ระบุ',
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
             'ip' => $this->ip()
         ]);
         

@@ -8,6 +8,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;  // นำเข้า Log facade สำหรับบันทึก log
+use Illuminate\Support\Facades\Auth;
 
 class StoreOrganizationalRiskRequest extends FormRequest
 {
@@ -69,10 +71,10 @@ class StoreOrganizationalRiskRequest extends FormRequest
     protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
     {
         // บันทึก log เมื่อการตรวจสอบล้มเหลว
-        \Log::info('การตรวจสอบข้อมูลความเสี่ยงระดับองค์กรล้มเหลว', [
+        Log::info('การตรวจสอบข้อมูลความเสี่ยงระดับองค์กรล้มเหลว', [
             'errors' => $validator->errors()->toArray(),
             'input' => $this->input(), // ข้อมูลที่ผู้ใช้ส่งมา
-            'user' => auth()->user()->name ?? 'ไม่ระบุ',
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
             'ip' => $this->ip()
         ]);
         

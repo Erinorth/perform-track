@@ -9,8 +9,9 @@ namespace App\Http\Controllers;
 
 use App\Models\OrganizationalRisk;  // นำเข้าโมเดล OrganizationalRisk
 use Illuminate\Http\Request;         // นำเข้าคลาส Request สำหรับจัดการคำขอ HTTP
-use Illuminate\Support\Facades\DB;   // นำเข้า DB Facade สำหรับการทำงานกับฐานข้อมูล
+use Illuminate\Support\Facades\Log;  // นำเข้า Log facade สำหรับบันทึก log
 use Inertia\Inertia;                 // นำเข้า Inertia สำหรับเชื่อมต่อกับ Vue
+use Illuminate\Support\Facades\Auth;
 
 class OrganizationalRiskController extends Controller
 {
@@ -47,13 +48,13 @@ class OrganizationalRiskController extends Controller
     public function store(Request $request)
     {
         // สร้างข้อมูลโดยใช้ข้อมูลที่ผ่านการตรวจสอบแล้ว
-        OrganizationalRisk::create($request->validated());
+        $risk = OrganizationalRisk::create($request->validated());
         
         // บันทึก log สำหรับการตรวจสอบ
-        \Log::info('สร้างความเสี่ยงระดับองค์กรใหม่', [
+        Log::info('สร้างความเสี่ยงระดับองค์กรใหม่', [
             'id' => $risk->id,
             'name' => $risk->risk_name,
-            'user' => auth()->user()->name ?? 'ไม่ระบุ'
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ'
         ]);
         
         // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
@@ -88,14 +89,15 @@ class OrganizationalRiskController extends Controller
         $oldData = $organizationalRisk->toArray();
         
         // อัปเดตข้อมูล
-        $organizationalRisk->update($request->validated());
+        $validated = $request->validated();
+        $organizationalRisk->update($validated);
         
         // บันทึก log สำหรับการตรวจสอบ
-        \Log::info('อัปเดตความเสี่ยงระดับองค์กร', [
+        Log::info('อัปเดตความเสี่ยงระดับองค์กร', [
             'id' => $organizationalRisk->id,
             'name' => $organizationalRisk->risk_name,
             'changes' => array_diff_assoc($validated, $oldData),
-            'user' => auth()->user()->name ?? 'ไม่ระบุ'
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ'
         ]);
         
         // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
@@ -115,10 +117,10 @@ class OrganizationalRiskController extends Controller
         $organizationalRisk->delete();
         
         // บันทึก log สำหรับการตรวจสอบ
-        \Log::info('ลบความเสี่ยงระดับองค์กร', [
+        Log::info('ลบความเสี่ยงระดับองค์กร', [
             'id' => $oldData['id'],
             'name' => $oldData['risk_name'],
-            'user' => auth()->user()->name ?? 'ไม่ระบุ'
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ'
         ]);
         
         // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
