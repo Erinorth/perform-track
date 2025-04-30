@@ -3,21 +3,25 @@
  * ไฟล์: app\Http\Controllers\OrganizationalRiskController.php
  * Controller สำหรับจัดการความเสี่ยงระดับองค์กร
  * ใช้งานร่วมกับ Laravel 12, Inertia.js, Vue 3
+ * ทำหน้าที่จัดการข้อมูลความเสี่ยงระดับองค์กรตั้งแต่การแสดงผล สร้าง แก้ไข และลบ
  */
 
 namespace App\Http\Controllers;
 
-use App\Models\OrganizationalRisk;  // นำเข้าโมเดล OrganizationalRisk
-use Illuminate\Http\Request;         // นำเข้าคลาส Request สำหรับจัดการคำขอ HTTP
-use Illuminate\Support\Facades\Log;  // นำเข้า Log facade สำหรับบันทึก log
-use Inertia\Inertia;                 // นำเข้า Inertia สำหรับเชื่อมต่อกับ Vue
-use Illuminate\Support\Facades\Auth;
+use App\Models\OrganizationalRisk;  // นำเข้าโมเดล OrganizationalRisk สำหรับทำงานกับตารางในฐานข้อมูล
+use App\Http\Requests\StoreOrganizationalRiskRequest;  // นำเข้า Form Request สำหรับการตรวจสอบข้อมูลการเพิ่ม
+use App\Http\Requests\UpdateOrganizationalRiskRequest;  // นำเข้า Form Request สำหรับการตรวจสอบข้อมูลการแก้ไข
+use Illuminate\Support\Facades\Log;  // นำเข้า Log facade สำหรับบันทึก log การทำงาน
+use Inertia\Inertia;                 // นำเข้า Inertia สำหรับเชื่อมต่อกับ Vue frontend
+use Illuminate\Support\Facades\Auth;  // นำเข้า Auth facade สำหรับจัดการข้อมูลผู้ใช้ที่ล็อกอิน
 
 class OrganizationalRiskController extends Controller
 {
     /**
      * แสดงรายการความเสี่ยงระดับองค์กรทั้งหมด
      * เรียงลำดับตามปี (ล่าสุดก่อน) และตามชื่อความเสี่ยง
+     * 
+     * @return \Inertia\Response หน้า Vue พร้อมข้อมูลความเสี่ยงทั้งหมด
      */
     public function index()
     {
@@ -25,6 +29,12 @@ class OrganizationalRiskController extends Controller
         $risks = OrganizationalRisk::orderBy('year', 'desc')
             ->orderBy('risk_name')
             ->get();
+
+        // บันทึก log การเข้าถึงหน้ารายการความเสี่ยง
+        Log::info('เข้าถึงรายการความเสี่ยงระดับองค์กร', [
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
 
         // ส่งข้อมูลไปยังหน้า Vue ผ่าน Inertia
         return Inertia::render('organizational_risk/OrganizationalRisk', [
@@ -43,18 +53,23 @@ class OrganizationalRiskController extends Controller
 
     /**
      * บันทึกข้อมูลความเสี่ยงระดับองค์กรใหม่ลงฐานข้อมูล
-     * ทำการตรวจสอบความถูกต้องของข้อมูลก่อนบันทึก
+     * ทำการตรวจสอบความถูกต้องของข้อมูลก่อนบันทึกโดย StoreOrganizationalRiskRequest
+     * 
+     * @param \App\Http\Requests\StoreOrganizationalRiskRequest $request
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(Request $request)
+    public function store(StoreOrganizationalRiskRequest $request)
     {
-        // สร้างข้อมูลโดยใช้ข้อมูลที่ผ่านการตรวจสอบแล้ว
+        // ตรวจสอบข้อมูลอัตโนมัติโดย FormRequest และสร้างข้อมูลใหม่
         $risk = OrganizationalRisk::create($request->validated());
         
         // บันทึก log สำหรับการตรวจสอบ
         Log::info('สร้างความเสี่ยงระดับองค์กรใหม่', [
             'id' => $risk->id,
             'name' => $risk->risk_name,
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ'
+            'year' => $risk->year,
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
         // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
@@ -63,7 +78,9 @@ class OrganizationalRiskController extends Controller
 
     /**
      * แสดงข้อมูลความเสี่ยงระดับองค์กรเฉพาะรายการ
-     * หมายเหตุ: ไม่ได้ใช้ในปัจจุบัน
+     * หมายเหตุ: ไม่ได้ใช้ในปัจจุบัน เนื่องจากดูรายละเอียดผ่าน modal ใน Vue
+     * 
+     * @param \App\Models\OrganizationalRisk $organizationalRisk
      */
     public function show(OrganizationalRisk $organizationalRisk)
     {
@@ -73,6 +90,8 @@ class OrganizationalRiskController extends Controller
     /**
      * แสดงฟอร์มสำหรับแก้ไขความเสี่ยง
      * หมายเหตุ: ไม่ได้ใช้เนื่องจากใช้ Modal ใน Vue แทน
+     * 
+     * @param \App\Models\OrganizationalRisk $organizationalRisk
      */
     public function edit(OrganizationalRisk $organizationalRisk)
     {
@@ -81,23 +100,30 @@ class OrganizationalRiskController extends Controller
 
     /**
      * อัปเดตข้อมูลความเสี่ยงระดับองค์กรที่มีอยู่
-     * ทำการตรวจสอบความถูกต้องของข้อมูลก่อนอัปเดต
+     * ทำการตรวจสอบความถูกต้องของข้อมูลก่อนอัปเดตโดย UpdateOrganizationalRiskRequest
+     * 
+     * @param \App\Http\Requests\UpdateOrganizationalRiskRequest $request
+     * @param \App\Models\OrganizationalRisk $organizationalRisk
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, OrganizationalRisk $organizationalRisk)
+    public function update(UpdateOrganizationalRiskRequest $request, OrganizationalRisk $organizationalRisk)
     {
-        // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบ
+        // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบและเปรียบเทียบการเปลี่ยนแปลง
         $oldData = $organizationalRisk->toArray();
         
-        // อัปเดตข้อมูล
+        // รับข้อมูลที่ผ่านการตรวจสอบจาก FormRequest
         $validated = $request->validated();
+        
+        // อัปเดตข้อมูลในฐานข้อมูล
         $organizationalRisk->update($validated);
         
-        // บันทึก log สำหรับการตรวจสอบ
+        // บันทึก log สำหรับการตรวจสอบ พร้อมข้อมูลที่เปลี่ยนแปลงเพื่อการติดตาม
         Log::info('อัปเดตความเสี่ยงระดับองค์กร', [
             'id' => $organizationalRisk->id,
             'name' => $organizationalRisk->risk_name,
             'changes' => array_diff_assoc($validated, $oldData),
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ'
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
         // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
@@ -107,11 +133,22 @@ class OrganizationalRiskController extends Controller
     /**
      * ลบข้อมูลความเสี่ยงระดับองค์กร (Soft Delete)
      * หมายเหตุ: ข้อมูลจะไม่ถูกลบจริงจากฐานข้อมูลหากใช้ SoftDeletes
+     * 
+     * @param \App\Models\OrganizationalRisk $organizationalRisk
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy(OrganizationalRisk $organizationalRisk)
     {
-        // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบ
+        // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบก่อนที่จะลบ
         $oldData = $organizationalRisk->toArray();
+        
+        // ตรวจสอบว่ามีความเสี่ยงระดับสายงานที่เชื่อมโยงกับความเสี่ยงนี้หรือไม่
+        $hasDepartmentRisks = $organizationalRisk->departmentRisks()->exists();
+        
+        if ($hasDepartmentRisks) {
+            // ถ้ามีความเสี่ยงระดับสายงานที่เชื่อมโยง ให้แจ้งเตือนและยกเลิกการลบ
+            return redirect()->back()->with('error', 'ไม่สามารถลบความเสี่ยงนี้ได้เนื่องจากมีความเสี่ยงระดับสายงานที่เชื่อมโยงอยู่');
+        }
         
         // ลบข้อมูล (Soft Delete หากมีการกำหนดในโมเดล)
         $organizationalRisk->delete();
@@ -120,7 +157,9 @@ class OrganizationalRiskController extends Controller
         Log::info('ลบความเสี่ยงระดับองค์กร', [
             'id' => $oldData['id'],
             'name' => $oldData['risk_name'],
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ'
+            'year' => $oldData['year'],
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
         // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
