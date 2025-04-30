@@ -76,8 +76,8 @@ const submitForm = () => {
         closeModal();
         emit('saved');
       },
-      onError: () => {
-        // เมื่อเกิดข้อผิดพลาด แสดงข้อความแจ้งเตือน
+      onError: (error: any) => { // เพิ่ม type annotation ตรงนี้
+        // เมื่อเกิดข้อผิดพลาด แสดงข้อความแจ้งเตือนแบบ error
         toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล', {
           icon: AlertCircleIcon,  // แก้ไขตรงนี้: ใช้ function แทน JSX
           description: error?.message || 'กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง',
@@ -100,8 +100,8 @@ const submitForm = () => {
         closeModal();
         emit('saved');
       },
-      onError: () => {
-        // เมื่อเกิดข้อผิดพลาด แสดงข้อความแจ้งเตือน
+      onError: (error: any) => { // เพิ่ม type annotation ตรงนี้เช่นกัน
+        // เมื่อเกิดข้อผิดพลาด แสดงข้อความแจ้งเตือนแบบ error
         toast.error('เกิดข้อผิดพลาดในการเพิ่มข้อมูล', {
           icon: AlertCircleIcon,  // แก้ไขตรงนี้: ใช้ function แทน JSX
           description: error?.message || 'กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง',
@@ -111,6 +111,39 @@ const submitForm = () => {
       }
     });
   }
+};
+
+// ฟังก์ชันสำหรับแสดงข้อความแจ้งเตือนเมื่อกรอกข้อมูลไม่ครบถ้วน
+const validateForm = () => {
+  let isValid = true;
+  const errors = [];
+
+  if (!form.risk_name.trim()) {
+    errors.push('กรุณาระบุชื่อความเสี่ยง');
+    isValid = false;
+  }
+  
+  if (!form.description.trim()) {
+    errors.push('กรุณาระบุรายละเอียดความเสี่ยง');
+    isValid = false;
+  }
+
+  if (!form.year || form.year < 2000 || form.year > 2100) {
+    errors.push('กรุณาระบุปีให้ถูกต้อง (2000-2100)');
+    isValid = false;
+  }
+
+  if (!isValid) {
+    toast.warning('กรุณากรอกข้อมูลให้ครบถ้วน', {
+      icon: InfoIcon,
+      description: errors.join(', '),
+      duration: 4000,
+      position: 'top-center',
+      closeButton: true
+    });
+  }
+
+  return isValid;
 };
 </script>
 
