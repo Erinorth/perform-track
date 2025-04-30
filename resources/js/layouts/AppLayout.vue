@@ -1,17 +1,15 @@
-<!-- 
-  ไฟล์: resources\js\layouts\AppLayout.vue
-  Layout หลักสำหรับแอปพลิเคชัน
-  เพิ่ม ConfirmDialog สำหรับใช้งานทั่วทั้งแอปพลิเคชัน
--->
+<!-- ไฟล์: resources/js/layouts/AppLayout.vue -->
 <script setup lang="ts">
 // นำเข้า Layout หลักของแอปพลิเคชัน
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 // นำเข้า type สำหรับ breadcrumb
 import type { BreadcrumbItemType } from '@/types';
-// นำเข้า ConfirmDialog component - แก้ไขเส้นทางให้ถูกต้อง
+// นำเข้า ConfirmDialog component
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 // นำเข้า composable สำหรับจัดการ confirm dialog
 import { useConfirm } from '@/composables/useConfirm';
+// นำเข้า Toaster
+import { Toaster } from '@/components/ui/sonner'
 
 // กำหนด props ที่รับจาก parent component
 interface Props {
@@ -34,8 +32,10 @@ const { isOpen, options, handleConfirm, handleCancel } = useConfirm();
         <slot />
     </AppLayout>
 
-    <!-- เพิ่ม ConfirmDialog ไว้ที่ส่วนล่างของ Layout -->
-    <!-- แสดงเฉพาะเมื่อมีการเรียกใช้งานจาก useConfirm -->
+    <!-- เพิ่ม Toaster component สำหรับการแสดง toast -->
+    <Toaster />
+
+    <!-- ConfirmDialog สำหรับการยืนยันการลบ -->
     <ConfirmDialog
         v-if="isOpen && options"
         v-model:show="isOpen"

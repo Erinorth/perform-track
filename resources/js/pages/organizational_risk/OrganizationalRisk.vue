@@ -8,7 +8,7 @@
 <script setup lang="ts">
 // นำเข้า components และ utilities ที่จำเป็น
 import AppLayout from '@/layouts/AppLayout.vue';         // Layout หลักของแอปพลิเคชัน
-import { Head } from '@inertiajs/vue3';                  // Component สำหรับกำหนด <title> ของหน้า
+import { Head, router } from '@inertiajs/vue3';                  // Component สำหรับกำหนด <title> ของหน้า
 import { type BreadcrumbItem } from '@/types';           // Type สำหรับ breadcrumb
 import { columns } from '@/features/organizational_risk/columns';  // คอลัมน์สำหรับตาราง
 import DataTable from '@/features/organizational_risk/DataTable.vue';  // Component ตาราง
@@ -61,7 +61,10 @@ const openEditModal = (risk: OrganizationalRisk) => {
 // ฟังก์ชันจัดการเมื่อบันทึกข้อมูลสำเร็จ
 // โหลดหน้าเว็บใหม่เพื่อให้แสดงข้อมูลล่าสุด
 const handleSaved = () => {
-  window.location.reload();       // โหลดหน้าใหม่เพื่ออัปเดตข้อมูล
+  router.visit(route('organizational-risks.index'), {
+    preserveScroll: true,
+    only: ['risks']
+  });
 };
 
 // เพิ่ม composable สำหรับยืนยันการลบ

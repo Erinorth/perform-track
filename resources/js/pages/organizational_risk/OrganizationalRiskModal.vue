@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';              // Component input f
 import { Textarea } from '@/components/ui/textarea';        // Component สำหรับข้อความหลายบรรทัด
 import { Label } from '@/components/ui/label';              // Component ป้ายกำกับ
 import { toast } from 'vue-sonner';                         // ใช้สำหรับแสดงข้อความแจ้งเตือน
-import { SaveIcon, XIcon } from 'lucide-vue-next';          // ไอคอนสำหรับปุ่มต่างๆ
+import { SaveIcon, XIcon, CheckCircle2Icon, AlertCircleIcon, InfoIcon } from 'lucide-vue-next';          // ไอคอนสำหรับปุ่มต่างๆ
 import type { OrganizationalRisk } from '@/features/organizational_risk/organizational_risk';  // Type ของข้อมูลความเสี่ยงองค์กร
 
 // กำหนด props ที่รับจาก parent component
@@ -67,13 +67,23 @@ const submitForm = () => {
     form.put(`/organizational-risks/${props.risk?.id}`, {
       onSuccess: () => {
         // เมื่อสำเร็จ แสดงข้อความแจ้งเตือน, ปิด Modal และแจ้ง parent ว่าบันทึกสำเร็จ
-        toast('บันทึกข้อมูลสำเร็จ');
+        toast.success('บันทึกข้อมูลความเสี่ยงสำเร็จ', {
+          icon: CheckCircle2Icon,  // แก้ไขตรงนี้: ใช้ function แทน JSX
+          description: `ความเสี่ยง "${form.risk_name}" ได้รับการแก้ไขเรียบร้อยแล้ว`,
+          duration: 4000,
+          closeButton: true
+        });
         closeModal();
         emit('saved');
       },
       onError: () => {
         // เมื่อเกิดข้อผิดพลาด แสดงข้อความแจ้งเตือน
-        toast('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล', {
+          icon: AlertCircleIcon,  // แก้ไขตรงนี้: ใช้ function แทน JSX
+          description: error?.message || 'กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง',
+          duration: 5000,
+          closeButton: true
+        });
       }
     });
   } else {
@@ -81,13 +91,23 @@ const submitForm = () => {
     form.post('/organizational-risks', {
       onSuccess: () => {
         // เมื่อสำเร็จ แสดงข้อความแจ้งเตือน, ปิด Modal และแจ้ง parent ว่าบันทึกสำเร็จ
-        toast('บันทึกข้อมูลสำเร็จ');
+        toast.success('เพิ่มความเสี่ยงสำเร็จ', {
+          icon: CheckCircle2Icon,  // แก้ไขตรงนี้: ใช้ function แทน JSX
+          description: `ความเสี่ยง "${form.risk_name}" ถูกเพิ่มเรียบร้อยแล้ว`,
+          duration: 4000,
+          closeButton: true
+        });
         closeModal();
         emit('saved');
       },
       onError: () => {
         // เมื่อเกิดข้อผิดพลาด แสดงข้อความแจ้งเตือน
-        toast('เกิดข้อผิดพลาดในการเพิ่มข้อมูล');
+        toast.error('เกิดข้อผิดพลาดในการเพิ่มข้อมูล', {
+          icon: AlertCircleIcon,  // แก้ไขตรงนี้: ใช้ function แทน JSX
+          description: error?.message || 'กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง',
+          duration: 5000,
+          closeButton: true
+        });
       }
     });
   }
