@@ -67,13 +67,13 @@ const submitForm = () => {
     form.put(`/organizational-risks/${props.risk?.id}`, {
       onSuccess: () => {
         // เมื่อสำเร็จ แสดงข้อความแจ้งเตือน, ปิด Modal และแจ้ง parent ว่าบันทึกสำเร็จ
-        toast.success('บันทึกข้อมูลสำเร็จ');
+        toast('บันทึกข้อมูลสำเร็จ');
         closeModal();
         emit('saved');
       },
       onError: () => {
         // เมื่อเกิดข้อผิดพลาด แสดงข้อความแจ้งเตือน
-        toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        toast('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
       }
     });
   } else {
@@ -81,13 +81,13 @@ const submitForm = () => {
     form.post('/organizational-risks', {
       onSuccess: () => {
         // เมื่อสำเร็จ แสดงข้อความแจ้งเตือน, ปิด Modal และแจ้ง parent ว่าบันทึกสำเร็จ
-        toast.success('เพิ่มข้อมูลสำเร็จ');
+        toast('บันทึกข้อมูลสำเร็จ');
         closeModal();
         emit('saved');
       },
       onError: () => {
         // เมื่อเกิดข้อผิดพลาด แสดงข้อความแจ้งเตือน
-        toast.error('เกิดข้อผิดพลาดในการเพิ่มข้อมูล');
+        toast('เกิดข้อผิดพลาดในการเพิ่มข้อมูล');
       }
     });
   }
