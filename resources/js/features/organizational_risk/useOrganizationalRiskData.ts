@@ -6,6 +6,7 @@
 
 import { ref, onMounted } from 'vue';  // นำเข้าฟังก์ชัน ref และ onMounted จาก Vue Composition API
 import { router } from '@inertiajs/vue3';  // นำเข้า router จาก Inertia สำหรับการนำทางและส่งข้อมูล
+import { toast } from 'vue-sonner';
 import type { OrganizationalRisk } from './organizational_risk.ts';  // นำเข้า type ของข้อมูลความเสี่ยงระดับองค์กร
 
 // ฟังก์ชัน composable สำหรับจัดการข้อมูลความเสี่ยงระดับองค์กร
@@ -89,9 +90,58 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
         });
     };
 
-    // ส่งคืนข้อมูลและฟังก์ชันที่ต้องการเปิดให้ component อื่นใช้งาน
+    // เพิ่มฟังก์ชันลบข้อมูลความเสี่ยง
+    const deleteRisk = async (risk: OrganizationalRisk): Promise<void> => {
+        if (!risk || !risk.id) {
+            console.error('ไม่พบข้อมูล ID สำหรับความเสี่ยงที่ต้องการลบ');
+            throw new Error('ไม่พบข้อมูลที่ต้องการลบ');
+        }
+        
+        return new Promise((resolve, reject) => {
+            // ส่งคำขอลบข้อมูลไปยัง Laravel Backend
+            router.delete(route('organizational-risks.destroy', risk.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // ลบข้อมูลออกจาก data เมื่อลบสำเร็จ
+                    data.value = data.value.filter(item => item.id !== risk.id);
+                    // แสดงข้อความแจ้งเตือนสำเร็จ
+                    toast.success('ลบความเสี่ยงระดับองค์กรเรียบร้อยแล้ว');
+                    
+                    // บันทึก log สำหรับติดตาม
+                    console.log('✅ ลบความเสี่ยงองค์กรสำเร็จ', {
+                        risk: risk.risk_name,
+                        id: risk.id,
+                        timestamp: new Date().toLocaleString('th-TH')
+                    });
+                    
+                    resolve();
+                },
+                onError: (errors) => {
+                    // แสดงข้อความแจ้งเตือนเมื่อเกิดข้อผิดพลาด
+                    if (errors.error) {
+                        toast.error(errors.error);
+                    } else {
+                        toast.error('เกิดข้อผิดพลาดในการลบข้อมูล');
+                    }
+                    
+                    // บันทึก log ข้อผิดพลาด
+                    console.error('❌ ไม่สามารถลบความเสี่ยงองค์กรได้', {
+                        risk: risk.risk_name,
+                        id: risk.id,
+                        errors: errors,
+                        timestamp: new Date().toLocaleString('th-TH')
+                    });
+                    
+                    reject(errors);
+                }
+            });
+        });
+    };
+    
+    // ส่งคืนข้อมูลและฟังก์ชันที่ต้องการให้ component อื่นใช้งาน
     return {
-        data,              // ข้อมูลความเสี่ยงองค์กรแบบ reactive
-        updateRiskStatus   // ฟังก์ชันสำหรับอัปเดตสถานะ
+        data,
+        updateRiskStatus,
+        deleteRisk // ส่งคืนฟังก์ชันลบ
     };
 }
