@@ -55,6 +55,8 @@ import TagFilter from '@/components/ui/tag-filter/TagFilter.vue'
 // นำเข้า composable สำหรับตรวจสอบขนาดหน้าจอ
 import { useMediaQuery } from '@/composables/useMediaQuery'
 
+import ExpandedRow from './ExpandedRow.vue'
+
 // กำหนด props ที่ต้องการรับ: columns (โครงสร้างคอลัมน์), data (ข้อมูล) และ meta (ข้อมูลเพิ่มเติม)
 const props = defineProps<{
   columns: ColumnDef<TData, TValue>[]  // โครงสร้างคอลัมน์
@@ -236,34 +238,7 @@ watch(isMobile, (mobile) => {
             <!-- แถวขยายสำหรับแสดงรายละเอียดเพิ่มเติม (แสดงเมื่อคลิก expand) -->
             <TableRow v-if="row.getIsExpanded()">
               <TableCell :colspan="row.getAllCells().length">
-                <div class="p-4 bg-muted/30 rounded-md">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- ส่วนแสดงรายละเอียดความเสี่ยง -->
-                    <div>
-                      <h3 class="text-sm font-medium">รายละเอียดความเสี่ยง</h3>
-                      <p class="mt-1 whitespace-pre-wrap">{{ row.original.description }}</p>
-                    </div>
-                    
-                    <!-- ส่วนแสดงความเสี่ยงระดับสายงานที่เกี่ยวข้อง -->
-                    <div v-if="row.original.department_risks && row.original.department_risks.length > 0">
-                      <h3 class="text-sm font-medium">ความเสี่ยงระดับสายงานที่เกี่ยวข้อง</h3>
-                      <ul class="mt-1 space-y-1">
-                        <li 
-                          v-for="dept in (row.original.department_risks as DepartmentRisk[])" 
-                          :key="dept.id" 
-                          class="text-sm"
-                        >
-                          {{ dept.risk_name }}
-                        </li>
-                      </ul>
-                    </div>
-                    <!-- กรณีไม่มีความเสี่ยงระดับสายงานที่เกี่ยวข้อง -->
-                    <div v-else>
-                      <h3 class="text-sm font-medium">ความเสี่ยงระดับสายงานที่เกี่ยวข้อง</h3>
-                      <p class="text-sm text-muted-foreground mt-1">ไม่มีความเสี่ยงระดับสายงานที่เกี่ยวข้อง</p>
-                    </div>
-                  </div>
-                </div>
+                <ExpandedRow :rowData="row.original" />
               </TableCell>
             </TableRow>
           </template>
