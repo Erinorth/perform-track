@@ -24,7 +24,7 @@ import { useOrganizationalRiskData } from '@/features/organizational_risk/useOrg
 const props = defineProps<{
   show: boolean;                   // สถานะการแสดง/ซ่อน Modal
   risk?: OrganizationalRisk;       // ข้อมูลความเสี่ยงที่ต้องการแก้ไข (ถ้ามี)
-  initialRisks: OrganizationalRisk[]; // เพิ่ม prop สำหรับส่งข้อมูลเริ่มต้นให้ composable
+  initialRisks?: OrganizationalRisk[]; // เพิ่ม prop สำหรับส่งข้อมูลเริ่มต้นให้ composable
 }>();
 
 // กำหนด events ที่จะส่งไปยัง parent component
