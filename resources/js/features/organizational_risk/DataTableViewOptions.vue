@@ -59,12 +59,14 @@ const columns = computed(() => props.table.getAllColumns()
       <DropdownMenuSeparator />
 
       <!-- รายการคอลัมน์ต่าง ๆ ที่สามารถเปิด/ปิดการแสดงผลได้ -->
+      <!-- ค่าการแสดงผลปัจจุบันของคอลัมน์ -->
+      <!-- สลับการแสดงผลของคอลัมน์ -->
       <DropdownMenuCheckboxItem
         v-for="column in columns"
         :key="column.id"
         class="capitalize"
-        :modelValue="column.getIsVisible()" <!-- ค่าการแสดงผลปัจจุบันของคอลัมน์ -->
-        @update:modelValue="(value) => column.toggleVisibility(!!value)" <!-- สลับการแสดงผลของคอลัมน์ -->
+        :modelValue="column.getIsVisible()"
+        @update:modelValue="(value) => column.toggleVisibility(!!value)" 
       >
         {{ column.id }} <!-- ชื่อคอลัมน์ -->
       </DropdownMenuCheckboxItem>
