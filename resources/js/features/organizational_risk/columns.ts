@@ -7,7 +7,7 @@
 import { h } from 'vue'
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
 import DataTableColumnHeader from './DataTableColumnHeader.vue'
-import type { OrganizationalRisk } from './organizational_risk.ts';
+import type { OrganizationalRisk } from '@/types/types';
 import DropdownAction from './DataTableDropDown.vue'
 
 // ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล

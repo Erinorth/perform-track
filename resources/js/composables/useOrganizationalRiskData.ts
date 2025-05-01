@@ -8,7 +8,7 @@ import { ref, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';  // เพิ่ม useForm
 import { toast } from 'vue-sonner';
 import { CheckCircle2Icon } from 'lucide-vue-next';  // เพิ่ม icons ที่จำเป็น
-import type { OrganizationalRisk } from './organizational_risk.ts';
+import type { OrganizationalRisk } from '@/types/types';
 
 // ฟังก์ชัน composable สำหรับจัดการข้อมูลความเสี่ยงระดับองค์กร
 // รับพารามิเตอร์เป็นข้อมูลเริ่มต้นจาก props
@@ -42,56 +42,7 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
         }
     }
 
-    // ฟังก์ชันสำหรับอัปเดตสถานะความเสี่ยงระดับองค์กร (เปิดใช้งาน/ปิดใช้งาน)
-    const updateRiskStatus = async (id: number, active: boolean) => {
-        // ค้นหาตำแหน่งของความเสี่ยงที่ต้องการอัปเดตในอาร์เรย์
-        const riskIndex = data.value.findIndex(risk => risk.id === id);
-        // ตรวจสอบว่าพบความเสี่ยงหรือไม่
-        if (riskIndex === -1) {
-            console.error('ไม่พบความเสี่ยงองค์กรที่มี ID:', id);
-            return;
-        }
-        
-        // อัปเดตสถานะการใช้งานในข้อมูลแบบ reactive
-        data.value[riskIndex].active = active;
-        // สร้าง array ใหม่เพื่อทริกเกอร์การ re-render ของ component
-        data.value = [...data.value];
-        
-        // เก็บชื่อความเสี่ยงสำหรับการแสดง log
-        const riskName = data.value[riskIndex].risk_name;
-        
-        // ส่งข้อมูลไปยังเซิร์ฟเวอร์ผ่าน Inertia router
-        router.put(route('organizational-risks.update', id), {
-            ...data.value[riskIndex],  // ส่งข้อมูลเดิมทั้งหมด
-            active: active  // อัปเดตสถานะการใช้งาน
-        }, {
-            preserveScroll: true,  // คงตำแหน่งการเลื่อนของหน้าไว้
-            onSuccess: () => {
-                // เมื่ออัปเดตสำเร็จ บันทึก log ลง console สำหรับการติดตาม
-                console.log('✅ อัปเดตสถานะความเสี่ยงองค์กรสำเร็จ', {
-                    risk: riskName,
-                    status: active ? 'เปิดใช้งาน' : 'ปิดใช้งาน',
-                    timestamp: new Date().toLocaleString('th-TH')  // บันทึกเวลาในรูปแบบไทย
-                });
-            },
-            onError: (errors) => {
-                // เมื่อเกิดข้อผิดพลาด บันทึก log ข้อผิดพลาดลง console
-                console.error('❌ ไม่สามารถอัปเดตสถานะความเสี่ยงองค์กรได้', {
-                    risk: riskName,
-                    attemptedStatus: active ? 'เปิดใช้งาน' : 'ปิดใช้งาน',
-                    errors: errors,
-                    timestamp: new Date().toLocaleString('th-TH')  // บันทึกเวลาในรูปแบบไทย
-                });
-                
-                // คืนค่าสถานะเดิมในกรณีที่การอัปเดตไม่สำเร็จ (optimistic UI rollback)
-                data.value[riskIndex].active = !active;
-                // สร้าง array ใหม่เพื่อทริกเกอร์การ re-render ของ component
-                data.value = [...data.value];
-            }
-        });
-    };
-
-    // เพิ่มฟังก์ชันลบข้อมูลความเสี่ยง
+        // เพิ่มฟังก์ชันลบข้อมูลความเสี่ยง
     const deleteRisk = async (risk: OrganizationalRisk): Promise<void> => {
         if (!risk || !risk.id) {
             console.error('ไม่พบข้อมูล ID สำหรับความเสี่ยงที่ต้องการลบ');
@@ -227,7 +178,6 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
     // ส่งคืนข้อมูลและฟังก์ชันที่ต้องการให้ component อื่นใช้งาน
     return {
         data,
-        updateRiskStatus,
         deleteRisk,
         submitForm  // เพิ่มฟังก์ชัน submitForm
     };

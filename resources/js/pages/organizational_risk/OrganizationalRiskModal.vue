@@ -18,7 +18,7 @@ import { SaveIcon, XIcon, CheckCircle2Icon, AlertCircleIcon, InfoIcon } from 'lu
 import type { OrganizationalRisk } from '@/features/organizational_risk/organizational_risk';  // Type ของข้อมูลความเสี่ยงองค์กร
 
 // เพิ่มการนำเข้า composable
-import { useOrganizationalRiskData } from '@/features/organizational_risk/useOrganizationalRiskData';
+import { useOrganizationalRiskData } from '@/composables/useOrganizationalRiskData';
 
 // กำหนด props ที่รับจาก parent component
 const props = defineProps<{

@@ -8,8 +8,7 @@
 
 <script setup lang="ts" generic="TData extends OrganizationalRisk, TValue">
 // นำเข้า types สำหรับโมเดลข้อมูล
-import type { OrganizationalRisk } from './organizational_risk';
-import type { DepartmentRisk } from '@/features/department_risk/department_risk';
+import type { OrganizationalRisk, DepartmentRisk } from '@/types/types';
 
 // นำเข้า Vue Composition API
 import { ref, watch, computed } from 'vue'

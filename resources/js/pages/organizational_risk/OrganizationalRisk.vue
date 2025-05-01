@@ -12,7 +12,7 @@ import { Head, router } from '@inertiajs/vue3';                  // Component �
 import { type BreadcrumbItem } from '@/types';           // Type สำหรับ breadcrumb
 import { columns } from '@/features/organizational_risk/columns';  // คอลัมน์สำหรับตาราง
 import DataTable from '@/features/organizational_risk/DataTable.vue';  // Component ตาราง
-import { useOrganizationalRiskData } from '@/features/organizational_risk/useOrganizationalRiskData';  // Composable function สำหรับจัดการข้อมูล
+import { useOrganizationalRiskData } from '@/composables/useOrganizationalRiskData';  // Composable function สำหรับจัดการข้อมูล
 import type { OrganizationalRisk } from '@/features/organizational_risk/organizational_risk';  // Type ของความเสี่ยงองค์กร
 import { Button } from '@/components/ui/button';         // Component ปุ่ม
 import { PlusIcon } from 'lucide-vue-next';              // ไอคอนปุ่มเพิ่มข้อมูล
