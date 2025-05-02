@@ -49,7 +49,7 @@ import { valueUpdater } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import DataTablePagination from './DataTablePagination.vue'
 import DataTableViewOptions from './DataTableViewOptions.vue'
-import TagFilter from '@/components/ui/tag-filter/TagFilter.vue'
+import TagFilter from '@/components/ui/data-table/tag-filter/TagFilter.vue'
 
 // นำเข้า composable สำหรับตรวจสอบขนาดหน้าจอ
 import { useMediaQuery } from '@/composables/useMediaQuery'
