@@ -1,5 +1,5 @@
 /*
-  ไฟล์: resources/js/features/organizational_risk/types.ts
+  ไฟล์: resources/js/types/types.ts
   ไฟล์นี้กำหนด TypeScript interfaces สำหรับระบบประเมินความเสี่ยงทั้งหมด
   รวมข้อมูลความเสี่ยงระดับองค์กร ระดับสายงาน และการประเมินความเสี่ยง
   ใช้ร่วมกับระบบ Risk Assessment ที่พัฒนาด้วย Laravel 12 + Vue 3
