@@ -72,8 +72,15 @@ class OrganizationalRiskController extends Controller
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
-        // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
-        return redirect()->back()->with('success', 'เพิ่มความเสี่ยงระดับองค์กรเรียบร้อยแล้ว');
+        // ดึงข้อมูลความเสี่ยงทั้งหมดใหม่อีกครั้ง
+        $risks = OrganizationalRisk::orderBy('year', 'desc')
+            ->orderBy('risk_name')
+            ->get();
+        
+        // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จและข้อมูลความเสี่ยงทั้งหมด
+        return redirect()->back()
+            ->with('success', 'เพิ่มความเสี่ยงระดับองค์กรเรียบร้อยแล้ว')
+            ->with('risks', $risks); // ส่งข้อมูลความเสี่ยงทั้งหมดกลับไปด้วย
     }
 
     /**
