@@ -1,5 +1,5 @@
 <!-- 
-  ไฟล์: resources\js\features\organizational_risk\DataTableColumnHeader.vue
+  ไฟล์: resources\js\features\department_risk\DataTableColumnHeader.vue
   Component สำหรับแสดงหัวคอลัมน์ของ DataTable
   รองรับการ sort, dropdown menu สำหรับ sort/ซ่อนคอลัมน์
   ใช้ icon จาก lucide-vue-next และ shadcn-vue UI

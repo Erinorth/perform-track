@@ -1,5 +1,5 @@
 <!-- 
-  ไฟล์: resources\js\features\organizational_risk\DataTableViewOptions.vue
+  ไฟล์: resources\js\features\department_risk\DataTableViewOptions.vue
   Component สำหรับจัดการการแสดงผลคอลัมน์ของตาราง
   รองรับการเปิด/ปิดการแสดงคอลัมน์ต่าง ๆ ตามความต้องการของผู้ใช้
   ใช้ร่วมกับ @tanstack/vue-table และ shadcn-vue
