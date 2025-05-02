@@ -26,7 +26,8 @@ class OrganizationalRiskController extends Controller
     public function index()
     {
         // ดึงข้อมูลความเสี่ยงระดับองค์กรทั้งหมด เรียงตามปี (มากไปน้อย) และชื่อ
-        $risks = OrganizationalRisk::orderBy('year', 'desc')
+        $risks = OrganizationalRisk::with('departmentRisks')  // เพิ่ม with() เพื่อโหลดความสัมพันธ์
+            ->orderBy('year', 'desc')
             ->orderBy('risk_name')
             ->get();
 
