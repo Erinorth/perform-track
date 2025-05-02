@@ -92,7 +92,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-4 bg-muted/30 rounded-md overflow-hidden transition-all duration-300">
+  <div class="p-4 bg-muted/30 rounded-md overflow-hidden transition-all duration-300 max-w-full">
     <!-- แสดง loading state -->
     <div v-if="isLoading" class="flex justify-center items-center py-4">
       <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
@@ -102,12 +102,12 @@ onMounted(() => {
     <!-- แสดงข้อมูลเมื่อโหลดเสร็จแล้ว -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <!-- ส่วนแสดงรายละเอียดความเสี่ยง -->
-      <div class="space-y-3">
+      <div class="space-y-3 overflow-hidden">
         <div class="flex items-start space-x-2">
           <ClipboardList class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-          <div>
+          <div class="min-w-0 w-full overflow-hidden">
             <h3 class="text-sm font-medium">รายละเอียดความเสี่ยง</h3>
-            <p class="mt-1 text-sm whitespace-pre-wrap">{{ rowData.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
+            <p class="mt-1 text-sm whitespace-pre-wrap break-words">{{ rowData.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
           </div>
         </div>
         
@@ -134,13 +134,13 @@ onMounted(() => {
       </div>
       
       <!-- ส่วนแสดงความเสี่ยงระดับสายงานที่เกี่ยวข้อง -->
-      <div>
+      <div class="overflow-hidden">
         <div class="flex items-start space-x-2">
           <Network class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-          <div class="w-full">
+          <div class="w-full min-w-0 overflow-hidden">
             <div class="flex items-center justify-between">
-              <h3 class="text-sm font-medium">ความเสี่ยงระดับสายงานที่เกี่ยวข้อง</h3>
-              <span v-if="hasDepartmentRisks" class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+              <h3 class="text-sm font-medium truncate">ความเสี่ยงระดับสายงานที่เกี่ยวข้อง</h3>
+              <span v-if="hasDepartmentRisks" class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full flex-shrink-0">
                 {{ departmentRisksCount }} รายการ
               </span>
             </div>
@@ -151,13 +151,13 @@ onMounted(() => {
                 <li 
                   v-for="dept in (rowData.department_risks as DepartmentRisk[])" 
                   :key="dept.id" 
-                  class="text-sm bg-background rounded-md p-2 border border-border"
+                  class="text-sm bg-background rounded-md p-2 border border-border overflow-hidden"
                 >
-                  <div class="flex items-start justify-between">
-                    <div class="flex items-start space-x-2">
+                  <div class="flex flex-col sm:flex-row items-start sm:justify-between gap-2">
+                    <div class="flex items-start space-x-2 min-w-0 overflow-hidden">
                       <Users class="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p class="font-medium">{{ dept.risk_name }}</p>
+                      <div class="min-w-0 overflow-hidden">
+                        <p class="font-medium truncate">{{ dept.risk_name }}</p>
                         <p v-if="dept.description" class="text-xs text-muted-foreground mt-1 line-clamp-2">
                           {{ dept.description }}
                         </p>
@@ -167,7 +167,7 @@ onMounted(() => {
                     <!-- ปุ่มดูรายละเอียด -->
                     <button 
                       @click="viewDepartmentRiskDetails(dept)"
-                      class="text-xs text-primary hover:text-primary/80 transition-colors"
+                      class="text-xs text-primary hover:text-primary/80 transition-colors flex-shrink-0"
                     >
                       ดูรายละเอียด
                     </button>
@@ -176,7 +176,7 @@ onMounted(() => {
               </ul>
             </div>
             
-            <!-- กรณีไม่มีความเสี่ยงระดับสายงาน -->
+            <!-- กรณีไม่มีความเสี่ยงระดับสายงาน (คงเดิม) -->
             <div v-else class="mt-2 flex items-center space-x-2 text-sm text-muted-foreground">
               <AlertTriangle class="h-4 w-4" />
               <p>ไม่มีความเสี่ยงระดับสายงานที่เกี่ยวข้อง</p>
