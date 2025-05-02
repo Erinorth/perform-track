@@ -6,9 +6,8 @@
 
 import { h } from 'vue'
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
-import { DataTableColumnHeader } from '@/components/ui/data-table'
+import { DataTableColumnHeader, DataTableDropDown } from '@/components/ui/data-table'
 import type { OrganizationalRisk } from '@/types/types';
-import DropdownAction from './DataTableDropDown.vue'
 
 // ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล
 declare module '@tanstack/vue-table' {
@@ -111,19 +110,29 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
     enableHiding: true, // สามารถซ่อนคอลัมน์นี้ได้
   },
   {
-    id: "actions", // คอลัมน์สำหรับปุ่ม action ต่าง ๆ เช่น แก้ไข/ขยาย
-    enableHiding: false, // ห้ามซ่อนคอลัมน์นี้
-    // แสดง DropdownAction component สำหรับแต่ละแถว
+    id: "actions",
+    enableHiding: false,
     cell: ({ row, table }) => {
       const organization_risk = row.original;
       const meta = table.options.meta as TableMeta<OrganizationalRisk>
       
+      // ใช้ Generic DataTableDropDown component โดยส่งข้อมูลผ่าน data prop
       return h('div', { class: 'relative' }, [
-        h(DropdownAction, {
-          organization_risk: organization_risk,
-          onExpand: () => row.toggleExpanded(), // ฟังก์ชันขยายแถว
-          onEdit: () => meta?.onEdit?.(organization_risk), // ฟังก์ชันแก้ไขข้อมูล
-          onDelete: () => meta?.onDelete?.(organization_risk), // ฟังก์ชันลบข้อมูล 
+        h(DataTableDropDown, {
+          data: organization_risk, // ส่งข้อมูล organization_risk ผ่าน data prop
+          menuLabel: 'ตัวเลือกความเสี่ยงองค์กร', // custom label สำหรับเมนู
+          onExpand: () => {
+            //logTableAction('expand', 'organizational_risk', organization_risk.id)
+            row.toggleExpanded()
+          },
+          onEdit: () => {
+            //logTableAction('edit', 'organizational_risk', organization_risk.id)
+            meta?.onEdit?.(organization_risk)
+          },
+          onDelete: () => {
+            //logTableAction('delete', 'organizational_risk', organization_risk.id)
+            meta?.onDelete?.(organization_risk)
+          },
         }),
       ]);
     },

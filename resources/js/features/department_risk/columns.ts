@@ -6,9 +6,8 @@
 
 import { h } from 'vue'
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
-import { DataTableColumnHeader } from '@/components/ui/data-table'
+import { DataTableColumnHeader, DataTableDropDown } from '@/components/ui/data-table'
 import type { DepartmentRisk } from '@/types/types';
-import DropdownAction from './DataTableDropDown.vue'
 
 // ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล
 declare module '@tanstack/vue-table' {
@@ -125,19 +124,29 @@ export const columns: ColumnDef<DepartmentRisk>[] = [
     enableHiding: true, // สามารถซ่อนคอลัมน์นี้ได้
   },
   {
-    id: "actions", // คอลัมน์สำหรับปุ่ม action ต่าง ๆ เช่น แก้ไข/ขยาย
-    enableHiding: false, // ห้ามซ่อนคอลัมน์นี้
-    // แสดง DropdownAction component สำหรับแต่ละแถว
+    id: "actions",
+    enableHiding: false,
     cell: ({ row, table }) => {
       const department_risk = row.original;
       const meta = table.options.meta as TableMeta<DepartmentRisk>
       
+      // ใช้ Generic DataTableDropDown component โดยส่งข้อมูลผ่าน data prop
       return h('div', { class: 'relative' }, [
-        h(DropdownAction, {
-          department_risk: department_risk,
-          onExpand: () => row.toggleExpanded(), // ฟังก์ชันขยายแถว
-          onEdit: () => meta?.onEdit?.(department_risk), // ฟังก์ชันแก้ไขข้อมูล
-          onDelete: () => meta?.onDelete?.(department_risk), // ฟังก์ชันลบข้อมูล 
+        h(DataTableDropDown, {
+          data: department_risk, // ส่งข้อมูล department_risk ผ่าน data prop
+          menuLabel: 'ตัวเลือกความเสี่ยงแผนก', // custom label สำหรับเมนู
+          onExpand: () => {
+            //logTableAction('expand', 'department_risk', department_risk.id)
+            row.toggleExpanded()
+          },
+          onEdit: () => {
+            //logTableAction('edit', 'department_risk', department_risk.id)
+            meta?.onEdit?.(department_risk)
+          },
+          onDelete: () => {
+            //logTableAction('delete', 'department_risk', department_risk.id)
+            meta?.onDelete?.(department_risk)
+          },
         }),
       ]);
     },
