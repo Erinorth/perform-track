@@ -1,8 +1,8 @@
 <!-- 
-  ไฟล์: resources\js\features\organizational_risk\DataTableColumnHeader.vue
-  Component สำหรับแสดงหัวคอลัมน์ของ DataTable
+  ไฟล์: resources\js\components\ui\data-table\DataTableColumnHeader.vue
+  Generic Component สำหรับแสดงหัวคอลัมน์ของ DataTable
   รองรับการ sort, dropdown menu สำหรับ sort/ซ่อนคอลัมน์
-  ใช้ icon จาก lucide-vue-next และ shadcn-vue UI
+  ใช้ร่วมกันระหว่างหน้า department_risk และ organizational_risk
 -->
 
 <script setup lang="ts">
@@ -28,11 +28,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 // กำหนด props ที่ต้องการรับ: column (ข้อมูลคอลัมน์) และ title (ชื่อหัวคอลัมน์)
-interface DataTableColumnHeaderProps {
-  column: Column<any>
+interface DataTableColumnHeaderProps<T> {
+  column: Column<T, unknown>
   title: string
 }
-defineProps<DataTableColumnHeaderProps>()
+
+// ใช้ generic type T เพื่อรองรับข้อมูลที่หลากหลาย
+defineProps<DataTableColumnHeaderProps<any>>()
 </script>
 
 <script lang="ts">
