@@ -6,7 +6,7 @@
 
 import { h } from 'vue'
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
-import DataTableColumnHeader from './DataTableColumnHeader.vue'
+import { DataTableColumnHeader } from '@/components/ui/data-table'
 import type { DepartmentRisk } from '@/types/types';
 import DropdownAction from './DataTableDropDown.vue'
 
