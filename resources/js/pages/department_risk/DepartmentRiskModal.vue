@@ -6,7 +6,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -89,7 +89,7 @@ const handleSubmit = () => {
   const formData = {
     ...form.value,
     year: parseInt(form.value.year),
-    organizational_risk_id: form.value.organizational_risk_id || null
+    organizational_risk_id: form.value.organizational_risk_id === 'null' ? null : form.value.organizational_risk_id
   };
 
   const route = isEditing.value 
@@ -131,6 +131,7 @@ const handleSubmit = () => {
     <DialogContent class="sm:max-w-md md:max-w-lg">
       <DialogHeader>
         <DialogTitle>{{ modalTitle }}</DialogTitle>
+        <DialogDescription>กรอกข้อมูลความเสี่ยงระดับสายงาน</DialogDescription>
       </DialogHeader>
 
       <form @submit.prevent="handleSubmit" class="space-y-4">
@@ -153,7 +154,7 @@ const handleSubmit = () => {
               <SelectValue placeholder="เลือกความเสี่ยงองค์กรที่เกี่ยวข้อง (ถ้ามี)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">-- ไม่เชื่อมโยงกับความเสี่ยงองค์กร --</SelectItem>
+              <SelectItem value="null">-- ไม่เชื่อมโยงกับความเสี่ยงองค์กร --</SelectItem>
               <SelectItem 
                 v-for="orgRisk in props.organizationalRisks" 
                 :key="orgRisk.id" 
