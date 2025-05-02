@@ -47,8 +47,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { valueUpdater } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
-import DataTablePagination from './DataTablePagination.vue'
-import DataTableViewOptions from './DataTableViewOptions.vue'
+import DataTablePagination from '@/components/ui/data-table/DataTablePagination.vue'
+import DataTableViewOptions from '@/components/ui/data-table/DataTableViewOptions.vue'
 import TagFilter from '@/components/ui/data-table/tag-filter/TagFilter.vue'
 
 // นำเข้า composable สำหรับตรวจสอบขนาดหน้าจอ
