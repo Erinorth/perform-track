@@ -47,7 +47,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { valueUpdater } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
-import { DataTablePagination, DataTableViewOptions, TagFilter } from '@/components/ui/data-table'
+import { DataTablePagination, DataTableViewOptions, TagFilter, BulkActionMenu } from '@/components/ui/data-table'
 
 // นำเข้า composable สำหรับตรวจสอบขนาดหน้าจอ
 import { useMediaQuery } from '@/composables/useMediaQuery'
@@ -168,6 +168,52 @@ watch(isMobile, (mobile) => {
     }
   }
 })
+
+// เพิ่ม reactive state สำหรับจัดการสถานะการลบหลายรายการ
+const isDeleting = ref(false)
+
+// คำนวณจำนวนแถวที่ถูกเลือก
+const selectedRowsCount = computed(() => {
+  return Object.keys(rowSelection.value).length
+})
+
+// คำนวณรายการ ID ที่ถูกเลือกทั้งหมด
+const selectedRowIds = computed(() => {
+  return Object.keys(rowSelection.value).map(rowIndex => {
+    const row = table.getRowModel().rows[parseInt(rowIndex)]
+    return row?.original?.id
+  }).filter(Boolean)
+})
+
+// ฟังก์ชันสำหรับลบข้อมูลที่เลือกทั้งหมด
+const handleBulkDelete = async () => {
+  if (!selectedRowIds.value.length) {
+    toast.error('ไม่มีรายการที่เลือก')
+    return
+  }
+  
+  if (!props.meta?.onBulkDelete) {
+    console.error('ไม่พบเมธอด onBulkDelete ใน meta')
+    toast.error('เกิดข้อผิดพลาด: ไม่สามารถดำเนินการลบข้อมูลพร้อมกันได้')
+    return
+  }
+  
+  try {
+    isDeleting.value = true
+    await props.meta.onBulkDelete(selectedRowIds.value)
+    rowSelection.value = {}
+  } catch (error) {
+    console.error('เกิดข้อผิดพลาดในการลบข้อมูล:', error)
+    toast.error('เกิดข้อผิดพลาดในการลบข้อมูล โปรดลองอีกครั้ง')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+// ฟังก์ชันสำหรับยกเลิกการเลือกทั้งหมด
+const clearRowSelection = () => {
+  rowSelection.value = {}
+}
 </script>
 
 <template>
@@ -200,8 +246,20 @@ watch(isMobile, (mobile) => {
     >
       Clear
     </Button>
-            
-    <!-- ตัวเลือกการแสดงคอลัมน์ -->
+
+    <div v-if="selectedRowsCount > 0" class="ml-auto">
+      <BulkActionMenu 
+        :count="selectedRowsCount"
+        :loading="isDeleting"
+        @delete="handleBulkDelete"
+        @clear="clearRowSelection"
+        @export="() => {}"
+      />
+    </div>
+  </div>
+  
+  <!-- ตัวเลือกการแสดงคอลัมน์ -->
+  <div :class="{ 'ml-auto': selectedRowsCount === 0 }">
     <DataTableViewOptions :table="table" />
   </div>
   

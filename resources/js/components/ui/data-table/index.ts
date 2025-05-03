@@ -19,3 +19,4 @@ console.log('Data Table components ถูกโหลด')
 // สามารถเพิ่ม export สำหรับ component อื่นๆ ของ DataTable ในอนาคต เช่น
 export { default as DataTablePagination } from './DataTablePagination.vue'
 export { default as DataTableDropDown } from './DataTableDropDown.vue'
+export { default as BulkActionMenu } from './BulkActionMenu.vue'

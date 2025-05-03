@@ -37,12 +37,11 @@ const { isOpen, options, handleConfirm, handleCancel } = useConfirm();
 
     <!-- ConfirmDialog สำหรับการยืนยันการลบ -->
     <ConfirmDialog
-        v-if="isOpen && options"
         v-model:show="isOpen"
-        :title="options.title"
-        :message="options.message"
-        :confirm-text="options.confirmText"
-        :cancel-text="options.cancelText"
+        :title="options?.title || ''"
+        :message="options?.message || ''"
+        :confirm-text="options?.confirmText"
+        :cancel-text="options?.cancelText"
         @confirm="handleConfirm"
         @cancel="handleCancel"
     />

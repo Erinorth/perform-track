@@ -38,7 +38,7 @@ const props = defineProps<{
 // ใช้ composable function เพื่อจัดการข้อมูลความเสี่ยงองค์กร
 // data: ข้อมูลความเสี่ยงแบบ reactive
 // // ใช้ composable function เพื่อจัดการข้อมูลความเสี่ยงองค์กร
-const { data, updateRiskStatus, deleteRisk } = useOrganizationalRiskData(props.risks);
+const { data, updateRiskStatus, deleteRisk, bulkDeleteRisks } = useOrganizationalRiskData(props.risks);
 
 // ตัวแปรสำหรับจัดการสถานะ Modal และข้อมูลที่กำลังแก้ไข
 const showModal = ref(false);                         // ควบคุมการแสดง/ซ่อน Modal
@@ -73,7 +73,7 @@ const { confirm } = useConfirm();
 // เพิ่มฟังก์ชันจัดการการลบข้อมูล
 const handleDelete = (risk: OrganizationalRisk) => {
   // แสดง dialog ยืนยันการลบ
-  confirm({
+  useConfirm().confirm({
     title: 'ยืนยันการลบ',
     message: `คุณต้องการลบความเสี่ยง "${risk.risk_name}" ใช่หรือไม่?`,
     confirmText: 'ลบข้อมูล',
@@ -91,6 +91,21 @@ const handleDelete = (risk: OrganizationalRisk) => {
     onCancel: () => {
       // บันทึก log สำหรับการตรวจสอบ
       console.log('ยกเลิกการลบความเสี่ยง:', risk.risk_name);
+    }
+  });
+};
+
+// ฟังก์ชันสำหรับลบข้อมูลหลายรายการ
+const handleBulkDelete = async (selectedIds) => {
+  // ใช้ useConfirm แทน useDialog
+  useConfirm().confirm({
+    title: 'ยืนยันการลบข้อมูล',
+    message: `คุณต้องการลบความเสี่ยงที่เลือกทั้ง ${selectedIds.length} รายการใช่หรือไม่?
+              หมายเหตุ: การลบข้อมูลจะไม่สามารถเรียกคืนได้`,
+    confirmText: 'ลบข้อมูล',
+    cancelText: 'ยกเลิก',
+    onConfirm: async () => {
+      await bulkDeleteRisks(selectedIds);
     }
   });
 };
@@ -126,7 +141,8 @@ const handleDelete = (risk: OrganizationalRisk) => {
         <DataTable 
           :columns="columns"
           :data="data"
-          :meta="{ updateRiskStatus, onEdit: openEditModal, onDelete: handleDelete }"
+          :meta="{ updateRiskStatus, onEdit: openEditModal, onDelete: handleDelete, 
+          onBulkDelete: handleBulkDelete }"
         />
 
         <!-- Modal สำหรับเพิ่ม/แก้ไขข้อมูล -->

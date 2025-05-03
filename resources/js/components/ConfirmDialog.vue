@@ -44,7 +44,7 @@ defineEmits<{
         </DialogTitle>
         <!-- ข้อความรายละเอียด -->
         <DialogDescription>
-          {{ message }}
+          <span v-html="message"></span>
         </DialogDescription>
       </DialogHeader>
       

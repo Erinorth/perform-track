@@ -62,11 +62,14 @@ export function useConfirm() {
     // ปิด dialog
     isOpen.value = false;
   };
+
+  const isProcessing = ref(false);
   
   // ส่งคืนค่าและฟังก์ชันที่จำเป็นสำหรับใช้งาน
   return {
     isOpen: readonly(isOpen),       // สถานะการแสดง dialog (readonly เพื่อป้องกันการแก้ไขโดยตรง)
     options: readonly(options),     // ข้อมูลตัวเลือกของ dialog (readonly เพื่อป้องกันการแก้ไขโดยตรง)
+    isProcessing: readonly(isProcessing),
     confirm,                        // ฟังก์ชันเปิด dialog
     handleConfirm,                  // ฟังก์ชันเมื่อยืนยัน
     handleCancel                    // ฟังก์ชันเมื่อยกเลิก

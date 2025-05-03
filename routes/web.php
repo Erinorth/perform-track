@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [OrganizationalRiskController::class, 'store'])->name('organizational-risks.store');
         Route::get('/{organizationalRisk}/edit', [OrganizationalRiskController::class, 'edit'])->name('organizational-risks.edit');
         Route::put('/{organizationalRisk}', [OrganizationalRiskController::class, 'update'])->name('organizational-risks.update');
+        Route::delete('/bulk-destroy', [OrganizationalRiskController::class, 'bulkDestroy'])->name('organizational-risks.bulk-destroy');
         Route::delete('/{organizationalRisk}', [OrganizationalRiskController::class, 'destroy'])->name('organizational-risks.destroy');
     });
 
