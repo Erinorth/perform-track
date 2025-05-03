@@ -7,7 +7,8 @@
 import { h } from 'vue'
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
 import { DataTableColumnHeader, DataTableDropDown } from '@/components/ui/data-table'
-import type { OrganizationalRisk } from '@/types/types';
+import type { OrganizationalRisk } from '@/types/types'
+import { Checkbox } from '@/components/ui/checkbox'
 
 // ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล
 declare module '@tanstack/vue-table' {
@@ -19,6 +20,21 @@ declare module '@tanstack/vue-table' {
 
 // กำหนด columns สำหรับ DataTable
 export const columns: ColumnDef<OrganizationalRisk>[] = [
+  {
+    id: "select",
+    header: ({ table }) => h(Checkbox, {
+      'modelValue': table.getIsAllPageRowsSelected(),
+      'onUpdate:modelValue': (value: boolean | "indeterminate") => table.toggleAllPageRowsSelected(!!value),
+      'aria-label': 'Select all',
+    }),
+    cell: ({ row }) => h(Checkbox, {
+      'modelValue': row.getIsSelected(),
+      'onUpdate:modelValue': (value: boolean | "indeterminate") => row.toggleSelected(!!value),
+      'aria-label': 'Select row',
+    }),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: "id", // คีย์หลักของข้อมูล
     header: ({ column }) => (
