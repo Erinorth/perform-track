@@ -1,5 +1,5 @@
 /* 
-  ไฟล์: resources\js\features\organizational_risk\useOrganizationalRiskData.ts
+  ไฟล์: resources\js\composables\useOrganizationalRiskData.ts
   Composable function สำหรับจัดการข้อมูลความเสี่ยงระดับองค์กร
   ใช้หลักการของ Vue Composition API เพื่อแยกโลจิกการจัดการข้อมูลออกจาก component
 */

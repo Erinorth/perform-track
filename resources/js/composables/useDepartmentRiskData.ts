@@ -1,5 +1,5 @@
 /*
-ไฟล์: resources\js\features\department_risk\useDepartmentRiskData.ts
+ไฟล์: resources\js\composables\useDepartmentRiskData.ts
 Composable function สำหรับจัดการข้อมูลความเสี่ยงระดับสายงาน
 ใช้หลักการของ Vue Composition API เพื่อแยกโลจิกการจัดการข้อมูลออกจาก component
 */
