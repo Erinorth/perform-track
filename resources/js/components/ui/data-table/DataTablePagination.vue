@@ -1,5 +1,5 @@
 <!-- 
-  ไฟล์: resources\js\features\organizational_risk\DataTablePagination.vue
+  ไฟล์: resources\js\components\ui\data-table\DataTablePagination.vue
   Component สำหรับแสดงและควบคุมการเปลี่ยนหน้า (pagination) ของ DataTable
   รองรับการเลือกจำนวนแถวต่อหน้า, แสดงแถวที่เลือก, ปุ่มเปลี่ยนหน้าต่างๆ
   ใช้ร่วมกับ @tanstack/vue-table, lucide-vue-next, และ shadcn-vue

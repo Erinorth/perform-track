@@ -1,5 +1,5 @@
 <!-- 
-  ไฟล์: resources\js\components\data-table\DataTableDropDown.vue
+  ไฟล์: resources\js\components\ui\data-table\DataTableDropDown.vue
   Generic Component สำหรับแสดงเมนู dropdown action (Edit, Delete, Expand) ในแต่ละแถวของ DataTable
   สามารถใช้ได้กับข้อมูลหลายประเภทโดยใช้ TypeScript Generics
   ใช้ร่วมกับ lucide-vue-next สำหรับ icon, shadcn-vue สำหรับ UI, และรองรับการส่ง event ไปยัง parent

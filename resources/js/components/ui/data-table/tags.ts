@@ -1,4 +1,4 @@
-// ไฟล์: resources/js/types/tags.ts
+// ไฟล์: resources\js\components\ui\data-table\tags.ts
 
 export interface Tag {
     id: string;
