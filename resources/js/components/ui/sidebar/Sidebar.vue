@@ -73,24 +73,28 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
     กรณีที่ 3: แสดงบนเดสก์ท็อป (ไม่ใช่มือถือ)
     มีความสามารถในการย่อ/ขยายได้ตามการกำหนดใน prop collapsible
   -->
+  <!-- สถานะปัจจุบัน: open หรือ collapsed -->
+  <!-- รูปแบบการย่อ: offcanvas หรือ icon -->
+  <!-- รูปแบบการแสดงผล: sidebar, floating, inset -->
+  <!-- ตำแหน่ง: left หรือ right -->
   <div
     v-else
     class="group peer text-sidebar-foreground hidden md:block"
     data-slot="sidebar"
-    :data-state="state"                                      <!-- สถานะปัจจุบัน: open หรือ collapsed -->
-    :data-collapsible="state === 'collapsed' ? collapsible : ''" <!-- รูปแบบการย่อ: offcanvas หรือ icon -->
-    :data-variant="variant"                                  <!-- รูปแบบการแสดงผล: sidebar, floating, inset -->
-    :data-side="side"                                        <!-- ตำแหน่ง: left หรือ right -->
+    :data-state="state"                                      
+    :data-collapsible="state === 'collapsed' ? collapsible : ''" 
+    :data-variant="variant"                                  
+    :data-side="side"                                        
   >
     <!-- ส่วนนี้จัดการพื้นที่ว่างของ sidebar บนเดสก์ท็อป -->
     <div
       :class="cn(
         'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
-        'group-data-[collapsible=offcanvas]:w-0',  <!-- ซ่อนทั้งหมดเมื่อเป็นแบบ offcanvas และถูกย่อ -->
-        'group-data-[side=right]:rotate-180',      <!-- พลิกด้านเมื่อแสดงทางขวา -->
+        'group-data-[collapsible=offcanvas]:w-0',  // ซ่อนทั้งหมดเมื่อเป็นแบบ offcanvas และถูกย่อ
+        'group-data-[side=right]:rotate-180',      // พลิกด้านเมื่อแสดงทางขวา
         variant === 'floating' || variant === 'inset'
-          ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]'  <!-- ปรับความกว้างสำหรับแบบ floating/inset เมื่อแสดงเฉพาะไอคอน -->
-          : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon)',  <!-- ปรับความกว้างสำหรับแบบปกติเมื่อแสดงเฉพาะไอคอน -->
+          ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]'  // ปรับความกว้างสำหรับแบบ floating/inset เมื่อแสดงเฉพาะไอคอน
+          : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon)',  // ปรับความกว้างสำหรับแบบปกติเมื่อแสดงเฉพาะไอคอน
       )"
     />
     <!-- ส่วนที่แสดง sidebar จริง ๆ บนเดสก์ท็อป -->
@@ -98,8 +102,8 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
       :class="cn(
         'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
         side === 'left'
-          ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'  <!-- กำหนดตำแหน่งและการเลื่อนซ่อนทางซ้าย -->
-          : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',  <!-- กำหนดตำแหน่งและการเลื่อนซ่อนทางขวา -->
+          ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'  // กำหนดตำแหน่งและการเลื่อนซ่อนทางซ้าย
+          : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',  // กำหนดตำแหน่งและการเลื่อนซ่อนทางขวา
         // ปรับ padding และความกว้างสำหรับ variant แบบ floating และ inset
         variant === 'floating' || variant === 'inset'
           ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
