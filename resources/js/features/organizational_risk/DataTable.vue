@@ -1,19 +1,26 @@
-<!-- 
-  ไฟล์: resources\js\features\organizational_risk\DataTable.vue
-  Component หลักสำหรับแสดงตารางข้อมูลความเสี่ยงระดับองค์กร
-  รองรับการค้นหา, กรอง, เรียงลำดับ, แบ่งหน้า, และการขยายแถวเพื่อดูรายละเอียดเพิ่มเติม
-  ใช้ @tanstack/vue-table เป็นหลักในการจัดการข้อมูลตาราง
-  รองรับการแสดงผลแบบ Responsive สำหรับทุกขนาดหน้าจอ
+<!--
+  ไฟล์: resources/js/features/organizational_risk/DataTable.vue
+  
+  คำอธิบาย: Component หลักสำหรับแสดงตารางข้อมูลความเสี่ยงระดับองค์กร
+  ฟีเจอร์หลัก:
+  - การค้นหาข้อมูลจาก risk_name และ description
+  - การกรองข้อมูลตามปี (year)
+  - การเรียงลำดับข้อมูลในแต่ละคอลัมน์
+  - การแบ่งหน้าเพื่อแสดงผล
+  - การขยายแถวเพื่อดูรายละเอียดเพิ่มเติม
+  - การเลือกแถวหลายรายการเพื่อลบพร้อมกัน
+  - รองรับการแสดงผลแบบ Responsive บนทุกขนาดหน้าจอ
 -->
 
 <script setup lang="ts" generic="TData extends OrganizationalRisk, TValue">
-// นำเข้า types สำหรับโมเดลข้อมูล
+// ==================== นำเข้า Types และ Interfaces ====================
+// นำเข้า types สำหรับโมเดลข้อมูลความเสี่ยง
 import type { OrganizationalRisk, DepartmentRisk } from '@/types/types';
 
 // นำเข้า Vue Composition API
 import { ref, watch, computed } from 'vue'
 
-// นำเข้า types จาก @tanstack/vue-table
+// นำเข้า types จาก @tanstack/vue-table สำหรับการจัดการตาราง
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -22,6 +29,7 @@ import type {
   ExpandedState,
 } from '@tanstack/vue-table'
 
+// ==================== นำเข้า UI Components ====================
 // นำเข้า component ตารางพื้นฐานจาก shadcn-vue
 import {
   Table,
@@ -32,7 +40,18 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-// นำเข้าฟังก์ชันจัดการตารางจาก @tanstack/vue-table
+// นำเข้า UI components สำหรับการใช้งานร่วมกับตาราง
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { 
+  DataTablePagination, 
+  DataTableViewOptions, 
+  TagFilter, 
+  BulkActionMenu 
+} from '@/components/ui/data-table'
+
+// ==================== นำเข้า Utilities และ Composables ====================
+// นำเข้าฟังก์ชันสำหรับจัดการตารางจาก @tanstack/vue-table
 import {
   FlexRender,
   getCoreRowModel,
@@ -43,51 +62,81 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 
-// นำเข้า UI components
-import { Button } from '@/components/ui/button'
+// นำเข้า helper utilities
 import { valueUpdater } from '@/lib/utils'
-import { Input } from '@/components/ui/input'
-import { DataTablePagination, DataTableViewOptions, TagFilter, BulkActionMenu } from '@/components/ui/data-table'
 
-// นำเข้า composable สำหรับตรวจสอบขนาดหน้าจอ
+// นำเข้า composable สำหรับตรวจสอบขนาดหน้าจอ (Responsive Design)
 import { useMediaQuery } from '@/composables/useMediaQuery'
 
+// นำเข้า component แสดงรายละเอียดเมื่อขยายแถว
 import ExpandedRow from './ExpandedRow.vue'
 
-// กำหนด props ที่ต้องการรับ: columns (โครงสร้างคอลัมน์), data (ข้อมูล) และ meta (ข้อมูลเพิ่มเติม)
+// นำเข้า toast notifications
+import { toast } from 'vue-sonner'
+
+// ==================== กำหนด Props ====================
+// กำหนด props ที่ต้องการรับจาก parent component
 const props = defineProps<{
   columns: ColumnDef<TData, TValue>[]  // โครงสร้างคอลัมน์
   data: TData[]                        // ข้อมูลที่จะแสดงในตาราง
-  meta?: any                           // ข้อมูลเพิ่มเติม เช่น callback functions
+  meta?: any                           // ข้อมูลเพิ่มเติม เช่น callback functions สำหรับการ CRUD
 }>()
 
-// กำหนด reactive state ต่างๆ สำหรับตาราง
-const sorting = ref<SortingState>([])                  // สถานะการเรียงลำดับ
-const columnFilters = ref<ColumnFiltersState>([])      // สถานะการกรองคอลัมน์
-const isMobile = useMediaQuery('(max-width: 768px)')   // ตรวจสอบว่าเป็นหน้าจอมือถือหรือไม่
-const columnVisibility = ref<VisibilityState>({        // สถานะการแสดง/ซ่อนคอลัมน์
+// ==================== กำหนด Reactive States ====================
+// สถานะการเรียงลำดับข้อมูลในตาราง
+const sorting = ref<SortingState>([])
+// สถานะการกรองข้อมูลในแต่ละคอลัมน์
+const columnFilters = ref<ColumnFiltersState>([])
+// ตรวจสอบว่าเป็นหน้าจอมือถือหรือไม่ (Responsive)
+const isMobile = useMediaQuery('(max-width: 768px)')
+// กำหนดการแสดง/ซ่อนคอลัมน์ตามขนาดหน้าจอ
+const columnVisibility = ref<VisibilityState>({
   id: false,
   created_at: false,
   updated_at: false,
+  // ซ่อนคอลัมน์ description บนมือถือ
   description: isMobile.value
 })
-const rowSelection = ref({})                           // สถานะการเลือกแถว
-const expanded = ref<ExpandedState>({})                // สถานะการขยายแถว
-const searchQuery = ref('')                            // คำค้นหา
+// สถานะการเลือกแถวสำหรับทำการลบหลายรายการ
+const rowSelection = ref({})
+// สถานะการขยายแถวเพื่อดูรายละเอียดเพิ่มเติม
+const expanded = ref<ExpandedState>({})
+// คำค้นหาสำหรับค้นหาทั้งตาราง
+const searchQuery = ref('')
+// สถานะกำลังลบข้อมูล
+const isDeleting = ref(false)
 
-// เมื่อ searchQuery เปลี่ยน ให้อัปเดตการกรองข้อมูล
+// ==================== Watch Effects ====================
+// เมื่อ searchQuery เปลี่ยน ให้อัปเดตการกรองข้อมูลทันที
 watch(searchQuery, (value) => {
   table.setGlobalFilter(value)
 })
 
-// สร้างและกำหนดค่าตาราง
+// ติดตามการเปลี่ยนแปลงของขนาดหน้าจอเพื่อปรับการแสดงผล (Responsive Design)
+watch(isMobile, (mobile) => {
+  if (mobile) {
+    // ถ้าเป็นมือถือ ให้ซ่อนคอลัมน์ description 
+    columnVisibility.value = {
+      ...columnVisibility.value,
+      description: true
+    }
+  } else {
+    // ถ้าไม่ใช่มือถือ ให้แสดงคอลัมน์ description
+    columnVisibility.value = {
+      ...columnVisibility.value,
+      description: false
+    }
+  }
+})
+
+// ==================== สร้างและกำหนดค่าตาราง ====================
 const table = useVueTable({
   // ดึงข้อมูลและโครงสร้างคอลัมน์จาก props
   get data() { return props.data },
   get columns() { return props.columns },
   
   // กำหนด models สำหรับจัดการตาราง
-  getCoreRowModel: getCoreRowModel(),             // โมเดลพื้นฐาน
+  getCoreRowModel: getCoreRowModel(),             // โมเดลพื้นฐานจำเป็นต้องมี
   getPaginationRowModel: getPaginationRowModel(), // โมเดลสำหรับแบ่งหน้า
   getSortedRowModel: getSortedRowModel(),         // โมเดลสำหรับเรียงลำดับ
   getExpandedRowModel: getExpandedRowModel(),     // โมเดลสำหรับขยายแถว
@@ -115,17 +164,22 @@ const table = useVueTable({
     const searchValue = String(filterValue).toLowerCase();
     const riskName = row.original.risk_name.toLowerCase();
     const description = row.original.description?.toLowerCase() || '';
+    
+    // คืนค่า true ถ้าพบคำค้นหาใน risk_name หรือ description
     return riskName.includes(searchValue) || description.includes(searchValue);
   },
   
-  // ส่ง meta ไปยัง table
+  // ส่ง meta ไปใช้ใน table เพื่อเรียกใช้ callback functions
   meta: props.meta,
 })
 
+// ==================== Computed Properties ====================
 // สร้าง computed property เพื่อดึงปีที่ไม่ซ้ำกันสำหรับใช้ในตัวกรอง
 const getUniqueYears = computed(() => {
   // สร้าง Set เพื่อเก็บปีที่ไม่ซ้ำกัน
   const years = new Set<string>();
+  
+  // วนลูปเก็บปีที่ไม่ซ้ำกันจากข้อมูลทั้งหมด
   props.data.forEach((item: any) => {
     if (item.year) {
       years.add(item.year.toString());
@@ -140,9 +194,23 @@ const getUniqueYears = computed(() => {
   }));
   
   // เรียงลำดับจากปีล่าสุดไปยังปีเก่าสุด
-  return yearOptions.sort((a, b) => b.value.localeCompare(a.value)); // เรียงจากใหม่ไปเก่า
+  return yearOptions.sort((a, b) => b.value.localeCompare(a.value));
 });
 
+// คำนวณจำนวนแถวที่ถูกเลือกสำหรับ bulk actions
+const selectedRowsCount = computed(() => {
+  return Object.keys(rowSelection.value).length
+})
+
+// คำนวณรายการ ID ที่ถูกเลือกทั้งหมดสำหรับการลบหลายรายการ
+const selectedRowIds = computed(() => {
+  return Object.keys(rowSelection.value).map(rowIndex => {
+    const row = table.getRowModel().rows[parseInt(rowIndex)]
+    return row?.original?.id
+  }).filter(Boolean) // กรอง null/undefined ออก
+})
+
+// ==================== Methods ====================
 // ฟังก์ชันล้างตัวกรองทั้งหมด
 const clearAllFilters = () => {
   // ล้าง search query
@@ -152,46 +220,15 @@ const clearAllFilters = () => {
   table.getColumn('year')?.setFilterValue(null)
 }
 
-// ติดตามการเปลี่ยนแปลงของขนาดหน้าจอเพื่อปรับการแสดงผล
-watch(isMobile, (mobile) => {
-  if (mobile) {
-    // ถ้าเป็นมือถือ ให้ซ่อนคอลัมน์ description
-    columnVisibility.value = {
-      ...columnVisibility.value,
-      description: true
-    }
-  } else {
-    // ถ้าไม่ใช่มือถือ ให้แสดงคอลัมน์ description
-    columnVisibility.value = {
-      ...columnVisibility.value,
-      description: false
-    }
-  }
-})
-
-// เพิ่ม reactive state สำหรับจัดการสถานะการลบหลายรายการ
-const isDeleting = ref(false)
-
-// คำนวณจำนวนแถวที่ถูกเลือก
-const selectedRowsCount = computed(() => {
-  return Object.keys(rowSelection.value).length
-})
-
-// คำนวณรายการ ID ที่ถูกเลือกทั้งหมด
-const selectedRowIds = computed(() => {
-  return Object.keys(rowSelection.value).map(rowIndex => {
-    const row = table.getRowModel().rows[parseInt(rowIndex)]
-    return row?.original?.id
-  }).filter(Boolean)
-})
-
 // ฟังก์ชันสำหรับลบข้อมูลที่เลือกทั้งหมด
 const handleBulkDelete = async () => {
+  // ตรวจสอบว่ามีรายการที่เลือกหรือไม่
   if (!selectedRowIds.value.length) {
     toast.error('ไม่มีรายการที่เลือก')
     return
   }
   
+  // ตรวจสอบว่ามีเมธอด onBulkDelete ที่ส่งมาจาก parent component หรือไม่
   if (!props.meta?.onBulkDelete) {
     console.error('ไม่พบเมธอด onBulkDelete ใน meta')
     toast.error('เกิดข้อผิดพลาด: ไม่สามารถดำเนินการลบข้อมูลพร้อมกันได้')
@@ -199,13 +236,20 @@ const handleBulkDelete = async () => {
   }
   
   try {
+    // กำหนดสถานะกำลังลบข้อมูล
     isDeleting.value = true
+    
+    // เรียกใช้ onBulkDelete จาก meta
     await props.meta.onBulkDelete(selectedRowIds.value)
+    
+    // รีเซ็ตการเลือกหลังจากลบสำเร็จ
     rowSelection.value = {}
   } catch (error) {
+    // บันทึก log และแสดง toast error เมื่อเกิดข้อผิดพลาด
     console.error('เกิดข้อผิดพลาดในการลบข้อมูล:', error)
     toast.error('เกิดข้อผิดพลาดในการลบข้อมูล โปรดลองอีกครั้ง')
   } finally {
+    // รีเซ็ตสถานะการลบข้อมูล
     isDeleting.value = false
   }
 }
@@ -247,6 +291,7 @@ const clearRowSelection = () => {
       Clear
     </Button>
 
+    <!-- แสดงเมนูสำหรับ Bulk Actions เมื่อมีการเลือกแถว -->
     <div v-if="selectedRowsCount > 0" class="ml-auto">
       <BulkActionMenu 
         :count="selectedRowsCount"
@@ -258,7 +303,7 @@ const clearRowSelection = () => {
     </div>
   </div>
   
-  <!-- ตัวเลือกการแสดงคอลัมน์ -->
+  <!-- ตัวเลือกการแสดงคอลัมน์ (จัดให้อยู่ด้านขวาเสมอ) -->
   <div :class="{ 'ml-auto': selectedRowsCount === 0 }">
     <DataTableViewOptions :table="table" />
   </div>
