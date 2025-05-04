@@ -246,10 +246,9 @@ class OrganizationalRiskController extends Controller
             ->get();
         
         // กรณีลบได้ทั้งหมด
-        return Inertia::render('organizational_risk/OrganizationalRisk', [
-            'risks' => $risks,
-            'success' => $successMessage,
-            'deleted_count' => $deletedCount
-        ]);
+        return redirect()->back()
+            ->with('success', $successMessage)
+            ->with('risks', $risks)
+            ->with('deleted_count', $deletedCount);
     }
 }
