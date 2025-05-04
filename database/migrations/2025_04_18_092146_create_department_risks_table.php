@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->string('risk_name');
             $table->text('description');
-            $table->year('year');
             $table->foreignId('organizational_risk_id')->nullable()->constrained();
             $table->timestamps();
             $table->softDeletes();
