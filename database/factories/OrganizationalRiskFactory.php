@@ -14,7 +14,6 @@ class OrganizationalRiskFactory extends Factory
         return [
             'risk_name' => fake()->sentence(3),
             'description' => fake()->paragraph(2),
-            'year' => fake()->numberBetween(2023, 2025),
         ];
     }
 }

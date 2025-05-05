@@ -10,9 +10,9 @@ export interface OrganizationalRisk {
     id: number                       // รหัสความเสี่ยงระดับองค์กร (Primary Key)
     risk_name: string                // ชื่อความเสี่ยงระดับองค์กร
     description: string              // รายละเอียดความเสี่ยง
-    year: number                     // ปีของความเสี่ยง (ปีงบประมาณหรือปีการประเมิน)
     created_at: string               // วันเวลาที่สร้าง (timestamp)
     updated_at: string               // วันเวลาที่แก้ไขล่าสุด (timestamp)
+    attachments?: Attachment[];
     department_risks?: DepartmentRisk[] // ความสัมพันธ์แบบ one-to-many กับความเสี่ยงระดับสายงาน (อาจมีหรือไม่มีก็ได้)
   }
   
@@ -21,7 +21,6 @@ export interface OrganizationalRisk {
     id: number                        // รหัสความเสี่ยงระดับสายงาน (Primary Key)
     risk_name: string                 // ชื่อความเสี่ยงระดับสายงาน
     description: string               // รายละเอียดความเสี่ยง
-    year: number                      // ปีของความเสี่ยง (ปีงบประมาณหรือปีการประเมิน)
     organizational_risk_id: number | null // รหัสความเสี่ยงระดับองค์กรที่เกี่ยวข้อง (Foreign Key, อาจเป็น null)
     created_at: string                // วันเวลาที่สร้าง (timestamp)
     updated_at: string                // วันเวลาที่แก้ไขล่าสุด (timestamp)
@@ -68,5 +67,16 @@ export interface OrganizationalRisk {
     created_at: string               // วันเวลาที่สร้าง (timestamp)
     updated_at: string               // วันเวลาที่แก้ไขล่าสุด (timestamp)
     department_risk?: DepartmentRisk // ความสัมพันธ์แบบ many-to-one กับความเสี่ยงระดับสายงาน
+  }
+
+  export interface Attachment {
+    id: number;
+    file_name: string;
+    file_path: string;
+    file_type?: string;
+    file_size?: number;
+    url: string;
+    created_at: string;
+    updated_at: string;
   }
   

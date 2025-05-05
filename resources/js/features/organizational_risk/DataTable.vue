@@ -4,7 +4,6 @@
   คำอธิบาย: Component หลักสำหรับแสดงตารางข้อมูลความเสี่ยงระดับองค์กร
   ฟีเจอร์หลัก:
   - การค้นหาข้อมูลจาก risk_name และ description
-  - การกรองข้อมูลตามปี (year)
   - การเรียงลำดับข้อมูลในแต่ละคอลัมน์
   - การแบ่งหน้าเพื่อแสดงผล
   - การขยายแถวเพื่อดูรายละเอียดเพิ่มเติม
@@ -174,29 +173,6 @@ const table = useVueTable({
 })
 
 // ==================== Computed Properties ====================
-// สร้าง computed property เพื่อดึงปีที่ไม่ซ้ำกันสำหรับใช้ในตัวกรอง
-const getUniqueYears = computed(() => {
-  // สร้าง Set เพื่อเก็บปีที่ไม่ซ้ำกัน
-  const years = new Set<string>();
-  
-  // วนลูปเก็บปีที่ไม่ซ้ำกันจากข้อมูลทั้งหมด
-  props.data.forEach((item: any) => {
-    if (item.year) {
-      years.add(item.year.toString());
-    }
-  });
-  
-  // แปลงเป็น array ของ option และเพิ่มจำนวนรายการในแต่ละปี
-  const yearOptions = Array.from(years).map(year => ({
-    value: year,
-    label: year,
-    count: props.data.filter((item: any) => item.year?.toString() === year).length
-  }));
-  
-  // เรียงลำดับจากปีล่าสุดไปยังปีเก่าสุด
-  return yearOptions.sort((a, b) => b.value.localeCompare(a.value));
-});
-
 // คำนวณจำนวนแถวที่ถูกเลือกสำหรับ bulk actions
 const selectedRowsCount = computed(() => {
   return Object.keys(rowSelection.value).length
@@ -215,9 +191,6 @@ const selectedRowIds = computed(() => {
 const clearAllFilters = () => {
   // ล้าง search query
   searchQuery.value = ''
-  
-  // ล้าง column filter สำหรับ year
-  table.getColumn('year')?.setFilterValue(null)
 }
 
 // ฟังก์ชันสำหรับลบข้อมูลที่เลือกทั้งหมด
@@ -270,19 +243,10 @@ const clearRowSelection = () => {
       v-model="searchQuery"
     />
     
-    <!-- TagFilter สำหรับกรองตามปี -->
-    <div class="ml-2" size="sm">
-      <TagFilter 
-        title="Year" 
-        column="year" 
-        :options="getUniqueYears" 
-        :table="table" 
-      />
-    </div>
-    
+   
     <!-- ปุ่มล้างตัวกรอง (แสดงเฉพาะเมื่อมีการกรอง) -->
     <Button
-      v-if="searchQuery || table.getColumn('year')?.getFilterValue()"
+      v-if="searchQuery"
       variant="ghost"
       class="ml-2"
       @click="clearAllFilters"

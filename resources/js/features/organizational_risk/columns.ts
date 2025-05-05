@@ -46,21 +46,6 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
     ),
   },
   {
-    accessorKey: "year", // ปีของความเสี่ยง
-    header: ({ column }) => (
-      h(DataTableColumnHeader, {
-        column: column,
-        title: 'Year'
-      })
-    ),
-    // ฟังก์ชันกรองข้อมูลตามปี
-    filterFn: (row, id, filterValues) => {
-      if (!filterValues || filterValues.length === 0) return true;
-      const rowValue = row.getValue(id);
-      return filterValues.includes(rowValue?.toString());
-    },
-  },
-  {
     accessorKey: "risk_name", // ชื่อความเสี่ยง
     header: ({ column }) => (
       h(DataTableColumnHeader, {

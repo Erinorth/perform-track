@@ -93,7 +93,7 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
 
     // เพิ่มฟังก์ชัน submitForm
     const submitForm = async (
-        formData: { risk_name: string; description: string; year: number },
+        formData: { risk_name: string; description: string; },
         riskId?: number,
         onSuccess?: () => void
     ) => {
@@ -117,7 +117,6 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
                                 ...data.value[index], 
                                 risk_name: formData.risk_name,
                                 description: formData.description,
-                                year: formData.year
                             };
                             // สร้าง array ใหม่เพื่อทริกเกอร์การ re-render
                             data.value = [...data.value];
