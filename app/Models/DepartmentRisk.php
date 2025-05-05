@@ -12,7 +12,7 @@ class DepartmentRisk extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['risk_name', 'description', 'year', 'organizational_risk_id'];
+    protected $fillable = ['risk_name', 'description', 'organizational_risk_id'];
 
     public function organizationalRisk(): BelongsTo
     {

@@ -28,7 +28,6 @@ class OrganizationalRiskController extends Controller
     {
         // ดึงข้อมูลความเสี่ยงระดับองค์กรทั้งหมด เรียงตามปี (มากไปน้อย) และชื่อ
         $risks = OrganizationalRisk::with('departmentRisks')  // เพิ่ม with() เพื่อโหลดความสัมพันธ์
-            ->orderBy('year', 'desc')
             ->orderBy('risk_name')
             ->get();
 
@@ -69,14 +68,12 @@ class OrganizationalRiskController extends Controller
         Log::info('สร้างความเสี่ยงระดับองค์กรใหม่', [
             'id' => $risk->id,
             'name' => $risk->risk_name,
-            'year' => $risk->year,
             'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
         // ดึงข้อมูลความเสี่ยงทั้งหมดใหม่อีกครั้ง
-        $risks = OrganizationalRisk::orderBy('year', 'desc')
-            ->orderBy('risk_name')
+        $risks = OrganizationalRisk::orderBy('risk_name')
             ->get();
         
         // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จและข้อมูลความเสี่ยงทั้งหมด
@@ -166,7 +163,6 @@ class OrganizationalRiskController extends Controller
         Log::info('ลบความเสี่ยงระดับองค์กร', [
             'id' => $oldData['id'],
             'name' => $oldData['risk_name'],
-            'year' => $oldData['year'],
             'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
