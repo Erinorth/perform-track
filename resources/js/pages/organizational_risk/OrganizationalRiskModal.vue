@@ -6,39 +6,39 @@
 
 <script setup lang="ts">
 // นำเข้า APIs จาก Vue และ libraries ที่จำเป็น
-import { ref, computed, watch } from 'vue';                 // APIs หลักจาก Vue 3
-import { useForm } from '@inertiajs/vue3';                  // ใช้สำหรับจัดการฟอร์มและส่งข้อมูลไปยัง Laravel
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';  // Components สำหรับ Modal
-import { Button } from '@/components/ui/button';            // Component ปุ่ม
-import { Input } from '@/components/ui/input';              // Component input field
-import { Textarea } from '@/components/ui/textarea';        // Component สำหรับข้อความหลายบรรทัด
-import { Label } from '@/components/ui/label';              // Component ป้ายกำกับ
-import { toast } from 'vue-sonner';                         // ใช้สำหรับแสดงข้อความแจ้งเตือน
-import { SaveIcon, XIcon, FileIcon, Trash2Icon, UploadIcon, XCircleIcon, AlertCircleIcon, InfoIcon } from 'lucide-vue-next';  // ไอคอนสำหรับปุ่มต่างๆ
-import type { OrganizationalRisk, Attachment } from '@/types/types';  // Type ของข้อมูลความเสี่ยงองค์กร
+import { ref, computed, watch } from 'vue';
+import { useForm } from '@inertiajs/vue3';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { toast } from 'vue-sonner';
+import { SaveIcon, XIcon, FileIcon, Trash2Icon, UploadIcon, XCircleIcon, AlertCircleIcon, InfoIcon } from 'lucide-vue-next';
+import type { OrganizationalRisk, Attachment } from '@/types/types';
 
 // เพิ่มการนำเข้า composable
 import { useOrganizationalRiskData } from '@/composables/useOrganizationalRiskData';
 
 // กำหนด props ที่รับจาก parent component
 const props = defineProps<{
-  show: boolean;                   // สถานะการแสดง/ซ่อน Modal
-  risk?: OrganizationalRisk;       // ข้อมูลความเสี่ยงที่ต้องการแก้ไข (ถ้ามี)
-  initialRisks?: OrganizationalRisk[]; // เพิ่ม prop สำหรับส่งข้อมูลเริ่มต้นให้ composable
+  show: boolean;
+  risk?: OrganizationalRisk;
+  initialRisks?: OrganizationalRisk[];
 }>();
 
 // กำหนด events ที่จะส่งไปยัง parent component
 const emit = defineEmits<{
-  (e: 'update:show', value: boolean): void;  // สำหรับอัปเดตสถานะการแสดง Modal (v-model)
-  (e: 'saved'): void;                        // แจ้งเมื่อบันทึกข้อมูลสำเร็จ
+  (e: 'update:show', value: boolean): void;
+  (e: 'saved'): void;
 }>();
 
 // เรียกใช้ composable เพื่อจัดการข้อมูล
 const { submitForm } = useOrganizationalRiskData(props.initialRisks || []);
 
 // สร้าง computed properties สำหรับตรวจสอบโหมดการทำงานและตั้งชื่อ Modal
-const isEditing = computed(() => !!props.risk?.id);  // ตรวจสอบว่าเป็นการแก้ไขหรือไม่ (มี id = แก้ไข, ไม่มี = เพิ่มใหม่)
-const modalTitle = computed(() => isEditing.value ? 'แก้ไขความเสี่ยงองค์กร' : 'เพิ่มความเสี่ยงองค์กร');  // ตั้งชื่อ Modal ตามโหมด
+const isEditing = computed(() => !!props.risk?.id);
+const modalTitle = computed(() => isEditing.value ? 'แก้ไขความเสี่ยงองค์กร' : 'เพิ่มความเสี่ยงองค์กร');
 
 // สร้างตัวแปรสำหรับเก็บข้อมูลเอกสารแนบที่มีอยู่
 const existingAttachments = ref<Attachment[]>([]);
@@ -49,14 +49,13 @@ const fileNames = ref<string[]>([]);
 
 // สร้าง form สำหรับจัดการข้อมูลและการส่งไปยัง backend
 const form = useForm({
-  risk_name: props.risk?.risk_name ?? '',     // ชื่อความเสี่ยง (ใช้ค่าจาก props หรือค่าว่าง)
-  description: props.risk?.description ?? '',  // รายละเอียดความเสี่ยง
+  risk_name: props.risk?.risk_name ?? '',
+  description: props.risk?.description ?? '',
   attachments: [] as File[],                   // เอกสารแนบใหม่ที่จะอัปโหลด
   attachments_to_delete: [] as number[],       // รายการไอดีของเอกสารแนบที่ต้องการลบ
 });
 
 // ใช้ watch เพื่อรีเซ็ตฟอร์มเมื่อ Modal เปิดขึ้น
-// เมื่อสถานะ show เปลี่ยน จะตรวจสอบและดำเนินการตามเงื่อนไข
 watch(() => props.show, (newVal) => {
   if (newVal && props.risk) {
     // กรณี Modal เปิดและมีข้อมูลความเสี่ยงส่งมา (โหมดแก้ไข)
@@ -79,7 +78,7 @@ watch(() => props.show, (newVal) => {
     fileNames.value = [];
   } else if (newVal) {
     // กรณี Modal เปิดแต่ไม่มีข้อมูลความเสี่ยงส่งมา (โหมดเพิ่มใหม่)
-    form.reset();  // รีเซ็ตฟอร์มเป็นค่าเริ่มต้น
+    form.reset();
     
     // รีเซ็ตข้อมูลเอกสารแนบทั้งหมด
     existingAttachments.value = [];
@@ -92,7 +91,7 @@ watch(() => props.show, (newVal) => {
 
 // ฟังก์ชันสำหรับปิด Modal
 const closeModal = () => {
-  emit('update:show', false);  // ส่ง event เพื่อเปลี่ยนสถานะการแสดง Modal เป็น false
+  emit('update:show', false);
 };
 
 // ฟังก์ชันสำหรับจัดการการอัปโหลดเอกสารแนบ
@@ -188,29 +187,45 @@ const validateForm = () => {
   return isValid;
 };
 
-// ฟังก์ชันสำหรับส่งฟอร์มโดยใช้ composable
+// ฟังก์ชันสำหรับส่งฟอร์ม
 const handleSubmit = async () => {
   // ตรวจสอบความถูกต้องของข้อมูลก่อนส่ง
   if (!validateForm()) return;
   
+  // เตรียมข้อมูลสำหรับส่งไปยัง server
+  form.transform((data) => ({
+    ...data,
+    attachments_to_delete: attachmentsToDelete.value
+  }));
+  
   try {
-    // เรียกใช้ฟังก์ชัน submitForm จาก composable
-    await submitForm(
-      {
-        risk_name: form.risk_name,
-        description: form.description,
-        attachments: form.attachments,
-        attachments_to_delete: attachmentsToDelete.value
-      },
-      isEditing.value ? props.risk?.id : undefined,
-      () => {
-        // ฟังก์ชัน callback เมื่อบันทึกสำเร็จ
+    // กำหนด options สำหรับการส่งข้อมูลแบบ multipart/form-data
+    const options = {
+      forceFormData: true,
+      onSuccess: () => {
         closeModal();
         emit('saved');
+        toast.success(isEditing.value ? 'บันทึกข้อมูลเรียบร้อยแล้ว' : 'เพิ่มข้อมูลเรียบร้อยแล้ว');
+      },
+      onError: (errors: Record<string, string>) => {
+        const errorMessages = Object.values(errors).join(', ');
+        toast.error('เกิดข้อผิดพลาด', {
+          description: errorMessages
+        });
       }
-    );
+    };
+    
+    // ส่งข้อมูลไปยัง backend
+    if (isEditing.value) {
+      form.put(route('organizational-risks.update', props.risk?.id), options);
+    } else {
+      form.post(route('organizational-risks.store'), options);
+    }
   } catch (error) {
     console.error('เกิดข้อผิดพลาดระหว่างการบันทึกข้อมูล:', error);
+    toast.error('เกิดข้อผิดพลาด', {
+      description: 'ไม่สามารถบันทึกข้อมูลได้ โปรดลองอีกครั้งในภายหลัง'
+    });
   }
 };
 
@@ -237,17 +252,13 @@ const getFileIcon = (fileName: string) => {
 </script>
 
 <template>
-  <!-- Dialog component จาก shadcn-vue -->
   <Dialog :open="show" @update:open="(val) => emit('update:show', val)">
     <DialogContent class="sm:max-w-[550px]">
-      <!-- ส่วนหัวของ Modal แสดงชื่อและคำอธิบาย -->
       <DialogHeader>
         <DialogTitle>{{ modalTitle }}</DialogTitle>
-        <!-- คำอธิบายสำหรับ screen reader แต่ซ่อนจากผู้ใช้ทั่วไป (sr-only) -->
         <DialogDescription class="sr-only">รายละเอียดฟอร์มสำหรับการจัดการความเสี่ยงองค์กร</DialogDescription>
       </DialogHeader>
       
-      <!-- ฟอร์มสำหรับกรอกข้อมูล -->
       <form @submit.prevent="handleSubmit" class="space-y-4 mt-4">
         <div class="grid gap-4 py-2">
           <!-- ฟิลด์สำหรับชื่อความเสี่ยง -->
@@ -258,7 +269,6 @@ const getFileIcon = (fileName: string) => {
               v-model="form.risk_name" 
               placeholder="ระบุชื่อความเสี่ยงองค์กร"
             />
-            <!-- แสดงข้อความแจ้งเตือนเมื่อเกิดข้อผิดพลาด -->
             <p v-if="form.errors.risk_name" class="text-sm text-red-500">{{ form.errors.risk_name }}</p>
           </div>
           
@@ -271,10 +281,9 @@ const getFileIcon = (fileName: string) => {
               placeholder="รายละเอียดความเสี่ยง"
               rows="4"
             />
-            <!-- แสดงข้อความแจ้งเตือนเมื่อเกิดข้อผิดพลาด -->
             <p v-if="form.errors.description" class="text-sm text-red-500">{{ form.errors.description }}</p>
           </div>
-                    
+          
           <!-- ส่วนจัดการเอกสารแนบ -->
           <div class="grid gap-2">
             <Label>เอกสารแนบ</Label>
@@ -360,12 +369,10 @@ const getFileIcon = (fileName: string) => {
         
         <!-- ส่วนท้ายของ Modal แสดงปุ่มดำเนินการ -->
         <DialogFooter class="flex flex-col sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-2">
-          <!-- ปุ่มยกเลิก -->
           <Button type="button" variant="outline" @click="closeModal" class="w-full sm:w-auto flex items-center gap-2">
             <XIcon class="h-4 w-4" />
             <span>ยกเลิก</span>
           </Button>
-          <!-- ปุ่มบันทึก/เพิ่ม (เปลี่ยนชื่อตามโหมดการทำงาน) -->
           <Button type="submit" :disabled="form.processing" class="w-full sm:w-auto flex items-center gap-2">
             <SaveIcon class="h-4 w-4" />
             <span>{{ isEditing ? 'บันทึก' : 'เพิ่ม' }}</span>

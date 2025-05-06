@@ -29,6 +29,12 @@ Route::middleware('auth')->group(function () {
         Route::put('/{organizationalRisk}', [OrganizationalRiskController::class, 'update'])->name('organizational-risks.update');
         Route::delete('/bulk-destroy', [OrganizationalRiskController::class, 'bulkDestroy'])->name('organizational-risks.bulk-destroy');
         Route::delete('/{organizationalRisk}', [OrganizationalRiskController::class, 'destroy'])->name('organizational-risks.destroy');
+
+        // เพิ่ม route สำหรับจัดการเอกสารแนบ
+        Route::post('/{organizationalRisk}/attachments', [OrganizationalRiskController::class, 'storeAttachment'])
+        ->name('organizational-risks.attachments.store');
+        Route::delete('/{organizationalRisk}/attachments/{attachmentId}', [OrganizationalRiskController::class, 'destroyAttachment'])
+        ->name('organizational-risks.attachments.destroy');
     });
 
     // Department Risk Routes

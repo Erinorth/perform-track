@@ -27,7 +27,7 @@ class OrganizationalRiskController extends Controller
     public function index()
     {
         // ดึงข้อมูลความเสี่ยงระดับองค์กรทั้งหมด เรียงตามปี (มากไปน้อย) และชื่อ
-        $risks = OrganizationalRisk::with('departmentRisks')  // เพิ่ม with() เพื่อโหลดความสัมพันธ์
+        $risks = OrganizationalRisk::with(['departmentRisks', 'attachments'])  // เพิ่ม with() เพื่อโหลดความสัมพันธ์
             ->orderBy('risk_name')
             ->get();
 
@@ -44,15 +44,6 @@ class OrganizationalRiskController extends Controller
     }
 
     /**
-     * แสดงฟอร์มสำหรับสร้างความเสี่ยงใหม่
-     * หมายเหตุ: ไม่ได้ใช้เนื่องจากใช้ Modal ใน Vue แทน
-     */
-    public function create()
-    {
-        // ไม่ได้ใช้งานเนื่องจากการสร้างข้อมูลใหม่ทำผ่าน Modal ใน frontend
-    }
-
-    /**
      * บันทึกข้อมูลความเสี่ยงระดับองค์กรใหม่ลงฐานข้อมูล
      * ทำการตรวจสอบความถูกต้องของข้อมูลก่อนบันทึกโดย StoreOrganizationalRiskRequest
      * 
@@ -61,47 +52,28 @@ class OrganizationalRiskController extends Controller
      */
     public function store(StoreOrganizationalRiskRequest $request)
     {
-        // ตรวจสอบข้อมูลอัตโนมัติโดย FormRequest และสร้างข้อมูลใหม่
+        // สร้างข้อมูลความเสี่ยงใหม่
         $risk = OrganizationalRisk::create($request->validated());
         
-        // บันทึก log สำหรับการตรวจสอบ
-        Log::info('สร้างความเสี่ยงระดับองค์กรใหม่', [
-            'id' => $risk->id,
-            'name' => $risk->risk_name,
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+        // จัดการเอกสารแนบ
+        $this->handleAttachments($request, $risk);
+        
+        // บันทึกล็อก
+        Log::info('สร้างความเสี่ยงองค์กรใหม่', [
+            'id' => $risk->id, 
+            'name' => $risk->risk_name, 
+            'user' => Auth::check() ? Auth::user()->name : null,
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
-        // ดึงข้อมูลความเสี่ยงทั้งหมดใหม่อีกครั้ง
-        $risks = OrganizationalRisk::orderBy('risk_name')
+        // ดึงข้อมูลความเสี่ยงทั้งหมดมาใหม่
+        $risks = OrganizationalRisk::with('departmentRisks')
+            ->orderBy('risk_name')
             ->get();
-        
-        // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จและข้อมูลความเสี่ยงทั้งหมด
+            
         return redirect()->back()
-            ->with('success', 'เพิ่มความเสี่ยงระดับองค์กรเรียบร้อยแล้ว')
-            ->with('risks', $risks); // ส่งข้อมูลความเสี่ยงทั้งหมดกลับไปด้วย
-    }
-
-    /**
-     * แสดงข้อมูลความเสี่ยงระดับองค์กรเฉพาะรายการ
-     * หมายเหตุ: ไม่ได้ใช้ในปัจจุบัน เนื่องจากดูรายละเอียดผ่าน modal ใน Vue
-     * 
-     * @param \App\Models\OrganizationalRisk $organizationalRisk
-     */
-    public function show(OrganizationalRisk $organizationalRisk)
-    {
-        // ไม่ได้ใช้งานในขณะนี้ เนื่องจากแสดงข้อมูลทั้งหมดในหน้า index
-    }
-
-    /**
-     * แสดงฟอร์มสำหรับแก้ไขความเสี่ยง
-     * หมายเหตุ: ไม่ได้ใช้เนื่องจากใช้ Modal ใน Vue แทน
-     * 
-     * @param \App\Models\OrganizationalRisk $organizationalRisk
-     */
-    public function edit(OrganizationalRisk $organizationalRisk)
-    {
-        // ไม่ได้ใช้งานเนื่องจากการแก้ไขทำผ่าน Modal ใน frontend
+            ->with('success', 'เพิ่มความเสี่ยงองค์กรเรียบร้อยแล้ว')
+            ->with('risks', $risks);
     }
 
     /**
@@ -114,26 +86,29 @@ class OrganizationalRiskController extends Controller
      */
     public function update(UpdateOrganizationalRiskRequest $request, OrganizationalRisk $organizationalRisk)
     {
-        // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบและเปรียบเทียบการเปลี่ยนแปลง
         $oldData = $organizationalRisk->toArray();
-        
-        // รับข้อมูลที่ผ่านการตรวจสอบจาก FormRequest
         $validated = $request->validated();
         
-        // อัปเดตข้อมูลในฐานข้อมูล
+        // อัปเดตข้อมูลความเสี่ยง
         $organizationalRisk->update($validated);
         
-        // บันทึก log สำหรับการตรวจสอบ พร้อมข้อมูลที่เปลี่ยนแปลงเพื่อการติดตาม
-        Log::info('อัปเดตความเสี่ยงระดับองค์กร', [
+        // จัดการเอกสารแนบ
+        $this->handleAttachments($request, $organizationalRisk);
+        
+        // จัดการการลบเอกสารแนบ
+        $this->deleteAttachments($request, $organizationalRisk);
+        
+        // บันทึกล็อก
+        Log::info('อัปเดตความเสี่ยงองค์กร', [
             'id' => $organizationalRisk->id,
             'name' => $organizationalRisk->risk_name,
             'changes' => array_diff_assoc($validated, $oldData),
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'user' => Auth::check() ? Auth::user()->name : null,
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
-        // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
-        return redirect()->back()->with('success', 'อัปเดตความเสี่ยงระดับองค์กรเรียบร้อยแล้ว');
+        return redirect()->back()
+            ->with('success', 'อัปเดตความเสี่ยงองค์กรเรียบร้อยแล้ว');
     }
 
     /**
@@ -237,8 +212,7 @@ class OrganizationalRiskController extends Controller
             ]);
         }
 
-        $risks = OrganizationalRisk::orderBy('year', 'desc')
-            ->orderBy('risk_name')
+        $risks = OrganizationalRisk::orderBy('risk_name')
             ->get();
         
         // กรณีลบได้ทั้งหมด
@@ -246,5 +220,59 @@ class OrganizationalRiskController extends Controller
             ->with('success', $successMessage)
             ->with('risks', $risks)
             ->with('deleted_count', $deletedCount);
+    }
+
+    // เพิ่มเมทอดสำหรับจัดการเอกสารแนบ
+    private function handleAttachments($request, $organizationalRisk)
+    {
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                // อัปโหลดไฟล์ไปยัง storage
+                $path = $file->store('organizational_risk_attachments', 'public');
+                
+                // บันทึกข้อมูลเอกสารแนบ
+                $organizationalRisk->attachments()->create([
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'file_type' => $file->getClientMimeType(),
+                    'file_size' => $file->getSize(),
+                ]);
+                
+                // บันทึกล็อก
+                Log::info('อัปโหลดเอกสารแนบสำหรับความเสี่ยงองค์กร', [
+                    'risk_id' => $organizationalRisk->id,
+                    'file_name' => $file->getClientOriginalName(),
+                    'user' => Auth::check() ? Auth::user()->name : null,
+                    'timestamp' => now()->format('Y-m-d H:i:s')
+                ]);
+            }
+        }
+    }
+    
+    // เพิ่มเมทอดสำหรับลบเอกสารแนบ
+    private function deleteAttachments($request, $organizationalRisk)
+    {
+        if ($request->has('attachments_to_delete') && !empty($request->attachments_to_delete)) {
+            foreach ($request->attachments_to_delete as $attachmentId) {
+                $attachment = $organizationalRisk->attachments()->find($attachmentId);
+                
+                if ($attachment) {
+                    // ลบไฟล์จาก storage
+                    Storage::disk('public')->delete($attachment->file_path);
+                    
+                    // ลบข้อมูลจากฐานข้อมูล
+                    $attachment->delete();
+                    
+                    // บันทึกล็อก
+                    Log::info('ลบเอกสารแนบสำหรับความเสี่ยงองค์กร', [
+                        'risk_id' => $organizationalRisk->id,
+                        'attachment_id' => $attachmentId,
+                        'file_name' => $attachment->file_name,
+                        'user' => Auth::check() ? Auth::user()->name : null,
+                        'timestamp' => now()->format('Y-m-d H:i:s')
+                    ]);
+                }
+            }
+        }
     }
 }

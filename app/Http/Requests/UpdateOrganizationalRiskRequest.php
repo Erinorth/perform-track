@@ -31,13 +31,15 @@ class UpdateOrganizationalRiskRequest extends FormRequest
      * 
      * @return array กฎการตรวจสอบสำหรับแต่ละฟิลด์
      */
-    public function rules(): array
+    public function rules()
     {
         return [
-            'risk_name' => 'required|string|max:255',  // ชื่อความเสี่ยง: จำเป็น, เป็นข้อความ, ความยาวไม่เกิน 255 ตัวอักษร
-            'description' => 'required|string',        // รายละเอียดความเสี่ยง: จำเป็น, เป็นข้อความ
-            'year' => 'required|integer|min:2000|max:2100', // ปี: จำเป็น, เป็นตัวเลขจำนวนเต็ม, อยู่ในช่วง 2000-2100
-            'active' => 'boolean',                     // สถานะการใช้งาน: เป็นค่าบูลีน (true/false)
+            'risk_name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240',
+            'attachments_to_delete' => 'nullable|array',
+            'attachments_to_delete.*' => 'integer|exists:organizational_risk_attachments,id',
         ];
     }
 
@@ -47,24 +49,15 @@ class UpdateOrganizationalRiskRequest extends FormRequest
      * 
      * @return array ข้อความแจ้งเตือนสำหรับแต่ละกฎการตรวจสอบ
      */
-    public function messages(): array
+    public function messages()
     {
         return [
-            // ข้อความสำหรับฟิลด์ risk_name
             'risk_name.required' => 'กรุณาระบุชื่อความเสี่ยง',
-            'risk_name.max' => 'ชื่อความเสี่ยงต้องมีความยาวไม่เกิน 255 ตัวอักษร',
-            
-            // ข้อความสำหรับฟิลด์ description
             'description.required' => 'กรุณาระบุรายละเอียดความเสี่ยง',
-            
-            // ข้อความสำหรับฟิลด์ year
-            'year.required' => 'กรุณาระบุปี',
-            'year.integer' => 'ปีต้องเป็นตัวเลขเท่านั้น',
-            'year.min' => 'ปีต้องมากกว่าหรือเท่ากับ 2000',
-            'year.max' => 'ปีต้องน้อยกว่าหรือเท่ากับ 2100',
-            
-            // ข้อความสำหรับฟิลด์ active
-            'active.boolean' => 'สถานะการใช้งานต้องเป็น true หรือ false เท่านั้น',
+            'attachments.*.file' => 'ไฟล์แนบไม่ถูกต้อง',
+            'attachments.*.mimes' => 'รองรับเฉพาะไฟล์ PDF, Word, Excel และรูปภาพเท่านั้น',
+            'attachments.*.max' => 'ขนาดไฟล์ต้องไม่เกิน 10MB',
+            'attachments_to_delete.*.exists' => 'ไม่พบไฟล์ที่ต้องการลบ',
         ];
     }
     
