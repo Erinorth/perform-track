@@ -1,12 +1,13 @@
 <!-- 
-  ไฟล์: resources\js\pages\organizational_risk\OrganizationalRiskModal.vue
-  Modal สำหรับเพิ่มและแก้ไขข้อมูลความเสี่ยงระดับองค์กร พร้อมการจัดการเอกสารแนบ
-  ใช้ shadcn-vue components และ Inertia.js สำหรับการทำงานกับ Laravel backend
+  ไฟล์: resources/js/pages/organizational_risk/OrganizationalRiskModal.vue
+  คำอธิบาย: Modal component สำหรับเพิ่ม แก้ไข และจัดการเอกสารแนบของความเสี่ยงระดับองค์กร
+  ใช้งานร่วมกับ: OrganizationalRiskController.php ในฝั่ง Backend
+  ใช้งานเมื่อ: ผู้ใช้ต้องการเพิ่มหรือแก้ไขข้อมูลความเสี่ยงระดับองค์กร
 -->
 
 <script setup lang="ts">
-// นำเข้า APIs จาก Vue และ libraries ที่จำเป็น
-import { ref, computed, watch } from 'vue';
+// นำเข้า libraries และ components ที่จำเป็น
+import { computed, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,81 +15,79 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'vue-sonner';
-import { SaveIcon, XIcon, FileIcon, Trash2Icon, UploadIcon, XCircleIcon, AlertCircleIcon, InfoIcon } from 'lucide-vue-next';
-import type { OrganizationalRisk, Attachment } from '@/types/types';
+import { SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, Trash2Icon } from 'lucide-vue-next';
+import type { OrganizationalRisk } from '@/types/types';
 
-// เพิ่มการนำเข้า composable
+// นำเข้า composable สำหรับจัดการข้อมูลความเสี่ยง
 import { useOrganizationalRiskData } from '@/composables/useOrganizationalRiskData';
+
+// สร้าง type สำหรับฟอร์ม
+type RiskFormData = {
+  risk_name: string;
+  description: string;
+  attachments: File[] | null;
+}
 
 // กำหนด props ที่รับจาก parent component
 const props = defineProps<{
-  show: boolean;
-  risk?: OrganizationalRisk;
-  initialRisks?: OrganizationalRisk[];
+  show: boolean;                          // ควบคุมการแสดง/ซ่อน Modal
+  risk?: OrganizationalRisk;              // ข้อมูลความเสี่ยงในกรณีที่เป็นการแก้ไข
+  initialRisks?: OrganizationalRisk[];    // รายการความเสี่ยงทั้งหมดที่มีอยู่
 }>();
 
-// กำหนด events ที่จะส่งไปยัง parent component
+// กำหนด events ที่จะส่งกลับไปยัง parent component
 const emit = defineEmits<{
-  (e: 'update:show', value: boolean): void;
-  (e: 'saved'): void;
+  (e: 'update:show', value: boolean): void;  // event สำหรับอัปเดตสถานะการแสดง Modal
+  (e: 'saved'): void;                        // event แจ้งเมื่อบันทึกข้อมูลสำเร็จ
 }>();
 
-// เรียกใช้ composable เพื่อจัดการข้อมูล
-const { submitForm, uploadAttachment, deleteAttachment } = useOrganizationalRiskData(props.initialRisks || []);
+// เรียกใช้ composable เพื่อจัดการข้อมูลและการส่งข้อมูลไปยัง backend
+// ส่ง props.show เป็น trigger เพื่อให้ตรวจจับการเปลี่ยนแปลง
+const {
+  // ข้อมูลเอกสารแนบ
+  existingAttachments,
+  selectedFiles,
+  fileNames,
+  
+  // ฟังก์ชันจัดการข้อมูล
+  loadAttachments,
+  submitForm,
+  
+  // ฟังก์ชันจัดการเอกสารแนบ
+  addSelectedFiles,
+  removeSelectedFile,
+  markAttachmentForDeletion,
+  openAttachment,
+  validateFiles,
 
-// สร้าง computed properties สำหรับตรวจสอบโหมดการทำงานและตั้งชื่อ Modal
+  // ฟังก์ชันช่วยเหลือ UI
+  getFileIcon,
+  formatFileSize
+} = useOrganizationalRiskData(props.initialRisks || [], props.show);
+
+// สร้าง computed properties
 const isEditing = computed(() => !!props.risk?.id);
 const modalTitle = computed(() => isEditing.value ? 'แก้ไขความเสี่ยงองค์กร' : 'เพิ่มความเสี่ยงองค์กร');
 
-// สร้างตัวแปรสำหรับเก็บข้อมูลเอกสารแนบที่มีอยู่
-const existingAttachments = ref<Attachment[]>([]);
-// สร้างตัวแปรสำหรับเก็บรายการไอดีของเอกสารแนบที่ต้องการลบ
-const attachmentsToDelete = ref<number[]>([]);
-// สร้างตัวแปรสำหรับเก็บชื่อเอกสารที่กำลังจะอัปโหลด
-const fileNames = ref<string[]>([]);
-
-// สร้าง form สำหรับจัดการข้อมูลและการส่งไปยัง backend
-const form = useForm({
+// สร้าง form object สำหรับจัดการข้อมูลและการตรวจสอบความถูกต้อง
+const form = useForm<RiskFormData>({
   risk_name: props.risk?.risk_name ?? '',
   description: props.risk?.description ?? '',
-  attachments: [] as File[],                   // เอกสารแนบใหม่ที่จะอัปโหลด
-  attachments_to_delete: [] as number[],       // รายการไอดีของเอกสารแนบที่ต้องการลบ
+  attachments: null, // กำหนดค่าเริ่มต้นเป็น null
 });
 
 // ใช้ watch เพื่อรีเซ็ตฟอร์มเมื่อ Modal เปิดขึ้น
 watch(() => props.show, (newVal) => {
   if (newVal && props.risk) {
-    // กรณี Modal เปิดและมีข้อมูลความเสี่ยงส่งมา (โหมดแก้ไข)
-    console.log('กำลังโหลดข้อมูลสำหรับแก้ไข:', props.risk);
-
-    // ตรวจสอบและตั้งค่าข้อมูลพื้นฐาน
+    // กรณีโหมดแก้ไข
+    console.log('🔄 โหลดข้อมูลสำหรับแก้ไข:', props.risk.risk_name);
     form.risk_name = props.risk.risk_name || '';
     form.description = props.risk.description || '';
-    
-    // รีเซ็ตรายการเอกสารแนบที่ต้องการลบ
-    attachmentsToDelete.value = [];
-    form.attachments_to_delete = [];
-    
-    // ถ้ามีเอกสารแนบ ให้เพิ่มลงในตัวแปร existingAttachments
-    if (props.risk.attachments) {
-      existingAttachments.value = [...props.risk.attachments];
-    } else {
-      existingAttachments.value = [];
-    }
-    
-    // รีเซ็ตรายการไฟล์ที่จะอัปโหลด
-    form.attachments = [];
-    fileNames.value = [];
+    loadAttachments(props.risk);  // โหลดเอกสารแนบจาก composable
   } else if (newVal) {
-    // กรณี Modal เปิดแต่ไม่มีข้อมูลความเสี่ยงส่งมา (โหมดเพิ่มใหม่)
+    // กรณีโหมดเพิ่มใหม่
     form.reset();
-    
-    // รีเซ็ตข้อมูลเอกสารแนบทั้งหมด
-    existingAttachments.value = [];
-    attachmentsToDelete.value = [];
-    form.attachments = [];
-    form.attachments_to_delete = [];
-    fileNames.value = [];
+    loadAttachments();  // รีเซ็ตข้อมูลเอกสารแนบ
   }
 });
 
@@ -100,86 +99,46 @@ const closeModal = () => {
 // ฟังก์ชันสำหรับจัดการการอัปโหลดเอกสารแนบ
 const handleFileUpload = (event: Event) => {
   const input = event.target as HTMLInputElement;
+  
+  // ใช้ฟังก์ชันจาก composable เพื่อจัดการไฟล์
+  addSelectedFiles(input.files);
+  
+  // อัปเดตฟิลด์ในฟอร์มด้วย เพื่อให้ Inertia จัดการ validation errors
   if (input.files && input.files.length > 0) {
-    // เพิ่มไฟล์ใหม่เข้าไปในรายการที่จะอัปโหลด
-    for (let i = 0; i < input.files.length; i++) {
-      const file = input.files[i];
-      form.attachments.push(file);
-      fileNames.value.push(file.name);
-    }
-    
-    // รีเซ็ต input เพื่อให้สามารถเลือกไฟล์เดิมซ้ำได้
-    input.value = '';
-  }
-};
-
-// ฟังก์ชันสำหรับลบไฟล์ที่เพิ่งเลือกแต่ยังไม่ได้อัปโหลด
-const removeSelectedFile = (index: number) => {
-  // สร้างอาร์เรย์ใหม่โดยกรองไฟล์ที่ต้องการลบออก
-  const newAttachments: File[] = [];
-  const newFileNames: string[] = [];
-  
-  for (let i = 0; i < form.attachments.length; i++) {
-    if (i !== index) {
-      newAttachments.push(form.attachments[i]);
-      newFileNames.push(fileNames.value[i]);
-    }
+    form.attachments = Array.from(input.files);
   }
   
-  // อัปเดตข้อมูล
-  form.attachments = newAttachments;
-  fileNames.value = newFileNames;
+  // รีเซ็ต input
+  input.value = '';
 };
 
-// ฟังก์ชันสำหรับเพิ่มเอกสารแนบที่ต้องการลบลงในรายการ
-const markAttachmentForDeletion = (attachmentId: number) => {
-  // เพิ่มไอดีของเอกสารแนบลงในรายการที่ต้องการลบ
-  attachmentsToDelete.value.push(attachmentId);
-  form.attachments_to_delete = [...attachmentsToDelete.value];
-  
-  // อัปเดตรายการเอกสารแนบที่แสดงในหน้าจอโดยซ่อนรายการที่จะลบ
-  existingAttachments.value = existingAttachments.value.filter(
-    attachment => !attachmentsToDelete.value.includes(attachment.id)
-  );
-  
-  // แสดงข้อความแจ้งเตือน
-  toast.success('เอกสารถูกมาร์คให้ลบเมื่อบันทึกข้อมูล');
-};
-
-// ฟังก์ชันตรวจสอบข้อมูลก่อนส่ง
+// ฟังก์ชันตรวจสอบความถูกต้องของข้อมูลก่อนส่ง
 const validateForm = () => {
   let isValid = true;
   const errors = [];
 
+  // ตรวจสอบชื่อความเสี่ยง
   if (!form.risk_name.trim()) {
     errors.push('กรุณาระบุชื่อความเสี่ยง');
     isValid = false;
   }
   
+  // ตรวจสอบรายละเอียดความเสี่ยง
   if (!form.description.trim()) {
     errors.push('กรุณาระบุรายละเอียดความเสี่ยง');
     isValid = false;
   }
 
-  // ตรวจสอบนามสกุลของไฟล์ที่อัปโหลด (ยอมรับเฉพาะ PDF, Word, Excel, Image)
-  const allowedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'];
-  
-  for (const file of form.attachments) {
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    if (!allowedFileTypes.includes(fileExtension)) {
-      errors.push(`ไฟล์ "${file.name}" มีนามสกุลไม่ถูกต้อง (รองรับ pdf, word, excel, รูปภาพ)`);
+  // ตรวจสอบไฟล์ที่เลือก (ใช้ฟังก์ชันจาก composable)
+  if (selectedFiles.value.length > 0) {
+    const fileValidation = validateFiles(selectedFiles.value);
+    if (!fileValidation.valid) {
       isValid = false;
-      break;
-    }
-    
-    // ตรวจสอบขนาดไฟล์ (ไม่เกิน 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      errors.push(`ไฟล์ "${file.name}" มีขนาดใหญ่เกินไป (ไม่เกิน 10MB)`);
-      isValid = false;
-      break;
+      errors.push(...fileValidation.errors);
     }
   }
 
+  // แสดงข้อความแจ้งเตือนถ้ามีข้อผิดพลาด
   if (!isValid) {
     toast.warning('กรุณากรอกข้อมูลให้ครบถ้วน', {
       icon: InfoIcon,
@@ -190,27 +149,16 @@ const validateForm = () => {
   return isValid;
 };
 
-// ฟังก์ชันสำหรับส่งฟอร์ม
-// แก้ไขฟังก์ชัน handleSubmit ให้ใช้ submitForm จาก composable
+// ฟังก์ชันสำหรับส่งฟอร์มไปยัง backend
 const handleSubmit = async () => {
-  // ตรวจสอบความถูกต้องของข้อมูลก่อนส่ง
   if (!validateForm()) return;
   
   try {
-    // บันทึก log เพื่อการตรวจสอบ
     console.log('📝 กำลังส่งข้อมูลไปยัง backend:', {
       mode: isEditing.value ? 'แก้ไข' : 'เพิ่มใหม่',
-      id: props.risk?.id,
-      formData: form
+      id: props.risk?.id
     });
 
-    // ตรวจสอบให้แน่ใจว่า form มีข้อมูลครบถ้วน
-    if (!form.risk_name || !form.description) {
-            toast.error('กรุณากรอกข้อมูลให้ครบถ้วน');
-            return;
-        }
-    
-    // ใช้ submitForm จาก composable โดยส่งข้อมูลที่จำเป็น
     await submitForm(
       {
         risk_name: form.risk_name,
@@ -219,59 +167,40 @@ const handleSubmit = async () => {
       isEditing.value ? props.risk?.id : undefined,
       () => {
         closeModal();
-        emit('saved');
-      },      
-      form.attachments,
-      attachmentsToDelete.value
+        emit('saved');  // แจ้ง parent component ว่าบันทึกสำเร็จแล้ว
+      }
     );
   } catch (error) {
-    console.error('เกิดข้อผิดพลาดระหว่างการบันทึกข้อมูล:', error);
+    console.error('❌ เกิดข้อผิดพลาดระหว่างการบันทึกข้อมูล:', error);
     toast.error('เกิดข้อผิดพลาด', {
       description: 'ไม่สามารถบันทึกข้อมูลได้ โปรดลองอีกครั้งในภายหลัง'
     });
   }
 };
-
-// คำนวณขนาดไฟล์ให้อยู่ในรูปแบบที่อ่านได้ง่าย (KB, MB)
-const formatFileSize = (bytes: number): string => {
-  if (bytes < 1024) {
-    return bytes + ' B';
-  } else if (bytes < 1024 * 1024) {
-    return (bytes / 1024).toFixed(1) + ' KB';
-  } else {
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  }
-};
-
-// ฟังก์ชันสำหรับเปิดไฟล์เอกสารแนบ
-const openAttachment = (url: string) => {
-  window.open(url, '_blank');
-};
-
-// ฟังก์ชันเพื่อดึงไอคอนตามประเภทไฟล์
-const getFileIcon = (fileName: string) => {
-  return FileIcon; // ใช้ไอคอนเดียวกันสำหรับทุกประเภทไฟล์
-};
 </script>
 
 <template>
+  <!-- Dialog component จาก shadcn-vue สำหรับแสดง Modal -->
   <Dialog :open="show" @update:open="(val) => emit('update:show', val)">
     <DialogContent class="sm:max-w-[550px]">
+      <!-- ส่วนหัวของ Modal -->
       <DialogHeader>
         <DialogTitle>{{ modalTitle }}</DialogTitle>
         <DialogDescription class="sr-only">รายละเอียดฟอร์มสำหรับการจัดการความเสี่ยงองค์กร</DialogDescription>
       </DialogHeader>
       
+      <!-- ฟอร์มสำหรับกรอกข้อมูล -->
       <form @submit.prevent="handleSubmit" class="space-y-4 mt-4">
         <div class="grid gap-4 py-2">
-          <!-- ฟิลด์สำหรับชื่อความเสี่ยง -->
-          <div class="grid gap-2">
+                    <!-- ฟิลด์สำหรับชื่อความเสี่ยง -->
+                    <div class="grid gap-2">
             <Label for="risk_name">ชื่อความเสี่ยง</Label>
             <Input 
               id="risk_name" 
               v-model="form.risk_name" 
               placeholder="ระบุชื่อความเสี่ยงองค์กร"
             />
+            <!-- แสดงข้อความแจ้งเตือนถ้ามีข้อผิดพลาด -->
             <p v-if="form.errors.risk_name" class="text-sm text-red-500">{{ form.errors.risk_name }}</p>
           </div>
           
@@ -284,6 +213,7 @@ const getFileIcon = (fileName: string) => {
               placeholder="รายละเอียดความเสี่ยง"
               rows="4"
             />
+            <!-- แสดงข้อความแจ้งเตือนถ้ามีข้อผิดพลาด -->
             <p v-if="form.errors.description" class="text-sm text-red-500">{{ form.errors.description }}</p>
           </div>
           
@@ -295,6 +225,7 @@ const getFileIcon = (fileName: string) => {
             <div v-if="existingAttachments.length > 0" class="mb-3">
               <p class="text-sm font-medium text-gray-700 mb-2">เอกสารแนบปัจจุบัน:</p>
               <ul class="space-y-2">
+                <!-- วนลูปแสดงรายการเอกสารแนบ -->
                 <li v-for="attachment in existingAttachments" :key="attachment.id" 
                     class="flex items-center justify-between p-2 bg-gray-50 rounded-md text-sm">
                   <div class="flex items-center gap-2 flex-1 overflow-hidden" 
@@ -302,8 +233,11 @@ const getFileIcon = (fileName: string) => {
                        style="cursor: pointer">
                     <component :is="getFileIcon(attachment.file_name)" class="h-4 w-4 flex-shrink-0" />
                     <span class="truncate">{{ attachment.file_name }}</span>
-                    <span class="text-xs text-gray-500 flex-shrink-0">{{ formatFileSize(attachment.file_size || 0) }}</span>
+                    <span class="text-xs text-gray-500 flex-shrink-0">
+                      {{ formatFileSize(attachment.file_size || 0) }}
+                    </span>
                   </div>
+                  <!-- ปุ่มลบเอกสารแนบ -->
                   <Button 
                     type="button" 
                     variant="ghost" 
@@ -321,15 +255,17 @@ const getFileIcon = (fileName: string) => {
             <div v-if="fileNames.length > 0" class="mb-3">
               <p class="text-sm font-medium text-gray-700 mb-2">ไฟล์ที่เลือกเพื่ออัปโหลด:</p>
               <ul class="space-y-2">
+                <!-- วนลูปแสดงรายการไฟล์ที่เลือก -->
                 <li v-for="(fileName, index) in fileNames" :key="index" 
                     class="flex items-center justify-between p-2 bg-gray-50 rounded-md text-sm">
                   <div class="flex items-center gap-2 flex-1 overflow-hidden">
                     <component :is="getFileIcon(fileName)" class="h-4 w-4 flex-shrink-0" />
                     <span class="truncate">{{ fileName }}</span>
                     <span class="text-xs text-gray-500 flex-shrink-0">
-                      {{ formatFileSize(form.attachments[index].size) }}
+                      {{ formatFileSize(selectedFiles[index].size) }}
                     </span>
                   </div>
+                  <!-- ปุ่มยกเลิกการเลือกไฟล์ -->
                   <Button 
                     type="button" 
                     variant="ghost" 
@@ -346,6 +282,7 @@ const getFileIcon = (fileName: string) => {
             <!-- ส่วนอัปโหลดไฟล์ใหม่ -->
             <div class="flex flex-col">
               <div class="flex flex-wrap items-center gap-2">
+                <!-- ปุ่มเลือกไฟล์ -->
                 <label 
                   for="file-upload" 
                   class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -353,6 +290,7 @@ const getFileIcon = (fileName: string) => {
                   <UploadIcon class="h-4 w-4" />
                   <span>เลือกไฟล์</span>
                 </label>
+                <!-- Input ซ่อนไว้สำหรับเลือกไฟล์ -->
                 <input 
                   id="file-upload" 
                   type="file" 
@@ -361,21 +299,27 @@ const getFileIcon = (fileName: string) => {
                   @change="handleFileUpload"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                 />
+                <!-- คำอธิบายประเภทไฟล์ที่รองรับ -->
                 <p class="text-xs text-gray-500">
                   รองรับไฟล์ PDF, Word, Excel, รูปภาพ (สูงสุด 10MB ต่อไฟล์)
                 </p>
               </div>
-              <p v-if="form.errors.attachments" class="text-sm text-red-500 mt-1">{{ form.errors.attachments }}</p>
+              <!-- แสดงข้อความแจ้งเตือนถ้ามีข้อผิดพลาด -->
+              <p v-if="form.errors.attachments" class="text-sm text-red-500 mt-1">
+                {{ form.errors.attachments }}
+              </p>
             </div>
           </div>
         </div>
         
-        <!-- ส่วนท้ายของ Modal แสดงปุ่มดำเนินการ -->
+        <!-- ส่วนท้ายของ Modal -->
         <DialogFooter class="flex flex-col sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+          <!-- ปุ่มยกเลิก -->
           <Button type="button" variant="outline" @click="closeModal" class="w-full sm:w-auto flex items-center gap-2">
             <XIcon class="h-4 w-4" />
             <span>ยกเลิก</span>
           </Button>
+          <!-- ปุ่มบันทึก/เพิ่ม -->
           <Button type="submit" :disabled="form.processing" class="w-full sm:w-auto flex items-center gap-2">
             <SaveIcon class="h-4 w-4" />
             <span>{{ isEditing ? 'บันทึก' : 'เพิ่ม' }}</span>
@@ -385,3 +329,4 @@ const getFileIcon = (fileName: string) => {
     </DialogContent>
   </Dialog>
 </template>
+
