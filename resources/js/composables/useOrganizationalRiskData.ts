@@ -95,39 +95,81 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
     const submitForm = async (
         formData: { risk_name: string; description: string; },
         riskId?: number,
-        onSuccess?: () => void
+        onSuccess?: () => void,
+        attachments?: File[],
+        attachmentsToDelete?: number[]
     ) => {
-        // บันทึก log เพื่อการตรวจสอบ
-        console.log('📝 กำลังบันทึกข้อมูลความเสี่ยงองค์กร:', {
-            data: formData,
+        // สร้าง FormData สำหรับส่งไฟล์พร้อมข้อมูลอื่นๆ
+        const form = new FormData();
+
+        // ตรวจสอบและเพิ่มข้อมูลพื้นฐานทุกครั้ง
+        if (formData.risk_name) {
+            form.append('risk_name', formData.risk_name);
+        }
+        
+        if (formData.description) {
+            form.append('description', formData.description);
+        }
+        
+        // เพิ่มไฟล์แนบ (ถ้ามี)
+        if (attachments && attachments.length > 0) {
+            // ตรวจสอบการเป็น File object ก่อนเพิ่ม
+            attachments.forEach((file, index) => {
+                if (file instanceof File) {
+                    form.append(`attachments[${index}]`, file);
+                    console.log(`เพิ่มไฟล์ ${file.name} ขนาด ${formatFileSize(file.size)}`);
+                } else {
+                    console.error(`ไฟล์ที่ index ${index} ไม่ใช่ File object`);
+                }
+            });
+        }
+        
+        // เพิ่มรายการไฟล์ที่ต้องการลบ (ถ้ามี)
+        if (attachmentsToDelete && attachmentsToDelete.length > 0) {
+            attachmentsToDelete.forEach(id => {
+                form.append('attachments_to_delete[]', id.toString());
+            });
+        }
+
+        // บันทึก log เพื่อตรวจสอบข้อมูลที่จะส่ง
+        console.log('📝 ข้อมูลที่กำลังส่ง:', {
             mode: riskId ? 'แก้ไข' : 'เพิ่มใหม่',
-            timestamp: new Date().toLocaleString('th-TH')
+            riskId,
+            formEntries: Array.from(form.entries()),
+            formDataValues: {
+                risk_name: formData.risk_name,
+                description: formData.description
+            },
+            hasAttachments: attachments && attachments.length > 0,
+            attachmentsCount: attachments?.length || 0,
+            attachmentsToDelete: attachmentsToDelete
         });
 
         return new Promise((resolve, reject) => {
             if (riskId) {
-                // กรณีแก้ไข: ใช้ PUT request
-                router.put(`/organizational-risks/${riskId}`, formData, {
+                // กรณีแก้ไข: ส่ง form (FormData) แทน formData และเพิ่ม forceFormData
+                router.put(route('organizational-risks.update', riskId), form, {
+                    forceFormData: true, // เพิ่มบรรทัดนี้
                     onSuccess: (page) => {
                         // อัปเดตข้อมูลใน data array
                         const index = data.value.findIndex(item => item.id === riskId);
                         if (index !== -1) {
-                            // แก้ไขเพื่อรักษาโครงสร้างข้อมูลเดิมพร้อมอัปเดตเฉพาะส่วนที่เปลี่ยน
-                            data.value[index] = { 
-                                ...data.value[index], 
-                                risk_name: formData.risk_name,
-                                description: formData.description,
-                            };
-                            // สร้าง array ใหม่เพื่อทริกเกอร์การ re-render
-                            data.value = [...data.value];
+                        // แก้ไขเพื่อรักษาโครงสร้างข้อมูลเดิมพร้อมอัปเดตเฉพาะส่วนที่เปลี่ยน
+                        data.value[index] = { 
+                            ...data.value[index], 
+                            risk_name: formData.risk_name,
+                            description: formData.description,
+                        };
+                        // สร้าง array ใหม่เพื่อทริกเกอร์การ re-render
+                        data.value = [...data.value];
                         }
                         
                         // แสดงข้อความแจ้งเตือนสำเร็จ
                         toast.success('บันทึกข้อมูลความเสี่ยงสำเร็จ', {
-                            icon: CheckCircle2Icon,
-                            description: `ความเสี่ยง "${formData.risk_name}" ได้รับการแก้ไขเรียบร้อยแล้ว`,
-                            duration: 4000,
-                            closeButton: true
+                        icon: CheckCircle2Icon,
+                        description: `ความเสี่ยง "${formData.risk_name}" ได้รับการแก้ไขเรียบร้อยแล้ว`,
+                        duration: 4000,
+                        closeButton: true
                         });
                         
                         // เรียกฟังก์ชัน callback ถ้ามี
@@ -135,12 +177,14 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
                         resolve(page);
                     },
                     onError: (errors) => {
-                        // ... (โค้ดส่วน onError คงเดิม)
+                        console.error('❌ ไม่สามารถอัปเดตความเสี่ยงองค์กรได้:', errors);
+                        reject(errors);
                     }
                 });
             } else {
                 // กรณีเพิ่มใหม่: ใช้ POST request
-                router.post('/organizational-risks', formData, {
+                router.post('/organizational-risks', form, {
+                    forceFormData: true, // เพิ่มบรรทัดนี้
                     onSuccess: (page) => {
                         // แก้ไขส่วนนี้เพื่อตรวจสอบข้อมูลที่ได้รับจาก response
                         if (page.props.risk && typeof page.props.risk === 'object' && 'id' in page.props.risk) {
@@ -168,7 +212,8 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
                         resolve(page);
                     },
                     onError: (errors) => {
-                        // ... (โค้ดส่วน onError คงเดิม)
+                        console.error('❌ ไม่สามารถเพิ่มความเสี่ยงองค์กรได้:', errors);
+                        reject(errors);
                     }
                 });
             }
@@ -246,6 +291,79 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
         });
         });
     };
+
+    // ฟังก์ชันเพิ่มเอกสารแนบ
+const uploadAttachment = async (riskId: number, file: File): Promise<any> => {
+    // สร้าง FormData เพื่อส่งไฟล์
+    const formData = new FormData();
+    formData.append('attachment', file);
+    
+    // บันทึก log เพื่อการตรวจสอบ
+    console.log('📄 กำลังอัปโหลดเอกสารแนบ:', {
+      risk_id: riskId,
+      file_name: file.name,
+      file_size: formatFileSize(file.size),
+      timestamp: new Date().toLocaleString('th-TH')
+    });
+    
+    return new Promise((resolve, reject) => {
+      // ส่งคำขออัปโหลดไฟล์
+      router.post(route('organizational-risks.attachments.store', riskId), formData, {
+        forceFormData: true,
+        onSuccess: (response) => {
+          console.log('✅ อัปโหลดเอกสารแนบสำเร็จ:', response);
+          toast.success('อัปโหลดเอกสารแนบสำเร็จ');
+          resolve(response);
+        },
+        onError: (errors) => {
+          console.error('❌ ไม่สามารถอัปโหลดเอกสารแนบได้:', errors);
+          if (errors.error) {
+            toast.error(errors.error);
+          } else {
+            const errorMessages = Object.values(errors).join(', ');
+            toast.error('เกิดข้อผิดพลาดในการอัปโหลดเอกสารแนบ', {
+              description: errorMessages
+            });
+          }
+          reject(errors);
+        }
+      });
+    });
+  };
+  
+  // ฟังก์ชันลบเอกสารแนบ
+  const deleteAttachment = async (riskId: number, attachmentId: number): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      // ส่งคำขอลบเอกสารแนบ
+      router.delete(route('organizational-risks.attachments.destroy', [riskId, attachmentId]), {
+        onSuccess: (response) => {
+          console.log('✅ ลบเอกสารแนบสำเร็จ:', response);
+          toast.success('ลบเอกสารแนบเรียบร้อยแล้ว');
+          resolve(response);
+        },
+        onError: (errors) => {
+          console.error('❌ ไม่สามารถลบเอกสารแนบได้:', errors);
+          if (errors.error) {
+            toast.error(errors.error);
+          } else {
+            toast.error('เกิดข้อผิดพลาดในการลบเอกสารแนบ');
+          }
+          reject(errors);
+        }
+      });
+    });
+  };
+  
+  // ฟังก์ชันช่วยสำหรับจัดรูปแบบขนาดไฟล์
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) {
+      return bytes + ' B';
+    } else if (bytes < 1024 * 1024) {
+      return (bytes / 1024).toFixed(1) + ' KB';
+    } else {
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+  };
     
     // ส่งคืนข้อมูลและฟังก์ชันที่ต้องการให้ component อื่นใช้งาน
     return {
@@ -253,6 +371,8 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[]) {
         deleteRisk,
         submitForm,  // เพิ่มฟังก์ชัน submitForm
         refreshData,  // เพิ่มฟังก์ชัน refreshData
-        bulkDeleteRisks
+        bulkDeleteRisks,
+        uploadAttachment,  // เพิ่มฟังก์ชันอัปโหลดเอกสารแนบ
+        deleteAttachment   // เพิ่มฟังก์ชันลบเอกสารแนบ
     };
 }

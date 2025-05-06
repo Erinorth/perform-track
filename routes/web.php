@@ -23,9 +23,7 @@ Route::middleware('auth')->group(function () {
     // Organizational Risk Routes
     Route::prefix('organizational-risks')->group(function () {
         Route::get('/', [OrganizationalRiskController::class, 'index'])->name('organizational-risks.index');
-        Route::get('/create', [OrganizationalRiskController::class, 'create'])->name('organizational-risks.create');
         Route::post('/', [OrganizationalRiskController::class, 'store'])->name('organizational-risks.store');
-        Route::get('/{organizationalRisk}/edit', [OrganizationalRiskController::class, 'edit'])->name('organizational-risks.edit');
         Route::put('/{organizationalRisk}', [OrganizationalRiskController::class, 'update'])->name('organizational-risks.update');
         Route::delete('/bulk-destroy', [OrganizationalRiskController::class, 'bulkDestroy'])->name('organizational-risks.bulk-destroy');
         Route::delete('/{organizationalRisk}', [OrganizationalRiskController::class, 'destroy'])->name('organizational-risks.destroy');

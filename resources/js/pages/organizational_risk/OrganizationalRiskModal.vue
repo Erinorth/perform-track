@@ -34,7 +34,7 @@ const emit = defineEmits<{
 }>();
 
 // เรียกใช้ composable เพื่อจัดการข้อมูล
-const { submitForm } = useOrganizationalRiskData(props.initialRisks || []);
+const { submitForm, uploadAttachment, deleteAttachment } = useOrganizationalRiskData(props.initialRisks || []);
 
 // สร้าง computed properties สำหรับตรวจสอบโหมดการทำงานและตั้งชื่อ Modal
 const isEditing = computed(() => !!props.risk?.id);
@@ -59,8 +59,11 @@ const form = useForm({
 watch(() => props.show, (newVal) => {
   if (newVal && props.risk) {
     // กรณี Modal เปิดและมีข้อมูลความเสี่ยงส่งมา (โหมดแก้ไข)
-    form.risk_name = props.risk.risk_name;
-    form.description = props.risk.description;
+    console.log('กำลังโหลดข้อมูลสำหรับแก้ไข:', props.risk);
+
+    // ตรวจสอบและตั้งค่าข้อมูลพื้นฐาน
+    form.risk_name = props.risk.risk_name || '';
+    form.description = props.risk.description || '';
     
     // รีเซ็ตรายการเอกสารแนบที่ต้องการลบ
     attachmentsToDelete.value = [];
@@ -188,39 +191,39 @@ const validateForm = () => {
 };
 
 // ฟังก์ชันสำหรับส่งฟอร์ม
+// แก้ไขฟังก์ชัน handleSubmit ให้ใช้ submitForm จาก composable
 const handleSubmit = async () => {
   // ตรวจสอบความถูกต้องของข้อมูลก่อนส่ง
   if (!validateForm()) return;
   
-  // เตรียมข้อมูลสำหรับส่งไปยัง server
-  form.transform((data) => ({
-    ...data,
-    attachments_to_delete: attachmentsToDelete.value
-  }));
-  
   try {
-    // กำหนด options สำหรับการส่งข้อมูลแบบ multipart/form-data
-    const options = {
-      forceFormData: true,
-      onSuccess: () => {
+    // บันทึก log เพื่อการตรวจสอบ
+    console.log('📝 กำลังส่งข้อมูลไปยัง backend:', {
+      mode: isEditing.value ? 'แก้ไข' : 'เพิ่มใหม่',
+      id: props.risk?.id,
+      formData: form
+    });
+
+    // ตรวจสอบให้แน่ใจว่า form มีข้อมูลครบถ้วน
+    if (!form.risk_name || !form.description) {
+            toast.error('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
+        }
+    
+    // ใช้ submitForm จาก composable โดยส่งข้อมูลที่จำเป็น
+    await submitForm(
+      {
+        risk_name: form.risk_name,
+        description: form.description,
+      },
+      isEditing.value ? props.risk?.id : undefined,
+      () => {
         closeModal();
         emit('saved');
-        toast.success(isEditing.value ? 'บันทึกข้อมูลเรียบร้อยแล้ว' : 'เพิ่มข้อมูลเรียบร้อยแล้ว');
-      },
-      onError: (errors: Record<string, string>) => {
-        const errorMessages = Object.values(errors).join(', ');
-        toast.error('เกิดข้อผิดพลาด', {
-          description: errorMessages
-        });
-      }
-    };
-    
-    // ส่งข้อมูลไปยัง backend
-    if (isEditing.value) {
-      form.put(route('organizational-risks.update', props.risk?.id), options);
-    } else {
-      form.post(route('organizational-risks.store'), options);
-    }
+      },      
+      form.attachments,
+      attachmentsToDelete.value
+    );
   } catch (error) {
     console.error('เกิดข้อผิดพลาดระหว่างการบันทึกข้อมูล:', error);
     toast.error('เกิดข้อผิดพลาด', {
