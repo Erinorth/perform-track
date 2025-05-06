@@ -1,6 +1,6 @@
 <!-- 
   ไฟล์: resources\js\pages\organizational_risk\OrganizationalRiskModal.vue
-  Modal สำหรับเพิ่มและแก้ไขข้อมูลความเสี่ยงระดับองค์กร
+  Modal สำหรับเพิ่มและแก้ไขข้อมูลความเสี่ยงระดับองค์กร พร้อมการจัดการเอกสารแนบ
   ใช้ shadcn-vue components และ Inertia.js สำหรับการทำงานกับ Laravel backend
 -->
 
@@ -14,8 +14,8 @@ import { Input } from '@/components/ui/input';              // Component input f
 import { Textarea } from '@/components/ui/textarea';        // Component สำหรับข้อความหลายบรรทัด
 import { Label } from '@/components/ui/label';              // Component ป้ายกำกับ
 import { toast } from 'vue-sonner';                         // ใช้สำหรับแสดงข้อความแจ้งเตือน
-import { SaveIcon, XIcon, CheckCircle2Icon, AlertCircleIcon, InfoIcon } from 'lucide-vue-next';          // ไอคอนสำหรับปุ่มต่างๆ
-import type { OrganizationalRisk } from '@/features/organizational_risk/organizational_risk';  // Type ของข้อมูลความเสี่ยงองค์กร
+import { SaveIcon, XIcon, FileIcon, Trash2Icon, UploadIcon, XCircleIcon, AlertCircleIcon, InfoIcon } from 'lucide-vue-next';  // ไอคอนสำหรับปุ่มต่างๆ
+import type { OrganizationalRisk, Attachment } from '@/types/types';  // Type ของข้อมูลความเสี่ยงองค์กร
 
 // เพิ่มการนำเข้า composable
 import { useOrganizationalRiskData } from '@/composables/useOrganizationalRiskData';
@@ -40,11 +40,19 @@ const { submitForm } = useOrganizationalRiskData(props.initialRisks || []);
 const isEditing = computed(() => !!props.risk?.id);  // ตรวจสอบว่าเป็นการแก้ไขหรือไม่ (มี id = แก้ไข, ไม่มี = เพิ่มใหม่)
 const modalTitle = computed(() => isEditing.value ? 'แก้ไขความเสี่ยงองค์กร' : 'เพิ่มความเสี่ยงองค์กร');  // ตั้งชื่อ Modal ตามโหมด
 
+// สร้างตัวแปรสำหรับเก็บข้อมูลเอกสารแนบที่มีอยู่
+const existingAttachments = ref<Attachment[]>([]);
+// สร้างตัวแปรสำหรับเก็บรายการไอดีของเอกสารแนบที่ต้องการลบ
+const attachmentsToDelete = ref<number[]>([]);
+// สร้างตัวแปรสำหรับเก็บชื่อเอกสารที่กำลังจะอัปโหลด
+const fileNames = ref<string[]>([]);
+
 // สร้าง form สำหรับจัดการข้อมูลและการส่งไปยัง backend
 const form = useForm({
   risk_name: props.risk?.risk_name ?? '',     // ชื่อความเสี่ยง (ใช้ค่าจาก props หรือค่าว่าง)
   description: props.risk?.description ?? '',  // รายละเอียดความเสี่ยง
-  year: props.risk?.year ?? new Date().getFullYear(),  // ปี (ใช้ค่าจาก props หรือปีปัจจุบัน)
+  attachments: [] as File[],                   // เอกสารแนบใหม่ที่จะอัปโหลด
+  attachments_to_delete: [] as number[],       // รายการไอดีของเอกสารแนบที่ต้องการลบ
 });
 
 // ใช้ watch เพื่อรีเซ็ตฟอร์มเมื่อ Modal เปิดขึ้น
@@ -54,17 +62,86 @@ watch(() => props.show, (newVal) => {
     // กรณี Modal เปิดและมีข้อมูลความเสี่ยงส่งมา (โหมดแก้ไข)
     form.risk_name = props.risk.risk_name;
     form.description = props.risk.description;
-    form.year = props.risk.year;
+    
+    // รีเซ็ตรายการเอกสารแนบที่ต้องการลบ
+    attachmentsToDelete.value = [];
+    form.attachments_to_delete = [];
+    
+    // ถ้ามีเอกสารแนบ ให้เพิ่มลงในตัวแปร existingAttachments
+    if (props.risk.attachments) {
+      existingAttachments.value = [...props.risk.attachments];
+    } else {
+      existingAttachments.value = [];
+    }
+    
+    // รีเซ็ตรายการไฟล์ที่จะอัปโหลด
+    form.attachments = [];
+    fileNames.value = [];
   } else if (newVal) {
     // กรณี Modal เปิดแต่ไม่มีข้อมูลความเสี่ยงส่งมา (โหมดเพิ่มใหม่)
     form.reset();  // รีเซ็ตฟอร์มเป็นค่าเริ่มต้น
-    form.year = new Date().getFullYear();  // กำหนดปีเป็นปีปัจจุบัน
+    
+    // รีเซ็ตข้อมูลเอกสารแนบทั้งหมด
+    existingAttachments.value = [];
+    attachmentsToDelete.value = [];
+    form.attachments = [];
+    form.attachments_to_delete = [];
+    fileNames.value = [];
   }
 });
 
 // ฟังก์ชันสำหรับปิด Modal
 const closeModal = () => {
   emit('update:show', false);  // ส่ง event เพื่อเปลี่ยนสถานะการแสดง Modal เป็น false
+};
+
+// ฟังก์ชันสำหรับจัดการการอัปโหลดเอกสารแนบ
+const handleFileUpload = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  if (input.files && input.files.length > 0) {
+    // เพิ่มไฟล์ใหม่เข้าไปในรายการที่จะอัปโหลด
+    for (let i = 0; i < input.files.length; i++) {
+      const file = input.files[i];
+      form.attachments.push(file);
+      fileNames.value.push(file.name);
+    }
+    
+    // รีเซ็ต input เพื่อให้สามารถเลือกไฟล์เดิมซ้ำได้
+    input.value = '';
+  }
+};
+
+// ฟังก์ชันสำหรับลบไฟล์ที่เพิ่งเลือกแต่ยังไม่ได้อัปโหลด
+const removeSelectedFile = (index: number) => {
+  // สร้างอาร์เรย์ใหม่โดยกรองไฟล์ที่ต้องการลบออก
+  const newAttachments: File[] = [];
+  const newFileNames: string[] = [];
+  
+  for (let i = 0; i < form.attachments.length; i++) {
+    if (i !== index) {
+      newAttachments.push(form.attachments[i]);
+      newFileNames.push(fileNames.value[i]);
+    }
+  }
+  
+  // อัปเดตข้อมูล
+  form.attachments = newAttachments;
+  fileNames.value = newFileNames;
+};
+
+// ฟังก์ชันสำหรับเพิ่มเอกสารแนบที่ต้องการลบลงในรายการ
+const markAttachmentForDeletion = (attachmentId: number) => {
+  // เพิ่มไอดีของเอกสารแนบลงในรายการที่ต้องการลบ
+  attachmentsToDelete.value.push(attachmentId);
+  form.attachments_to_delete = [...attachmentsToDelete.value];
+  
+  // อัปเดตรายการเอกสารแนบที่แสดงในหน้าจอโดยซ่อนรายการที่จะลบ
+  existingAttachments.value = existingAttachments.value.filter(
+    attachment => !attachmentsToDelete.value.includes(attachment.id)
+  );
+  
+  // แสดงข้อความแจ้งเตือน
+  toast.success('เอกสารถูกมาร์คให้ลบเมื่อบันทึกข้อมูล');
 };
 
 // ฟังก์ชันตรวจสอบข้อมูลก่อนส่ง
@@ -82,18 +159,29 @@ const validateForm = () => {
     isValid = false;
   }
 
-  if (!form.year || form.year < 2000 || form.year > 2100) {
-    errors.push('กรุณาระบุปีให้ถูกต้อง (2000-2100)');
-    isValid = false;
+  // ตรวจสอบนามสกุลของไฟล์ที่อัปโหลด (ยอมรับเฉพาะ PDF, Word, Excel, Image)
+  const allowedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'];
+  
+  for (const file of form.attachments) {
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!allowedFileTypes.includes(fileExtension)) {
+      errors.push(`ไฟล์ "${file.name}" มีนามสกุลไม่ถูกต้อง (รองรับ pdf, word, excel, รูปภาพ)`);
+      isValid = false;
+      break;
+    }
+    
+    // ตรวจสอบขนาดไฟล์ (ไม่เกิน 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      errors.push(`ไฟล์ "${file.name}" มีขนาดใหญ่เกินไป (ไม่เกิน 10MB)`);
+      isValid = false;
+      break;
+    }
   }
 
   if (!isValid) {
     toast.warning('กรุณากรอกข้อมูลให้ครบถ้วน', {
       icon: InfoIcon,
-      description: errors.join(', '),
-      duration: 4000,
-      position: 'top-center',
-      closeButton: true
+      description: errors.join(', ')
     });
   }
 
@@ -111,7 +199,8 @@ const handleSubmit = async () => {
       {
         risk_name: form.risk_name,
         description: form.description,
-        year: form.year
+        attachments: form.attachments,
+        attachments_to_delete: attachmentsToDelete.value
       },
       isEditing.value ? props.risk?.id : undefined,
       () => {
@@ -123,6 +212,27 @@ const handleSubmit = async () => {
   } catch (error) {
     console.error('เกิดข้อผิดพลาดระหว่างการบันทึกข้อมูล:', error);
   }
+};
+
+// คำนวณขนาดไฟล์ให้อยู่ในรูปแบบที่อ่านได้ง่าย (KB, MB)
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) {
+    return bytes + ' B';
+  } else if (bytes < 1024 * 1024) {
+    return (bytes / 1024).toFixed(1) + ' KB';
+  } else {
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+};
+
+// ฟังก์ชันสำหรับเปิดไฟล์เอกสารแนบ
+const openAttachment = (url: string) => {
+  window.open(url, '_blank');
+};
+
+// ฟังก์ชันเพื่อดึงไอคอนตามประเภทไฟล์
+const getFileIcon = (fileName: string) => {
+  return FileIcon; // ใช้ไอคอนเดียวกันสำหรับทุกประเภทไฟล์
 };
 </script>
 
@@ -164,17 +274,87 @@ const handleSubmit = async () => {
             <!-- แสดงข้อความแจ้งเตือนเมื่อเกิดข้อผิดพลาด -->
             <p v-if="form.errors.description" class="text-sm text-red-500">{{ form.errors.description }}</p>
           </div>
-          
-          <!-- ฟิลด์สำหรับปีของความเสี่ยง -->
+                    
+          <!-- ส่วนจัดการเอกสารแนบ -->
           <div class="grid gap-2">
-            <Label for="year">ปี</Label>
-            <Input 
-              id="year" 
-              v-model="form.year" 
-              type="number"
-            />
-            <!-- แสดงข้อความแจ้งเตือนเมื่อเกิดข้อผิดพลาด -->
-            <p v-if="form.errors.year" class="text-sm text-red-500">{{ form.errors.year }}</p>
+            <Label>เอกสารแนบ</Label>
+            
+            <!-- ส่วนแสดงเอกสารแนบที่มีอยู่แล้ว (กรณีแก้ไข) -->
+            <div v-if="existingAttachments.length > 0" class="mb-3">
+              <p class="text-sm font-medium text-gray-700 mb-2">เอกสารแนบปัจจุบัน:</p>
+              <ul class="space-y-2">
+                <li v-for="attachment in existingAttachments" :key="attachment.id" 
+                    class="flex items-center justify-between p-2 bg-gray-50 rounded-md text-sm">
+                  <div class="flex items-center gap-2 flex-1 overflow-hidden" 
+                       @click="openAttachment(attachment.url)" 
+                       style="cursor: pointer">
+                    <component :is="getFileIcon(attachment.file_name)" class="h-4 w-4 flex-shrink-0" />
+                    <span class="truncate">{{ attachment.file_name }}</span>
+                    <span class="text-xs text-gray-500 flex-shrink-0">{{ formatFileSize(attachment.file_size || 0) }}</span>
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    @click="markAttachmentForDeletion(attachment.id)"
+                    class="text-red-500 hover:text-red-700 hover:bg-red-50 ml-1 flex-shrink-0"
+                  >
+                    <Trash2Icon class="h-4 w-4" />
+                  </Button>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- ส่วนแสดงไฟล์ที่เลือกแล้วแต่ยังไม่ได้อัปโหลด -->
+            <div v-if="fileNames.length > 0" class="mb-3">
+              <p class="text-sm font-medium text-gray-700 mb-2">ไฟล์ที่เลือกเพื่ออัปโหลด:</p>
+              <ul class="space-y-2">
+                <li v-for="(fileName, index) in fileNames" :key="index" 
+                    class="flex items-center justify-between p-2 bg-gray-50 rounded-md text-sm">
+                  <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                    <component :is="getFileIcon(fileName)" class="h-4 w-4 flex-shrink-0" />
+                    <span class="truncate">{{ fileName }}</span>
+                    <span class="text-xs text-gray-500 flex-shrink-0">
+                      {{ formatFileSize(form.attachments[index].size) }}
+                    </span>
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    @click="removeSelectedFile(index)"
+                    class="text-red-500 hover:text-red-700 hover:bg-red-50 ml-1 flex-shrink-0"
+                  >
+                    <XCircleIcon class="h-4 w-4" />
+                  </Button>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- ส่วนอัปโหลดไฟล์ใหม่ -->
+            <div class="flex flex-col">
+              <div class="flex flex-wrap items-center gap-2">
+                <label 
+                  for="file-upload" 
+                  class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <UploadIcon class="h-4 w-4" />
+                  <span>เลือกไฟล์</span>
+                </label>
+                <input 
+                  id="file-upload" 
+                  type="file" 
+                  multiple 
+                  class="hidden" 
+                  @change="handleFileUpload"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                />
+                <p class="text-xs text-gray-500">
+                  รองรับไฟล์ PDF, Word, Excel, รูปภาพ (สูงสุด 10MB ต่อไฟล์)
+                </p>
+              </div>
+              <p v-if="form.errors.attachments" class="text-sm text-red-500 mt-1">{{ form.errors.attachments }}</p>
+            </div>
           </div>
         </div>
         
