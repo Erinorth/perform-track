@@ -11,6 +11,7 @@ namespace App\Http\Controllers;
 
 // นำเข้า Models และ Requests ที่เกี่ยวข้อง
 use App\Models\OrganizationalRisk;  // โมเดลสำหรับจัดการข้อมูลความเสี่ยงระดับองค์กร
+use App\Models\OrganizationalRiskAttachment;  // โมเดลสำหรับจัดการข้อมูลเอกสารแนบ
 use App\Http\Requests\StoreOrganizationalRiskRequest;  // Form Request สำหรับตรวจสอบข้อมูลการเพิ่ม
 use App\Http\Requests\UpdateOrganizationalRiskRequest;  // Form Request สำหรับตรวจสอบข้อมูลการแก้ไข
 use Illuminate\Http\Request;  // สำหรับจัดการคำขอจาก HTTP

@@ -11,6 +11,13 @@ import { toast } from 'vue-sonner';
 import { CheckCircle2Icon, FileIcon, FileTextIcon, ImageIcon, FileSpreadsheetIcon } from 'lucide-vue-next';
 import type { OrganizationalRisk, Attachment } from '@/types/types';
 
+// เพิ่มการนิยาม interface สำหรับข้อมูลฟอร์ม
+interface RiskFormData {
+    risk_name: string;
+    description: string;
+    attachments?: File[] | null;
+  }
+
 // ฟังก์ชัน composable สำหรับจัดการข้อมูลความเสี่ยงระดับองค์กร
 export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[], triggerProp?: any) {
     // สร้าง reactive references สำหรับเก็บข้อมูล
@@ -106,82 +113,78 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[], tr
     };
 
     // ฟังก์ชันเพื่อส่งข้อมูลแบบฟอร์มไปยัง backend
-    const submitForm = async (
-        formData: { risk_name: string; description: string; },
-        riskId?: number,
-        onSuccess?: () => void
-    ) => {
-        const form = createFormData(
-            formData,
-            selectedFiles.value,
-            attachmentsToDelete.value
-        );
-
-        console.log('📝 ข้อมูลที่กำลังส่ง:', {
-            mode: riskId ? 'แก้ไข' : 'เพิ่มใหม่',
-            riskId,
-            hasAttachments: selectedFiles.value.length > 0,
-            attachmentsToDelete: attachmentsToDelete.value.length
-        });
-
-        return new Promise((resolve, reject) => {
+    const submitForm = (
+        formData: RiskFormData, 
+        riskId?: number, 
+        onSuccess?: () => void  // เพิ่มพารามิเตอร์ callback onSuccess
+        ) => {
+            return new Promise((resolve, reject) => {
+            // สร้าง FormData object แบบชัดเจน
+            const form = new FormData();
+            
+            // เพิ่ม Method Spoofing สำหรับ PUT request
             if (riskId) {
-                // กรณีแก้ไข
-                router.put(route('organizational-risks.update', riskId), form, {
-                    forceFormData: true,
-                    preserveState: false,
-                    onSuccess: (page) => {
-                        // อัปเดตข้อมูลใน data array
-                        const index = data.value.findIndex(item => item.id === riskId);
-                        if (index !== -1) {
-                            data.value[index] = { 
-                                ...data.value[index], 
-                                risk_name: formData.risk_name,
-                                description: formData.description,
-                            };
-                            data.value = [...data.value];
-                        }
-                        
-                        toast.success('บันทึกข้อมูลความเสี่ยงสำเร็จ', {
-                            icon: CheckCircle2Icon,
-                            description: `ความเสี่ยง "${formData.risk_name}" ได้รับการแก้ไขเรียบร้อยแล้ว`
-                        });
-                        
-                        resetAttachmentState();
-                        if (onSuccess) onSuccess();
-                        resolve(page);
-                    },
-                    onError: (errors) => {
-                        console.error('❌ ไม่สามารถอัปเดตความเสี่ยงองค์กรได้:', errors);
-                        reject(errors);
-                    }
-                });
-            } else {
-                // กรณีเพิ่มใหม่
-                router.post('/organizational-risks', form, {
-                    forceFormData: true,
-                    onSuccess: (page) => {
-                        if (page.props.risk && typeof page.props.risk === 'object' && 'id' in page.props.risk) {
-                            const newRisk = page.props.risk as OrganizationalRisk;
-                            data.value.push(newRisk);
-                            data.value = [...data.value];
-                        }
-                        
-                        toast.success('เพิ่มความเสี่ยงสำเร็จ', {
-                            icon: CheckCircle2Icon,
-                            description: `ความเสี่ยง "${formData.risk_name}" ถูกเพิ่มเรียบร้อยแล้ว`
-                        });
-                        
-                        resetAttachmentState();
-                        if (onSuccess) onSuccess();
-                        resolve(page);
-                    },
-                    onError: (errors) => {
-                        console.error('❌ ไม่สามารถเพิ่มความเสี่ยงองค์กรได้:', errors);
-                        reject(errors);
-                    }
+                form.append('_method', 'put');
+            }
+            
+            // เพิ่มข้อมูลหลัก - สำคัญมาก!
+            form.append('risk_name', formData.risk_name);
+            form.append('description', formData.description);
+            
+            // เพิ่มไฟล์แนบ
+            if (selectedFiles.value.length > 0) {
+                selectedFiles.value.forEach(file => {
+                    form.append('attachments[]', file);
                 });
             }
+            
+            // เพิ่มรายการไฟล์ที่ต้องการลบ
+            if (attachmentsToDelete.value.length > 0) {
+                attachmentsToDelete.value.forEach(id => {
+                    form.append('attachments_to_delete[]', id.toString());
+                });
+            }
+            
+            console.log('📝 ข้อมูลที่กำลังส่ง:', {
+                mode: riskId ? 'แก้ไข' : 'เพิ่มใหม่',
+                riskId,
+                risk_name: formData.risk_name,
+                description: formData.description,
+                hasAttachments: selectedFiles.value.length > 0,
+                attachmentsToDelete: attachmentsToDelete.value.length
+            });
+    
+            // ส่งข้อมูลด้วย POST (แม้ว่าจะเป็นการ update ก็ตาม)
+            // ส่งข้อมูลด้วย POST (แม้ว่าจะเป็นการ update ก็ตาม)
+            router.post(route('organizational-risks.update', riskId || ''), form, {
+                forceFormData: true,
+                preserveState: false,
+                onSuccess: (page) => {
+                    // อัปเดตข้อมูลใน data array
+                    const index = data.value.findIndex(item => item.id === riskId);
+                    if (index !== -1) {
+                        data.value[index] = { 
+                            ...data.value[index], 
+                            risk_name: formData.risk_name,
+                            description: formData.description,
+                        };
+                        data.value = [...data.value];
+                    }
+                    
+                    toast.success('บันทึกข้อมูลความเสี่ยงสำเร็จ', {
+                        icon: CheckCircle2Icon,
+                        description: `ความเสี่ยง "${formData.risk_name}" ได้รับการแก้ไขเรียบร้อยแล้ว`
+                    });
+                    
+                    resetAttachmentState();
+                    if (onSuccess) onSuccess(); // ตรวจสอบก่อนเรียกใช้
+                    resolve(page);
+                },
+                onError: (errors) => {
+                    console.error('❌ ไม่สามารถอัปเดตความเสี่ยงองค์กรได้:', errors);
+                    reject(errors);
+                }
+            });
         });
     };
 
