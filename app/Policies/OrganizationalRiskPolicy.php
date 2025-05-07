@@ -121,4 +121,26 @@ class OrganizationalRiskPolicy
         // อนุญาตเฉพาะผู้ดูแลระบบหรือผู้จัดการความเสี่ยง
         return $user->hasRole(['admin', 'risk_manager']);
     }
+
+    /**
+     * กำหนดว่าผู้ใช้สามารถดูเอกสารแนบของความเสี่ยงระดับองค์กรได้หรือไม่
+     * 
+     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
+     * @param OrganizationalRisk $organizationalRisk ความเสี่ยงที่ต้องการดูเอกสารแนบ
+     * @return bool อนุญาตหรือไม่อนุญาต
+     */
+    public function viewAttachment(User $user, OrganizationalRisk $organizationalRisk): bool
+    {
+        // บันทึกล็อกการตรวจสอบสิทธิ์การดูเอกสารแนบ
+        \Illuminate\Support\Facades\Log::info('ตรวจสอบสิทธิ์การดูเอกสารแนบ', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'risk_id' => $organizationalRisk->id,
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+        
+        // กำหนดว่าผู้ใช้ทั้งหมดที่มีสิทธิ์ดูความเสี่ยงสามารถดูเอกสารแนบได้
+        // หากต้องการจำกัดสิทธิ์เพิ่มเติม สามารถปรับเงื่อนไขได้ตามความเหมาะสม
+        return $this->view($user, $organizationalRisk);
+    }
 }

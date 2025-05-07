@@ -27,7 +27,7 @@ import { toast } from 'vue-sonner';
 import { 
   ClipboardList, AlertTriangle, Network, 
   CalendarDays, Users, Paperclip, Download, 
-  FileText, FileImage, FileSpreadsheet
+  FileText, FileImage, FileSpreadsheet, Eye
 } from 'lucide-vue-next';
 
 // ==================== กำหนด Props ====================
@@ -117,7 +117,7 @@ const formatFileSize = (sizeInBytes: number): string => {
 
 // ฟังก์ชันดาวน์โหลดเอกสารแนบ
 const downloadAttachment = (attachment: Attachment) => {
-  // แก้ไข file_name เป็น filename ตาม interface ที่ปรับปรุงแล้ว
+  // แสดง toast แจ้งเตือนผู้ใช้
   toast.info('กำลังดาวน์โหลดเอกสาร', {
     description: `ไฟล์ ${attachment.file_name} กำลังถูกดาวน์โหลด`,
     duration: 3000
@@ -126,8 +126,8 @@ const downloadAttachment = (attachment: Attachment) => {
   // เพิ่ม log เพื่อการตรวจสอบ
   console.log('ดาวน์โหลดเอกสารแนบ:', attachment);
   
-  // เรียกใช้ API สำหรับดาวน์โหลดไฟล์
-  window.open(`/attachments/download/${attachment.id}`, '_blank');
+  // เรียกใช้ API สำหรับดาวน์โหลดไฟล์ด้วย route ใหม่
+  window.open(`/organizational-risks/${props.rowData.id}/attachments/${attachment.id}/download`, '_blank');
 };
 
 // เมธอดสำหรับแสดงรายละเอียดความเสี่ยงระดับสายงานแบบ popup
@@ -140,6 +140,21 @@ const viewDepartmentRiskDetails = (risk: DepartmentRisk) => {
   
   // เพิ่ม log เพื่อการตรวจสอบตามที่กำหนดในคำแนะนำโปรเจค
   console.log('ดูรายละเอียดความเสี่ยงระดับสายงาน:', risk);
+};
+
+// ฟังก์ชันเปิดหน้าแสดงไฟล์แนบแบบเต็มจอ
+const viewAttachmentFullScreen = (attachment: Attachment) => {
+  // เปิดหน้าแสดงไฟล์แนบในแท็บใหม่โดยใช้ route ใหม่
+  window.open(`/organizational-risks/${props.rowData.id}/attachments/${attachment.id}/view`, '_blank');
+  
+  // เพิ่ม log เพื่อการตรวจสอบ
+  console.log('เปิดหน้าดูไฟล์แนบแบบเต็มจอ:', attachment);
+  
+  // แสดง toast แจ้งผู้ใช้
+  toast.info('กำลังเปิดไฟล์แนบ', {
+    description: `กำลังเปิดไฟล์ ${attachment.file_name}`,
+    duration: 3000
+  });
 };
 
 // ==================== Lifecycle Hooks ====================
@@ -228,14 +243,26 @@ onMounted(() => {
                       </div>
                     </div>
                     
-                    <!-- ปุ่มดาวน์โหลดเอกสาร -->
-                    <button 
-                      @click="downloadAttachment(attachment)"
-                      class="text-xs text-primary hover:text-primary/80 transition-colors flex-shrink-0 flex items-center"
-                    >
-                      <Download class="h-3 w-3 mr-1" />
-                      ดาวน์โหลด
-                    </button>
+                    <!-- ปุ่มดูเต็มจอและดาวน์โหลดเอกสาร -->
+                    <div class="flex items-center space-x-2 flex-shrink-0">
+                      <!-- ปุ่มดูไฟล์แบบเต็มจอ (เพิ่มใหม่) -->
+                      <button 
+                        @click="viewAttachmentFullScreen(attachment)"
+                        class="text-xs text-primary hover:text-primary/80 transition-colors flex items-center"
+                      >
+                        <Eye class="h-3 w-3 mr-1" />
+                        <span class="hidden sm:inline">ดูเต็มจอ</span>
+                      </button>
+                      
+                      <!-- ปุ่มดาวน์โหลดเอกสาร (ที่มีอยู่แล้ว) -->
+                      <button 
+                        @click="downloadAttachment(attachment)"
+                        class="text-xs text-primary hover:text-primary/80 transition-colors flex items-center"
+                      >
+                        <Download class="h-3 w-3 mr-1" />
+                        <span class="hidden sm:inline">ดาวน์โหลด</span>
+                      </button>
+                    </div>
                   </div>
                 </li>
               </ul>

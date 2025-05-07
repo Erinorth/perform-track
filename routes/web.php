@@ -88,6 +88,14 @@ Route::middleware('auth')->group(function () {
         // ลบเอกสารแนบของความเสี่ยงระดับองค์กร
         Route::delete('/{organizationalRisk}/attachments/{attachmentId}', [OrganizationalRiskController::class, 'destroyAttachment'])
             ->name('organizational-risks.attachments.destroy');
+
+        // ดาวน์โหลดเอกสารแนบของความเสี่ยงระดับองค์กร
+        Route::get('/{organizationalRisk}/attachments/{attachmentId}/download', [OrganizationalRiskController::class, 'downloadAttachment'])
+            ->name('organizational-risks.attachments.download');
+
+        // แสดงเอกสารแนบของความเสี่ยงระดับองค์กรในเบราว์เซอร์
+        Route::get('/{organizationalRisk}/attachments/{attachmentId}/view', [OrganizationalRiskController::class, 'viewAttachment'])
+            ->name('organizational-risks.attachments.view');
     });
 
     /**

@@ -457,4 +457,107 @@ class OrganizationalRiskController extends Controller
             }
         }
     }
+
+    /**
+     * ดาวน์โหลดเอกสารแนบของความเสี่ยงองค์กร
+     * 
+     * @param OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการดาวน์โหลดเอกสารแนบ
+     * @param int $attachmentId ID ของเอกสารแนบที่ต้องการดาวน์โหลด
+     * @return \Illuminate\Http\Response ไฟล์ดาวน์โหลด
+     */
+    public function downloadAttachment(OrganizationalRisk $organizationalRisk, $attachmentId)
+    {
+        try {
+            // ค้นหาเอกสารแนบตาม ID ที่เชื่อมโยงกับความเสี่ยงนี้
+            $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
+            
+            // ตรวจสอบว่าไฟล์มีอยู่จริงในระบบ
+            if (!Storage::disk('public')->exists($attachment->file_path)) {
+                Log::error('ไม่พบไฟล์เอกสารแนบในระบบ', [
+                    'risk_id' => $organizationalRisk->id,
+                    'attachment_id' => $attachmentId,
+                    'file_path' => $attachment->file_path,
+                    'user' => Auth::check() ? Auth::user()->name : null
+                ]);
+                
+                return response()->json([
+                    'error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'
+                ], 404);
+            }
+            
+            // บันทึกล็อกการดาวน์โหลด
+            Log::info('ดาวน์โหลดเอกสารแนบ', [
+                'risk_id' => $organizationalRisk->id,
+                'attachment_id' => $attachmentId,
+                'file_name' => $attachment->file_name,
+                'user' => Auth::check() ? Auth::user()->name : null,
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
+            
+            // ส่งไฟล์กลับไปยังผู้ใช้เพื่อดาวน์โหลด
+            return Storage::disk('public')->download(
+                $attachment->file_path, 
+                $attachment->file_name
+            );
+        } catch (\Exception $e) {
+            // บันทึกล็อกกรณีเกิดข้อผิดพลาด
+            Log::error('เกิดข้อผิดพลาดในการดาวน์โหลดเอกสารแนบ', [
+                'risk_id' => $organizationalRisk->id,
+                'attachment_id' => $attachmentId,
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : null
+            ]);
+            
+            return response()->json([
+                'error' => 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสารแนบ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    /**
+     * แสดงเอกสารแนบของความเสี่ยงองค์กรในเบราว์เซอร์
+     * 
+     * @param OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการแสดงเอกสารแนบ
+     * @param int $attachmentId ID ของเอกสารแนบที่ต้องการแสดง
+     * @return \Illuminate\Http\Response ไฟล์สำหรับแสดงในเบราว์เซอร์
+     */
+    public function viewAttachment(OrganizationalRisk $organizationalRisk, $attachmentId)
+    {
+        try {
+            // ค้นหาเอกสารแนบตาม ID
+            $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
+            
+            // ตรวจสอบรูปแบบเส้นทางไฟล์ว่าถูกต้อง
+            $filePath = $attachment->file_path;
+            
+            // บันทึก log เพื่อการตรวจสอบ
+            Log::info('พยายามเข้าถึงไฟล์', [
+                'risk_id' => $organizationalRisk->id,
+                'attachment_id' => $attachmentId,
+                'file_path' => $filePath,
+                'exists_check' => Storage::disk('public')->exists($filePath),
+                'storage_path' => Storage::disk('public')->path($filePath)
+            ]);
+            
+            // ลองตรวจสอบรูปแบบเส้นทางแบบต่างๆ
+            if (Storage::disk('public')->exists($filePath)) {
+                return response()->file(Storage::disk('public')->path($filePath));
+            }
+            
+            // ถ้าไม่พบ อาจใช้รูปแบบเส้นทางอื่น
+            $altPath = str_replace('risk_attachments/', '', $filePath); // ลองแบบอื่น
+            if (Storage::disk('public')->exists($altPath)) {
+                return response()->file(Storage::disk('public')->path($altPath));
+            }
+            
+            // หากยังไม่พบ แสดงข้อความผิดพลาด
+            return response()->json(['error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'], 404);
+        } catch (\Exception $e) {
+            Log::error('เกิดข้อผิดพลาดในการแสดงเอกสารแนบ', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTrace()
+            ]);
+            
+            return response()->json(['error' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()], 500);
+        }
+    }
 }
