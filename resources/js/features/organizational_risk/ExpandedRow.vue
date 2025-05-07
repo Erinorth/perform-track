@@ -13,10 +13,10 @@
 <script setup lang="ts">
 // ==================== นำเข้า Types และ Interfaces ====================
 // นำเข้า types สำหรับโมเดลข้อมูลความเสี่ยง
-import type { OrganizationalRisk, DepartmentRisk } from '@/types/types';
+import type { OrganizationalRisk, DepartmentRisk, Attachment } from '@/types/types';
 
 // ==================== นำเข้า Vue Composition API ====================
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, h } from 'vue';
 
 // ==================== นำเข้า Utilities ====================
 // นำเข้า toast notifications
@@ -25,12 +25,9 @@ import { toast } from 'vue-sonner';
 // ==================== นำเข้า Icons ====================
 // นำเข้า icons จาก Lucide ตามที่กำหนดในคำแนะนำโปรเจค
 import { 
-  Calendar,        // สำหรับแสดงปีงบประมาณ
-  ClipboardList,   // สำหรับแสดงรายละเอียดความเสี่ยง
-  AlertTriangle,   // สำหรับแสดงกรณีไม่มีข้อมูล
-  Network,         // สำหรับแสดงความเชื่อมโยงกับความเสี่ยงระดับสายงาน
-  CalendarDays,    // สำหรับแสดงข้อมูลวันที่
-  Users            // สำหรับแสดงข้อมูลสายงาน
+  ClipboardList, AlertTriangle, Network, 
+  CalendarDays, Users, Paperclip, Download, 
+  FileText, FileImage, FileSpreadsheet
 } from 'lucide-vue-next';
 
 // ==================== กำหนด Props ====================
@@ -48,6 +45,16 @@ const hasDepartmentRisks = computed(() => {
 // คำนวณจำนวนความเสี่ยงระดับสายงานที่เกี่ยวข้อง
 const departmentRisksCount = computed(() => {
   return hasDepartmentRisks.value ? props.rowData.department_risks?.length : 0;
+});
+
+// ตรวจสอบว่ามีเอกสารแนบหรือไม่
+const hasAttachments = computed(() => {
+  return props.rowData.attachments && props.rowData.attachments.length > 0;
+});
+
+// คำนวณจำนวนเอกสารแนบ
+const attachmentsCount = computed(() => {
+  return hasAttachments.value ? props.rowData.attachments?.length : 0;
 });
 
 // จัดรูปแบบวันที่สร้างและแก้ไขล่าสุดเป็นรูปแบบวันที่ไทย
@@ -82,6 +89,47 @@ const formattedDates = computed(() => {
 const isLoading = ref(false);
 
 // ==================== Methods ====================
+// ฟังก์ชันเลือกไอคอนตามประเภทไฟล์
+const getFileIcon = (fileType: string) => {
+  const type = fileType.toLowerCase();
+  
+  if (type.includes('pdf')) {
+    return FileText;
+  } else if (type.includes('xls') || type.includes('csv') || type.includes('sheet')) {
+    return FileSpreadsheet;
+  } else if (type.includes('image') || type.includes('jpg') || type.includes('png')) {
+    return FileImage;
+  } else {
+    return FileText; // ไอคอนเริ่มต้น
+  }
+};
+
+// ฟังก์ชันจัดรูปแบบขนาดไฟล์
+const formatFileSize = (sizeInBytes: number): string => {
+  if (sizeInBytes < 1024) {
+    return `${sizeInBytes} B`;
+  } else if (sizeInBytes < 1024 * 1024) {
+    return `${(sizeInBytes / 1024).toFixed(2)} KB`;
+  } else {
+    return `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+};
+
+// ฟังก์ชันดาวน์โหลดเอกสารแนบ
+const downloadAttachment = (attachment: Attachment) => {
+  // แก้ไข file_name เป็น filename ตาม interface ที่ปรับปรุงแล้ว
+  toast.info('กำลังดาวน์โหลดเอกสาร', {
+    description: `ไฟล์ ${attachment.file_name} กำลังถูกดาวน์โหลด`,
+    duration: 3000
+  });
+  
+  // เพิ่ม log เพื่อการตรวจสอบ
+  console.log('ดาวน์โหลดเอกสารแนบ:', attachment);
+  
+  // เรียกใช้ API สำหรับดาวน์โหลดไฟล์
+  window.open(`/attachments/download/${attachment.id}`, '_blank');
+};
+
 // เมธอดสำหรับแสดงรายละเอียดความเสี่ยงระดับสายงานแบบ popup
 const viewDepartmentRiskDetails = (risk: DepartmentRisk) => {
   // แสดง toast เมื่อคลิกดูรายละเอียด
@@ -112,37 +160,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- คอนเทนเนอร์หลักของข้อมูลที่แสดงเมื่อขยายแถว -->
   <div class="p-4 bg-muted/30 rounded-md overflow-hidden transition-all duration-300 max-w-full">
-    <!-- แสดงสถานะ loading ระหว่างรอข้อมูล -->
+    <!-- แสดงสถานะ loading -->
     <div v-if="isLoading" class="flex justify-center items-center py-4">
       <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
       <span class="ml-2 text-sm">กำลังโหลดข้อมูล...</span>
     </div>
     
-    <!-- แสดงข้อมูลหลังโหลดเสร็จ ใช้ grid สำหรับการแสดงผลแบบ Responsive -->
+    <!-- แสดงข้อมูลหลังโหลดเสร็จ -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- คอลัมน์ซ้าย: แสดงรายละเอียดความเสี่ยง -->
+      <!-- คอลัมน์ซ้าย: รายละเอียดความเสี่ยง -->
       <div class="space-y-3 overflow-hidden">
-        <!-- ส่วนแสดงรายละเอียดคำอธิบายความเสี่ยง -->
+        <!-- รายละเอียดความเสี่ยง -->
         <div class="flex items-start space-x-2">
           <ClipboardList class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
           <div class="min-w-0 w-full overflow-hidden">
             <h3 class="text-sm font-medium">รายละเอียดความเสี่ยง</h3>
             <p class="mt-1 text-sm whitespace-pre-wrap break-words">{{ rowData.description || 'ไม่มีรายละเอียดเพิ่มเติม' }}</p>
           </div>
-        </div>
-        
-        <!-- ส่วนแสดงปีงบประมาณ -->
-        <div class="flex items-start space-x-2">
-          <Calendar class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-          <div>
-            <h3 class="text-sm font-medium">ปีงบประมาณ</h3>
-            <p class="mt-1 text-sm">{{ rowData.year }}</p>
-          </div>
-        </div>
-        
-        <!-- ส่วนแสดงข้อมูลวันที่สร้างและแก้ไขล่าสุด -->
+        </div>   
+      
+        <!-- ข้อมูลวันที่ -->
         <div class="flex items-start space-x-2">
           <CalendarDays class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
           <div>
@@ -153,9 +191,66 @@ onMounted(() => {
             </div>
           </div>
         </div>
+        
+        <!-- ส่วนเอกสารแนบ (เพิ่มใหม่) -->
+        <div class="flex items-start space-x-2">
+          <Paperclip class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+          <div class="min-w-0 w-full overflow-hidden">
+            <!-- หัวข้อพร้อมตัวนับจำนวนรายการ -->
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-medium">เอกสารแนบ</h3>
+              <span v-if="hasAttachments" class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full flex-shrink-0">
+                {{ attachmentsCount }} ไฟล์
+              </span>
+            </div>
+            
+            <!-- กรณีมีเอกสารแนบ แสดงรายการทั้งหมด -->
+            <div v-if="hasAttachments" class="mt-2">
+              <ul class="space-y-2">
+                <li 
+                  v-for="attachment in (rowData.attachments as Attachment[])" 
+                  :key="attachment.id" 
+                  class="text-sm bg-background rounded-md p-2 border border-border overflow-hidden"
+                >
+                  <!-- แสดงชื่อและรายละเอียดของเอกสารแนบ -->
+                  <div class="flex flex-col sm:flex-row items-start sm:justify-between gap-2">
+                    <div class="flex items-start space-x-2 min-w-0 overflow-hidden">
+                      <component 
+                        :is="getFileIcon(attachment.file_type)" 
+                        class="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" 
+                      />
+                      <div class="min-w-0 overflow-hidden">
+                        <p class="font-medium truncate">{{ attachment.file_name }}</p>
+                        <p class="text-xs text-muted-foreground mt-1">
+                          {{ formatFileSize(attachment.file_size) }} • 
+                          อัปโหลดเมื่อ {{ new Date(attachment.created_at).toLocaleDateString('th-TH') }}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <!-- ปุ่มดาวน์โหลดเอกสาร -->
+                    <button 
+                      @click="downloadAttachment(attachment)"
+                      class="text-xs text-primary hover:text-primary/80 transition-colors flex-shrink-0 flex items-center"
+                    >
+                      <Download class="h-3 w-3 mr-1" />
+                      ดาวน์โหลด
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- กรณีไม่มีเอกสารแนบ -->
+            <div v-else class="mt-2 flex items-center space-x-2 text-sm text-muted-foreground">
+              <AlertTriangle class="h-4 w-4" />
+              <p>ไม่มีเอกสารแนบ</p>
+            </div>
+          </div>
+        </div>
       </div>
       
-      <!-- คอลัมน์ขวา: แสดงความเสี่ยงระดับสายงานที่เกี่ยวข้อง -->
+      <!-- คอลัมน์ขวา: ความเสี่ยงระดับสายงานที่เกี่ยวข้อง -->
       <div class="overflow-hidden">
         <div class="flex items-start space-x-2">
           <Network class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
@@ -168,7 +263,7 @@ onMounted(() => {
               </span>
             </div>
             
-            <!-- กรณีมีความเสี่ยงระดับสายงาน แสดงรายการทั้งหมด -->
+            <!-- แสดงรายการความเสี่ยงระดับสายงาน -->
             <div v-if="hasDepartmentRisks" class="mt-2">
               <ul class="space-y-2">
                 <li 
@@ -176,7 +271,7 @@ onMounted(() => {
                   :key="dept.id" 
                   class="text-sm bg-background rounded-md p-2 border border-border overflow-hidden"
                 >
-                  <!-- แสดงชื่อและรายละเอียดย่อของความเสี่ยงระดับสายงาน -->
+                  <!-- รายละเอียดความเสี่ยงระดับสายงาน -->
                   <div class="flex flex-col sm:flex-row items-start sm:justify-between gap-2">
                     <div class="flex items-start space-x-2 min-w-0 overflow-hidden">
                       <Users class="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -188,7 +283,7 @@ onMounted(() => {
                       </div>
                     </div>
                     
-                    <!-- ปุ่มดูรายละเอียดเพิ่มเติม -->
+                    <!-- ปุ่มดูรายละเอียด -->
                     <button 
                       @click="viewDepartmentRiskDetails(dept)"
                       class="text-xs text-primary hover:text-primary/80 transition-colors flex-shrink-0"
