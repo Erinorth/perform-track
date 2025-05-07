@@ -1,12 +1,33 @@
 <?php
+/**
+ * ไฟล์: routes/web.php
+ * คำอธิบาย: ไฟล์กำหนดเส้นทาง (routes) สำหรับการเข้าถึงหน้าต่างๆ ในระบบประเมินความเสี่ยง
+ * เทคโนโลยี: Laravel 12 + Inertia.js + Vue 3
+ * 
+ * ไฟล์นี้กำหนดเส้นทางทั้งหมดในระบบ แบ่งเป็นหมวดหมู่ดังนี้:
+ * - เส้นทางหลัก (หน้าแรกและแดชบอร์ด)
+ * - เส้นทางสำหรับจัดการความเสี่ยงระดับองค์กร
+ * - เส้นทางสำหรับจัดการความเสี่ยงระดับสายงาน
+ * - เส้นทางสำหรับการประเมินความเสี่ยง
+ * - เส้นทางสำหรับรายงาน
+ */
 
+// นำเข้า Controllers ที่เกี่ยวข้องและคลาสพื้นฐานที่จำเป็น
 use App\Http\Controllers\DepartmentRiskController;
 use App\Http\Controllers\OrganizationalRiskController;
 use App\Http\Controllers\RiskAssessmentController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+/**
+ * เส้นทางหลักของระบบ (หน้าแรก)
+ * 
+ * ถ้าผู้ใช้เข้าสู่ระบบแล้ว จะนำไปยังหน้าแดชบอร์ด
+ * ถ้ายังไม่ได้เข้าสู่ระบบ จะนำไปยังหน้าล็อกอิน EGAT
+ * เป็นจุดเริ่มต้นของการเข้าถึงระบบทั้งหมด
+ */
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
@@ -14,61 +35,166 @@ Route::get('/', function () {
     return redirect()->route('loginEGAT');
 })->name('home');
 
+/**
+ * เส้นทางแดชบอร์ด
+ * 
+ * แสดงหน้าแดชบอร์ดที่รวมข้อมูลและกราฟสรุปภาพรวมความเสี่ยงทั้งหมด
+ * ต้องผ่านการตรวจสอบการเข้าสู่ระบบและการยืนยันบัญชีแล้ว
+ */
 Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+/**
+ * กลุ่มเส้นทางที่ต้องผ่านการรับรองตัวตน
+ * 
+ * ทุกเส้นทางภายในกลุ่มนี้จะถูกป้องกันด้วย middleware 'auth'
+ * ซึ่งตรวจสอบว่าผู้ใช้ได้เข้าสู่ระบบแล้ว ถ้ายังไม่ได้เข้าสู่ระบบ
+ * จะถูกเปลี่ยนเส้นทางไปยังหน้าล็อกอิน
+ */
 Route::middleware('auth')->group(function () {
 
-    // Organizational Risk Routes
+    /**
+     * กลุ่มเส้นทางสำหรับจัดการความเสี่ยงระดับองค์กร
+     * 
+     * ประกอบด้วยเส้นทางสำหรับการดำเนินการ CRUD (Create, Read, Update, Delete)
+     * และการจัดการเอกสารแนบที่เกี่ยวข้องกับความเสี่ยงระดับองค์กร
+     */
     Route::prefix('organizational-risks')->group(function () {
-        Route::get('/', [OrganizationalRiskController::class, 'index'])->name('organizational-risks.index');
-        Route::post('/', [OrganizationalRiskController::class, 'store'])->name('organizational-risks.store');
-        Route::put('/{organizationalRisk}', [OrganizationalRiskController::class, 'update'])->name('organizational-risks.update');
-        Route::delete('/bulk-destroy', [OrganizationalRiskController::class, 'bulkDestroy'])->name('organizational-risks.bulk-destroy');
-        Route::delete('/{organizationalRisk}', [OrganizationalRiskController::class, 'destroy'])->name('organizational-risks.destroy');
+        // แสดงรายการความเสี่ยงระดับองค์กรทั้งหมด
+        Route::get('/', [OrganizationalRiskController::class, 'index'])
+            ->name('organizational-risks.index');
+        
+        // เพิ่มความเสี่ยงระดับองค์กรใหม่
+        Route::post('/', [OrganizationalRiskController::class, 'store'])
+            ->name('organizational-risks.store');
+        
+        // อัปเดตข้อมูลความเสี่ยงระดับองค์กร
+        Route::put('/{organizationalRisk}', [OrganizationalRiskController::class, 'update'])
+            ->name('organizational-risks.update');
+        
+        // ลบความเสี่ยงระดับองค์กรหลายรายการพร้อมกัน
+        Route::delete('/bulk-destroy', [OrganizationalRiskController::class, 'bulkDestroy'])
+            ->name('organizational-risks.bulk-destroy');
+        
+        // ลบความเสี่ยงระดับองค์กรรายการเดียว
+        Route::delete('/{organizationalRisk}', [OrganizationalRiskController::class, 'destroy'])
+            ->name('organizational-risks.destroy');
 
-        // เพิ่ม route สำหรับจัดการเอกสารแนบ
+        // เพิ่มเอกสารแนบสำหรับความเสี่ยงระดับองค์กร
         Route::post('/{organizationalRisk}/attachments', [OrganizationalRiskController::class, 'storeAttachment'])
-        ->name('organizational-risks.attachments.store');
+            ->name('organizational-risks.attachments.store');
+        
+        // ลบเอกสารแนบของความเสี่ยงระดับองค์กร
         Route::delete('/{organizationalRisk}/attachments/{attachmentId}', [OrganizationalRiskController::class, 'destroyAttachment'])
-        ->name('organizational-risks.attachments.destroy');
+            ->name('organizational-risks.attachments.destroy');
     });
 
-    // Department Risk Routes
+    /**
+     * กลุ่มเส้นทางสำหรับจัดการความเสี่ยงระดับสายงาน
+     * 
+     * ประกอบด้วยเส้นทางสำหรับการดำเนินการ CRUD และการจัดการเกณฑ์การประเมิน
+     * ความเสี่ยงทั้งด้านโอกาสเกิดและผลกระทบสำหรับแต่ละความเสี่ยงระดับสายงาน
+     */
     Route::prefix('department-risks')->group(function () {
-        Route::get('/', [DepartmentRiskController::class, 'index'])->name('department-risks.index');
-        Route::get('/create', [DepartmentRiskController::class, 'create'])->name('department-risks.create');
-        Route::post('/', [DepartmentRiskController::class, 'store'])->name('department-risks.store');
-        Route::get('/{departmentRisk}/edit', [DepartmentRiskController::class, 'edit'])->name('department-risks.edit');
-        Route::put('/{departmentRisk}', [DepartmentRiskController::class, 'update'])->name('department-risks.update');
-        Route::delete('/{departmentRisk}', [DepartmentRiskController::class, 'destroy'])->name('department-risks.destroy');
+        // แสดงรายการความเสี่ยงระดับสายงานทั้งหมด
+        Route::get('/', [DepartmentRiskController::class, 'index'])
+            ->name('department-risks.index');
         
-        // Criteria Management
-        Route::get('/{departmentRisk}/criteria', [DepartmentRiskController::class, 'manageCriteria'])->name('department-risks.criteria');
+        // แสดงหน้าสร้างความเสี่ยงระดับสายงานใหม่
+        Route::get('/create', [DepartmentRiskController::class, 'create'])
+            ->name('department-risks.create');
+        
+        // บันทึกความเสี่ยงระดับสายงานใหม่
+        Route::post('/', [DepartmentRiskController::class, 'store'])
+            ->name('department-risks.store');
+        
+        // แสดงหน้าแก้ไขความเสี่ยงระดับสายงาน
+        Route::get('/{departmentRisk}/edit', [DepartmentRiskController::class, 'edit'])
+            ->name('department-risks.edit');
+        
+        // อัปเดตข้อมูลความเสี่ยงระดับสายงาน
+        Route::put('/{departmentRisk}', [DepartmentRiskController::class, 'update'])
+            ->name('department-risks.update');
+        
+        // ลบความเสี่ยงระดับสายงาน
+        Route::delete('/{departmentRisk}', [DepartmentRiskController::class, 'destroy'])
+            ->name('department-risks.destroy');
+        
+        // แสดงหน้าจัดการเกณฑ์การประเมินความเสี่ยง
+        Route::get('/{departmentRisk}/criteria', [DepartmentRiskController::class, 'manageCriteria'])
+            ->name('department-risks.criteria');
+        
+        // บันทึกเกณฑ์โอกาสเกิดความเสี่ยง
         Route::post('/{departmentRisk}/likelihood-criteria', [DepartmentRiskController::class, 'storeLikelihoodCriteria']);
+        
+        // บันทึกเกณฑ์ผลกระทบของความเสี่ยง
         Route::post('/{departmentRisk}/impact-criteria', [DepartmentRiskController::class, 'storeImpactCriteria']);
     });
 
-    // Risk Assessment Routes
+    /**
+     * กลุ่มเส้นทางสำหรับการประเมินความเสี่ยง
+     * 
+     * ประกอบด้วยเส้นทางสำหรับการบันทึกและจัดการการประเมินความเสี่ยง
+     * รวมถึงการสร้าง แก้ไข ดู และลบการประเมินความเสี่ยง
+     */
     Route::prefix('risk-assessments')->group(function () {
-        Route::get('/', [RiskAssessmentController::class, 'index'])->name('risk-assessments.index');
-        Route::get('/create', [RiskAssessmentController::class, 'create'])->name('risk-assessments.create');
-        Route::post('/', [RiskAssessmentController::class, 'store'])->name('risk-assessments.store');
-        Route::get('/{riskAssessment}/edit', [RiskAssessmentController::class, 'edit'])->name('risk-assessments.edit');
-        Route::put('/{riskAssessment}', [RiskAssessmentController::class, 'update'])->name('risk-assessments.update');
-        Route::delete('/{riskAssessment}', [RiskAssessmentController::class, 'destroy'])->name('risk-assessments.destroy');
+        // แสดงรายการการประเมินความเสี่ยงทั้งหมด
+        Route::get('/', [RiskAssessmentController::class, 'index'])
+            ->name('risk-assessments.index');
+        
+        // แสดงหน้าสร้างการประเมินความเสี่ยงใหม่
+        Route::get('/create', [RiskAssessmentController::class, 'create'])
+            ->name('risk-assessments.create');
+        
+        // บันทึกการประเมินความเสี่ยงใหม่
+        Route::post('/', [RiskAssessmentController::class, 'store'])
+            ->name('risk-assessments.store');
+        
+        // แสดงหน้าแก้ไขการประเมินความเสี่ยง
+        Route::get('/{riskAssessment}/edit', [RiskAssessmentController::class, 'edit'])
+            ->name('risk-assessments.edit');
+        
+        // อัปเดตข้อมูลการประเมินความเสี่ยง
+        Route::put('/{riskAssessment}', [RiskAssessmentController::class, 'update'])
+            ->name('risk-assessments.update');
+        
+        // ลบการประเมินความเสี่ยง
+        Route::delete('/{riskAssessment}', [RiskAssessmentController::class, 'destroy'])
+            ->name('risk-assessments.destroy');
     });
 
-    // Reports
+    /**
+     * กลุ่มเส้นทางสำหรับรายงาน
+     * 
+     * ประกอบด้วยเส้นทางสำหรับการเข้าถึงรายงานต่างๆ ในระบบ
+     * รวมถึงการส่งออกรายงานในรูปแบบต่างๆ (PDF, Excel)
+     */
     Route::prefix('reports')->group(function () {
-        Route::get('/executive-summary', [ReportController::class, 'executiveSummary'])->name('reports.executive-summary');
-        Route::get('/trend-analysis', [ReportController::class, 'trendAnalysis'])->name('reports.trend-analysis');
-        Route::get('/comparison', [ReportController::class, 'comparison'])->name('reports.comparison');
-        Route::get('/export/{type}', [ReportController::class, 'export'])->name('reports.export');
+        // รายงานสรุปสำหรับผู้บริหาร
+        Route::get('/executive-summary', [ReportController::class, 'executiveSummary'])
+            ->name('reports.executive-summary');
+        
+        // รายงานวิเคราะห์แนวโน้มความเสี่ยง
+        Route::get('/trend-analysis', [ReportController::class, 'trendAnalysis'])
+            ->name('reports.trend-analysis');
+        
+        // รายงานเปรียบเทียบความเสี่ยงระหว่างช่วงเวลา
+        Route::get('/comparison', [ReportController::class, 'comparison'])
+            ->name('reports.comparison');
+        
+        // ส่งออกรายงานตามประเภทที่กำหนด (PDF, Excel)
+        Route::get('/export/{type}', [ReportController::class, 'export'])
+            ->name('reports.export');
     });
 
 });
 
+/**
+ * นำเข้าไฟล์เส้นทางเพิ่มเติม
+ * 
+ * - settings.php: เส้นทางสำหรับการตั้งค่าระบบ
+ * - auth.php: เส้นทางสำหรับระบบการยืนยันตัวตนและการจัดการบัญชีผู้ใช้
+ */
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
