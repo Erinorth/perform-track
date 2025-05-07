@@ -2,221 +2,194 @@
   ไฟล์: resources/js/composables/useOrganizationalRiskData.ts
   คำอธิบาย: Composable function สำหรับจัดการข้อมูลความเสี่ยงระดับองค์กร
   ทำหน้าที่: แยกโลจิกการจัดการข้อมูลออกจาก component เพื่อเพิ่มความเป็นระเบียบ
+  หลักการ: แบ่งโลจิกเป็นหมวดหมู่ - การโหลดข้อมูล, การจัดการฟอร์ม, การจัดการไฟล์แนบ
   ใช้ร่วมกับ: OrganizationalRiskController.php ในฝั่ง Backend
 */
 
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
-import { CheckCircle2Icon, FileIcon, FileTextIcon, ImageIcon, FileSpreadsheetIcon } from 'lucide-vue-next';
+import { CheckCircle2Icon, FileIcon, FileTextIcon, ImageIcon, FileSpreadsheetIcon, AlertTriangleIcon } from 'lucide-vue-next';
 import type { OrganizationalRisk, Attachment } from '@/types/types';
 
-// เพิ่มการนิยาม interface สำหรับข้อมูลฟอร์ม
+// นิยาม interface สำหรับข้อมูลฟอร์ม
 interface RiskFormData {
-    risk_name: string;
-    description: string;
-    attachments?: File[] | null;
-  }
+  risk_name: string;
+  description: string;
+  attachments?: File[] | null;
+}
 
 // ฟังก์ชัน composable สำหรับจัดการข้อมูลความเสี่ยงระดับองค์กร
-export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[], triggerProp?: any) {
-    // สร้าง reactive references สำหรับเก็บข้อมูล
-    const data = ref<OrganizationalRisk[]>([]);
-    const existingAttachments = ref<Attachment[]>([]);
-    const attachmentsToDelete = ref<number[]>([]);
-    const selectedFiles = ref<File[]>([]);
-    const fileNames = ref<string[]>([]);
-    
-    // ใช้ usePage hook ของ Inertia เพื่อเข้าถึงข้อมูลจาก props
-    const page = usePage();
+export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[] = [], triggerProp?: any) {
+  // ============ STATE MANAGEMENT ============
+  const data = ref<OrganizationalRisk[]>([]);
+  const existingAttachments = ref<Attachment[]>([]);
+  const attachmentsToDelete = ref<number[]>([]);
+  const selectedFiles = ref<File[]>([]);
+  const fileNames = ref<string[]>([]);
+  const isLoading = ref<boolean>(false);
+  const isSubmitting = ref<boolean>(false);
+  
+  // ใช้ usePage hook ของ Inertia เพื่อเข้าถึงข้อมูลจาก props
+  const page = usePage();
 
-    // ทำงานเมื่อ component ถูก mount
-    onMounted(() => {
+  // ทำงานเมื่อ component ถูก mount
+  onMounted(() => {
+    loadData();
+  });
+  
+  // ถ้ามี triggerProp ส่งมา ให้ watch การเปลี่ยนแปลง
+  if (triggerProp !== undefined) {
+    watch(() => triggerProp, (newVal, oldVal) => {
+      if (newVal !== oldVal) {
         loadData();
-    });
+      }
+    }, { deep: true });
+  }
+  
+  // ============ DATA LOADING FUNCTIONS ============
+  const loadData = () => {
+    isLoading.value = true;
     
-    // ถ้ามี triggerProp ส่งมา ให้ watch การเปลี่ยนแปลงและอัปเดตข้อมูล
-    if (triggerProp !== undefined) {
-        watch(() => triggerProp, () => {
-            loadData();
-        }, { deep: true });
+    try {
+      if (initialRisks && initialRisks.length > 0) {
+        data.value = [...initialRisks];
+      } else if (page.props.risks) {
+        data.value = [...page.props.risks as OrganizationalRisk[]];
+      } else {
+        console.warn('ไม่พบข้อมูลความเสี่ยงองค์กรจากทั้ง props และ Inertia page');
+        data.value = [];
+      }
+      
+      console.log('📊 โหลดข้อมูลความเสี่ยงองค์กรสำเร็จ', {
+        count: data.value.length,
+        source: initialRisks && initialRisks.length > 0 ? 'initialRisks' : 'page.props',
+        timestamp: new Date().toLocaleString('th-TH')
+      });
+    } finally {
+      isLoading.value = false;
+    }
+  };
+  
+  // โหลดข้อมูลเอกสารแนบของความเสี่ยง
+  const loadAttachments = (risk?: OrganizationalRisk) => {
+    resetAttachmentState();
+    
+    if (risk?.attachments && risk.attachments.length > 0) {
+      existingAttachments.value = [...risk.attachments];
+      console.log('📄 โหลดข้อมูลเอกสารแนบสำเร็จ', {
+        count: existingAttachments.value.length,
+        risk_id: risk.id,
+        risk_name: risk.risk_name
+      });
+    } else {
+      existingAttachments.value = [];
+    }
+  };
+  
+  // ============ FORM SUBMISSION FUNCTIONS ============
+  /**
+   * ฟังก์ชันเพื่อส่งข้อมูลแบบฟอร์มไปยัง backend
+   */
+  const submitForm = (
+    formData: RiskFormData, 
+    riskId?: number, 
+    onSuccess?: () => void
+  ): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      // ป้องกันการส่งซ้ำ
+      if (isSubmitting.value) {
+        reject(new Error('กำลังดำเนินการส่งข้อมูล โปรดรอสักครู่'));
+        return;
+      }
+      
+      isSubmitting.value = true;
+      
+      // สร้าง FormData object
+      const form = new FormData();
+      
+      // เพิ่ม Method Spoofing สำหรับ PUT request กรณีแก้ไขข้อมูล
+      if (riskId) {
+        form.append('_method', 'put');
+      }
+      
+      // เพิ่มข้อมูลหลัก
+      form.append('risk_name', formData.risk_name.trim());
+      form.append('description', formData.description.trim());
+      
+      // เพิ่มไฟล์แนบและรายการไฟล์ที่ต้องการลบ
+      if (selectedFiles.value.length > 0) {
+        selectedFiles.value.forEach((file, index) => {
+          form.append(`attachments[${index}]`, file);
+        });
+      }
+      
+      if (attachmentsToDelete.value.length > 0) {
+        attachmentsToDelete.value.forEach(id => {
+          form.append('attachments_to_delete[]', id.toString());
+        });
+      }
+      
+      // ส่งข้อมูลไปยัง backend ด้วย Inertia
+      router.post(
+        riskId 
+          ? route('organizational-risks.update', riskId) 
+          : route('organizational-risks.store'),
+        form,
+        {
+          forceFormData: true,
+          preserveState: false,
+          onSuccess: (page) => {
+            // แสดงข้อความแจ้งเตือนสำเร็จ
+            toast.success(riskId ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', {
+              icon: CheckCircle2Icon,
+              description: `ความเสี่ยง "${formData.risk_name}" ${riskId ? 'ได้รับการแก้ไข' : 'ได้รับการเพิ่ม'}เรียบร้อยแล้ว`
+            });
+            
+            resetAttachmentState();
+            if (onSuccess) onSuccess();
+            resolve(page);
+            isSubmitting.value = false;
+          },
+          onError: (errors) => {
+            console.error('❌ ไม่สามารถบันทึกข้อมูลความเสี่ยงองค์กรได้:', errors);
+            reject(errors);
+            isSubmitting.value = false;
+          }
+        }
+      );
+    });
+  };
+
+  // ฟังก์ชันลบข้อมูลความเสี่ยง
+  const deleteRisk = async (risk: OrganizationalRisk): Promise<void> => {
+    if (!risk || !risk.id) {
+        throw new Error('ไม่พบข้อมูลที่ต้องการลบ');
     }
     
-    // ฟังก์ชันสำหรับโหลดข้อมูลเริ่มต้น
-    const loadData = () => {
-        if (initialRisks && initialRisks.length > 0) {
-            data.value = [...initialRisks];
-        } else if (page.props.risks) {
-            data.value = [...page.props.risks as OrganizationalRisk[]];
-        } else {
-            console.warn('ไม่พบข้อมูลความเสี่ยงองค์กรจากทั้ง props และ Inertia page');
-            data.value = [];
-        }
-        
-        console.log('📊 โหลดข้อมูลความเสี่ยงองค์กรสำเร็จ', {
-            count: data.value.length,
-            source: initialRisks && initialRisks.length > 0 ? 'initialRisks' : 'page.props',
-            timestamp: new Date().toLocaleString('th-TH')
-        });
-    };
-    
-    // ฟังก์ชันสำหรับโหลดข้อมูลเอกสารแนบของความเสี่ยง
-    const loadAttachments = (risk?: OrganizationalRisk) => {
-        // รีเซ็ตรายการเอกสารแนบ
-        attachmentsToDelete.value = [];
-        selectedFiles.value = [];
-        fileNames.value = [];
-        
-        // ถ้ามีข้อมูลความเสี่ยงและมีเอกสารแนบ
-        if (risk?.attachments) {
-            existingAttachments.value = [...risk.attachments];
-            console.log('📄 โหลดข้อมูลเอกสารแนบสำเร็จ', {
-                count: existingAttachments.value.length,
-                risk_id: risk.id,
-                risk_name: risk.risk_name
-            });
-        } else {
-            existingAttachments.value = [];
-        }
-    };
-
-    // สร้าง FormData จากข้อมูลที่ต้องการบันทึก
-    const createFormData = (
-        formData: { risk_name: string; description: string; },
-        files?: File[],
-        attachmentsToDelete?: number[]
-    ) => {
-        const form = new FormData();
-
-        // เพิ่มข้อมูลพื้นฐาน
-        if (formData.risk_name) form.append('risk_name', formData.risk_name);
-        if (formData.description) form.append('description', formData.description);
-        
-        // เพิ่มไฟล์แนบ (ถ้ามี)
-        if (files && files.length > 0) {
-            files.forEach((file, index) => {
-                if (file instanceof File) {
-                    form.append(`attachments[${index}]`, file);
-                    console.log(`เพิ่มไฟล์ ${file.name} ขนาด ${formatFileSize(file.size)}`);
-                }
-            });
-        }
-        
-        // เพิ่มรายการไฟล์ที่ต้องการลบ
-        if (attachmentsToDelete && attachmentsToDelete.length > 0) {
-            attachmentsToDelete.forEach(id => {
-                form.append('attachments_to_delete[]', id.toString());
-            });
-        }
-        
-        return form;
-    };
-
-    // ฟังก์ชันเพื่อส่งข้อมูลแบบฟอร์มไปยัง backend
-    const submitForm = (
-        formData: RiskFormData, 
-        riskId?: number, 
-        onSuccess?: () => void  // เพิ่มพารามิเตอร์ callback onSuccess
-        ) => {
-            return new Promise((resolve, reject) => {
-            // สร้าง FormData object แบบชัดเจน
-            const form = new FormData();
-            
-            // เพิ่ม Method Spoofing สำหรับ PUT request
-            if (riskId) {
-                form.append('_method', 'put');
-            }
-            
-            // เพิ่มข้อมูลหลัก - สำคัญมาก!
-            form.append('risk_name', formData.risk_name);
-            form.append('description', formData.description);
-            
-            // เพิ่มไฟล์แนบ
-            if (selectedFiles.value.length > 0) {
-                selectedFiles.value.forEach(file => {
-                    form.append('attachments[]', file);
+    return new Promise((resolve, reject) => {
+        router.delete(route('organizational-risks.destroy', risk.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                data.value = data.value.filter(item => item.id !== risk.id);
+                toast.success('ลบความเสี่ยงระดับองค์กรเรียบร้อยแล้ว');
+                
+                console.log('✅ ลบความเสี่ยงองค์กรสำเร็จ', {
+                    risk: risk.risk_name,
+                    id: risk.id
                 });
+                
+                resolve();
+            },
+            onError: (errors) => {
+                if (errors.error) toast.error(errors.error);
+                else toast.error('เกิดข้อผิดพลาดในการลบข้อมูล');
+                
+                reject(errors);
             }
-            
-            // เพิ่มรายการไฟล์ที่ต้องการลบ
-            if (attachmentsToDelete.value.length > 0) {
-                attachmentsToDelete.value.forEach(id => {
-                    form.append('attachments_to_delete[]', id.toString());
-                });
-            }
-            
-            console.log('📝 ข้อมูลที่กำลังส่ง:', {
-                mode: riskId ? 'แก้ไข' : 'เพิ่มใหม่',
-                riskId,
-                risk_name: formData.risk_name,
-                description: formData.description,
-                hasAttachments: selectedFiles.value.length > 0,
-                attachmentsToDelete: attachmentsToDelete.value.length
-            });
-    
-            // ส่งข้อมูลด้วย POST (แม้ว่าจะเป็นการ update ก็ตาม)
-            // ส่งข้อมูลด้วย POST (แม้ว่าจะเป็นการ update ก็ตาม)
-            router.post(route('organizational-risks.update', riskId || ''), form, {
-                forceFormData: true,
-                preserveState: false,
-                onSuccess: (page) => {
-                    // อัปเดตข้อมูลใน data array
-                    const index = data.value.findIndex(item => item.id === riskId);
-                    if (index !== -1) {
-                        data.value[index] = { 
-                            ...data.value[index], 
-                            risk_name: formData.risk_name,
-                            description: formData.description,
-                        };
-                        data.value = [...data.value];
-                    }
-                    
-                    toast.success('บันทึกข้อมูลความเสี่ยงสำเร็จ', {
-                        icon: CheckCircle2Icon,
-                        description: `ความเสี่ยง "${formData.risk_name}" ได้รับการแก้ไขเรียบร้อยแล้ว`
-                    });
-                    
-                    resetAttachmentState();
-                    if (onSuccess) onSuccess(); // ตรวจสอบก่อนเรียกใช้
-                    resolve(page);
-                },
-                onError: (errors) => {
-                    console.error('❌ ไม่สามารถอัปเดตความเสี่ยงองค์กรได้:', errors);
-                    reject(errors);
-                }
-            });
         });
-    };
-
-    // ฟังก์ชันลบข้อมูลความเสี่ยง
-    const deleteRisk = async (risk: OrganizationalRisk): Promise<void> => {
-        if (!risk || !risk.id) {
-            throw new Error('ไม่พบข้อมูลที่ต้องการลบ');
-        }
-        
-        return new Promise((resolve, reject) => {
-            router.delete(route('organizational-risks.destroy', risk.id), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    data.value = data.value.filter(item => item.id !== risk.id);
-                    toast.success('ลบความเสี่ยงระดับองค์กรเรียบร้อยแล้ว');
-                    
-                    console.log('✅ ลบความเสี่ยงองค์กรสำเร็จ', {
-                        risk: risk.risk_name,
-                        id: risk.id
-                    });
-                    
-                    resolve();
-                },
-                onError: (errors) => {
-                    if (errors.error) toast.error(errors.error);
-                    else toast.error('เกิดข้อผิดพลาดในการลบข้อมูล');
-                    
-                    reject(errors);
-                }
-            });
-        });
-    };
+    });
+  };
 
     // ฟังก์ชันสำหรับลบข้อมูลหลายรายการพร้อมกัน
     const bulkDeleteRisks = async (riskIds: number[]): Promise<void> => {
@@ -242,162 +215,184 @@ export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[], tr
         });
     };
 
-    // ========== ฟังก์ชันจัดการเอกสารแนบ ==========
+  // ============ ATTACHMENT MANAGEMENT FUNCTIONS ============
+  // รีเซ็ตสถานะของเอกสารแนบทั้งหมด
+  const resetAttachmentState = () => {
+    selectedFiles.value = [];
+    fileNames.value = [];
+    attachmentsToDelete.value = [];
+    existingAttachments.value = [];
+  };
+  
+  // เพิ่มไฟล์ที่เลือกเข้าในรายการ
+  const addSelectedFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
     
-    // รีเซ็ตสถานะของเอกสารแนบ
-    const resetAttachmentState = () => {
-        selectedFiles.value = [];
-        fileNames.value = [];
-        attachmentsToDelete.value = [];
-        existingAttachments.value = [];
-    };
+    // ตรวจสอบความถูกต้องของไฟล์ก่อนเพิ่ม
+    const filesToAdd: File[] = [];
+    const fileNamesToAdd: string[] = [];
+    const validationResult = validateFiles(Array.from(files));
     
-    // เพิ่มไฟล์ที่เลือกเข้าในรายการ
-    const addSelectedFiles = (files: FileList | null) => {
-        if (!files || files.length === 0) return;
-        
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            selectedFiles.value.push(file);
-            fileNames.value.push(file.name);
-        }
-        
-        console.log('📄 เพิ่มไฟล์เข้ารายการอัปโหลด:', {
-            count: files.length,
-            total: selectedFiles.value.length
-        });
-    };
-    
-    // ลบไฟล์ที่เลือกออกจากรายการ
-    const removeSelectedFile = (index: number) => {
-        if (index < 0 || index >= selectedFiles.value.length) {
-            console.warn('ไม่พบไฟล์ที่ต้องการลบในรายการ');
-            return;
-        }
-        
-        const removedFile = selectedFiles.value[index];
-        
-        const newSelectedFiles: File[] = [];
-        const newFileNames: string[] = [];
-        
-        for (let i = 0; i < selectedFiles.value.length; i++) {
-            if (i !== index) {
-                newSelectedFiles.push(selectedFiles.value[i]);
-                newFileNames.push(fileNames.value[i]);
-            }
-        }
-        
-        selectedFiles.value = newSelectedFiles;
-        fileNames.value = newFileNames;
-    };
-    
-    // มาร์คเอกสารแนบที่มีอยู่แล้วเพื่อลบ
-    const markAttachmentForDeletion = (attachmentId: number) => {
-        if (!attachmentId) return;
-        
-        attachmentsToDelete.value.push(attachmentId);
-        
-        existingAttachments.value = existingAttachments.value.filter(
-            attachment => !attachmentsToDelete.value.includes(attachment.id)
-        );
-        
-        toast.success('เอกสารถูกมาร์คให้ลบเมื่อบันทึกข้อมูล');
-    };
-
-    // เปิดไฟล์เอกสารแนบในแท็บใหม่
-    const openAttachment = (url: string) => {
-        if (!url) return;
-        window.open(url, '_blank');
-    };
-    
-    // ตรวจสอบความถูกต้องของไฟล์
-    const validateFiles = (files: File[]): { valid: boolean; errors: string[] } => {
-        const errors: string[] = [];
-        const allowedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'];
+    if (!validationResult.valid) {
+      // แสดงข้อความแจ้งเตือนข้อผิดพลาด
+      toast.error('ไฟล์บางรายการไม่ถูกต้อง', {
+        icon: AlertTriangleIcon,
+        description: validationResult.errors.join(', ')
+      });
+      
+      // เพิ่มเฉพาะไฟล์ที่ถูกต้อง
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
         const maxSize = 10 * 1024 * 1024; // 10MB
+        const allowedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'];
         
-        for (const file of files) {
-            const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-            
-            if (!allowedFileTypes.includes(fileExtension)) {
-                errors.push(`ไฟล์ "${file.name}" มีนามสกุลไม่ถูกต้อง (รองรับ pdf, word, excel, รูปภาพ)`);
-                continue;
-            }
-            
-            if (file.size > maxSize) {
-                errors.push(`ไฟล์ "${file.name}" มีขนาดใหญ่เกินไป (ไม่เกิน 10MB)`);
-            }
+        if (allowedFileTypes.includes(fileExtension) && file.size <= maxSize) {
+          filesToAdd.push(file);
+          fileNamesToAdd.push(file.name);
+        }
+      }
+    } else {
+      for (let i = 0; i < files.length; i++) {
+        filesToAdd.push(files[i]);
+        fileNamesToAdd.push(files[i].name);
+      }
+    }
+    
+    // เพิ่มไฟล์ที่ถูกต้องทั้งหมดเข้าในรายการ
+    if (filesToAdd.length > 0) {
+      selectedFiles.value = [...selectedFiles.value, ...filesToAdd];
+      fileNames.value = [...fileNames.value, ...fileNamesToAdd];
+    }
+  };
+
+  // ลบไฟล์ที่เลือกออกจากรายการ
+  const removeSelectedFile = (index: number) => {
+    if (index < 0 || index >= selectedFiles.value.length) {
+        console.warn('ไม่พบไฟล์ที่ต้องการลบในรายการ');
+        return;
+    }
+    
+    const removedFile = selectedFiles.value[index];
+    
+    const newSelectedFiles: File[] = [];
+    const newFileNames: string[] = [];
+    
+    for (let i = 0; i < selectedFiles.value.length; i++) {
+        if (i !== index) {
+            newSelectedFiles.push(selectedFiles.value[i]);
+            newFileNames.push(fileNames.value[i]);
+        }
+    }
+    
+    selectedFiles.value = newSelectedFiles;
+    fileNames.value = newFileNames;
+};
+
+// มาร์คเอกสารแนบที่มีอยู่แล้วเพื่อลบ
+const markAttachmentForDeletion = (attachmentId: number) => {
+    if (!attachmentId) return;
+    
+    attachmentsToDelete.value.push(attachmentId);
+    
+    existingAttachments.value = existingAttachments.value.filter(
+        attachment => !attachmentsToDelete.value.includes(attachment.id)
+    );
+    
+    toast.success('เอกสารถูกมาร์คให้ลบเมื่อบันทึกข้อมูล');
+};
+
+  // เปิดไฟล์เอกสารแนบในแท็บใหม่
+  const openAttachment = (url: string) => {
+    if (!url) return;
+    window.open(url, '_blank');
+};
+
+  // ตรวจสอบความถูกต้องของไฟล์
+  const validateFiles = (files: File[]): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const allowedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    
+    for (const file of files) {
+        const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+        
+        if (!allowedFileTypes.includes(fileExtension)) {
+            errors.push(`ไฟล์ "${file.name}" มีนามสกุลไม่ถูกต้อง (รองรับ pdf, word, excel, รูปภาพ)`);
+            continue;
         }
         
-        return {
-            valid: errors.length === 0,
-            errors
-        };
-    };
-    
-    // ดึงไอคอนตามประเภทไฟล์
-    const getFileIcon = (fileName: string) => {
-        if (!fileName) return FileIcon;
-        
-        const extension = fileName.split('.').pop()?.toLowerCase();
-        
-        switch (extension) {
-            case 'pdf':
-                return FileTextIcon;
-            case 'doc':
-            case 'docx':
-                return FileTextIcon;
-            case 'xls':
-            case 'xlsx':
-                return FileSpreadsheetIcon;
-            case 'jpg':
-            case 'jpeg':
-            case 'png':
-                return ImageIcon;
-            default:
-                return FileIcon;
+        if (file.size > maxSize) {
+            errors.push(`ไฟล์ "${file.name}" มีขนาดใหญ่เกินไป (ไม่เกิน 10MB)`);
         }
-    };
+    }
     
-    // จัดรูปแบบขนาดไฟล์ให้อ่านง่าย
-    const formatFileSize = (bytes: number): string => {
-        if (!bytes || bytes === 0) return '0 B';
-        
-        if (bytes < 1024) {
-            return bytes + ' B';
-        } else if (bytes < 1024 * 1024) {
-            return (bytes / 1024).toFixed(1) + ' KB';
-        } else {
-            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-        }
-    };
-    
-    // ส่งคืนข้อมูลและฟังก์ชันที่ต้องการให้ component อื่นใช้งาน
     return {
-        // ข้อมูลความเสี่ยงและเอกสารแนบ
-        data,
-        existingAttachments,
-        selectedFiles,
-        fileNames,
-        attachmentsToDelete,
-        
-        // ฟังก์ชันจัดการข้อมูลหลัก
-        loadData,
-        loadAttachments,
-        submitForm,
-        deleteRisk,
-        bulkDeleteRisks,
-        
-        // ฟังก์ชันจัดการเอกสารแนบ
-        resetAttachmentState,
-        addSelectedFiles,
-        removeSelectedFile,
-        markAttachmentForDeletion,
-        openAttachment,
-        validateFiles,
-        
-        // ฟังก์ชันช่วยเหลือ UI
-        getFileIcon,
-        formatFileSize
+        valid: errors.length === 0,
+        errors
     };
+};
+  
+  // ดึงไอคอนตามประเภทไฟล์
+  const getFileIcon = (fileName: string) => {
+    if (!fileName) return FileIcon;
+    
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    
+    switch (extension) {
+        case 'pdf':
+            return FileTextIcon;
+        case 'doc':
+        case 'docx':
+            return FileTextIcon;
+        case 'xls':
+        case 'xlsx':
+            return FileSpreadsheetIcon;
+        case 'jpg':
+        case 'jpeg':
+        case 'png':
+            return ImageIcon;
+        default:
+            return FileIcon;
+    }
+};
+
+// จัดรูปแบบขนาดไฟล์ให้อ่านง่าย
+const formatFileSize = (bytes: number): string => {
+    if (!bytes || bytes === 0) return '0 B';
+    
+    if (bytes < 1024) {
+        return bytes + ' B';
+    } else if (bytes < 1024 * 1024) {
+        return (bytes / 1024).toFixed(1) + ' KB';
+    } else {
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+};
+  
+  return {
+    // ข้อมูลและสถานะ
+    data,
+    existingAttachments,
+    selectedFiles,
+    fileNames,
+    attachmentsToDelete,
+    isLoading,
+    isSubmitting,
+    
+    // ฟังก์ชันต่างๆ
+    loadData,
+    loadAttachments,
+    submitForm,
+    deleteRisk,
+    bulkDeleteRisks,
+    resetAttachmentState,
+    addSelectedFiles,
+    removeSelectedFile,
+    markAttachmentForDeletion,
+    openAttachment,
+    validateFiles,
+    getFileIcon,
+    formatFileSize
+  };
 }

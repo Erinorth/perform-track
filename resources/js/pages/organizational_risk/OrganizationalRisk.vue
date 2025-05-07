@@ -16,7 +16,7 @@ import { Head, router } from '@inertiajs/vue3';          // Component สำห�
 
 // ==================== นำเข้า Types และ Data ====================
 import { type BreadcrumbItem } from '@/types';           // Type สำหรับ breadcrumb
-import type { OrganizationalRisk } from '@/features/organizational_risk/organizational_risk';  // Type ของความเสี่ยงองค์กร
+import type { OrganizationalRisk } from '@/types/types';  // Type ของความเสี่ยงองค์กร
 
 // ==================== นำเข้า Components ====================
 import { Button } from '@/components/ui/button';         // Component ปุ่ม
@@ -54,7 +54,7 @@ const props = defineProps<{
 // - updateRiskStatus: ฟังก์ชันสำหรับอัปเดตสถานะความเสี่ยง
 // - deleteRisk: ฟังก์ชันสำหรับลบความเสี่ยง
 // - bulkDeleteRisks: ฟังก์ชันสำหรับลบความเสี่ยงหลายรายการพร้อมกัน
-const { data, updateRiskStatus, deleteRisk, bulkDeleteRisks } = useOrganizationalRiskData(props.risks);
+const { data, deleteRisk, bulkDeleteRisks } = useOrganizationalRiskData(props.risks);
 
 // ตัวแปรสำหรับจัดการสถานะ Modal และข้อมูลที่กำลังแก้ไข
 const showModal = ref(false);                         // ควบคุมการแสดง/ซ่อน Modal
@@ -109,7 +109,7 @@ const handleDelete = (risk: OrganizationalRisk) => {
 };
 
 // ฟังก์ชันสำหรับลบข้อมูลหลายรายการพร้อมกัน
-const handleBulkDelete = async (selectedIds) => {
+const handleBulkDelete = async (selectedIds: number[]) => {
   // แสดง dialog ยืนยันการลบ
   useConfirm().confirm({
     title: 'ยืนยันการลบข้อมูล',
@@ -155,7 +155,6 @@ const handleBulkDelete = async (selectedIds) => {
         :columns="columns"
         :data="data"
         :meta="{
-          updateRiskStatus,
           onEdit: openEditModal,
           onDelete: handleDelete,
           onBulkDelete: handleBulkDelete
