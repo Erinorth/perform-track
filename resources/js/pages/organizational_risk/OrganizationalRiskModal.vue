@@ -166,7 +166,7 @@ const handleSubmit = async () => {
     :open="show" 
     @update:open="(val) => emit('update:show', val)"
   >
-    <DialogContent class="sm:max-w-[550px]">
+    <DialogContent class="sm:max-w-[550px] max-w-[95%] max-h-[85vh] overflow-y-auto">
       <!-- ส่วนหัวของ Modal -->
       <DialogHeader>
         <DialogTitle>{{ modalTitle }}</DialogTitle>
@@ -217,15 +217,15 @@ const handleSubmit = async () => {
                 <li 
                   v-for="attachment in existingAttachments" 
                   :key="attachment.id" 
-                  class="flex items-center justify-between p-2 bg-gray-50 rounded-md text-sm border border-gray-200"
+                  class="flex flex-wrap items-center justify-between p-2 bg-gray-50 rounded-md text-sm border border-gray-200"
                 >
                   <div 
-                    class="flex items-center gap-2 flex-1 overflow-hidden" 
+                    class="flex items-center gap-2 flex-1 min-w-0 overflow-hidden" 
                     @click="openAttachment(attachment.url)" 
                     style="cursor: pointer"
                   >
                     <component :is="getFileIcon(attachment.file_name)" class="h-4 w-4 flex-shrink-0" />
-                    <span class="truncate">{{ attachment.file_name }}</span>
+                    <span class="truncate max-w-[200px] sm:max-w-[300px]">{{ attachment.file_name }}</span>
                     <span class="text-xs text-gray-500 flex-shrink-0">{{ formatFileSize(attachment.file_size || 0) }}</span>
                   </div>
                   
@@ -305,7 +305,7 @@ const handleSubmit = async () => {
         </div>
 
         <!-- ส่วนของปุ่มดำเนินการ -->
-        <DialogFooter class="flex flex-col sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+        <DialogFooter class="flex flex-col-reverse sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-2 space-y-reverse">
           <!-- ปุ่มยกเลิก -->
           <Button
             type="button"
