@@ -235,16 +235,15 @@ const clearRowSelection = () => {
 
 <template>
   <!-- ส่วนหัวตารางสำหรับการค้นหาและกรอง -->
-  <div class="flex items-center py-4">
+  <div class="flex flex-wrap items-center gap-2 py-4">
     <!-- ช่องค้นหา -->
     <Input
-      class="max-w-sm"
+      class="max-w-xs sm:max-w-sm"
       placeholder="Search Risk Name or Description..."
       v-model="searchQuery"
     />
-    
-   
-    <!-- ปุ่มล้างตัวกรอง (แสดงเฉพาะเมื่อมีการกรอง) -->
+
+    <!-- ปุ่มล้างตัวกรอง -->
     <Button
       v-if="searchQuery"
       variant="ghost"
@@ -255,21 +254,21 @@ const clearRowSelection = () => {
       Clear
     </Button>
 
-    <!-- แสดงเมนูสำหรับ Bulk Actions เมื่อมีการเลือกแถว -->
-    <div v-if="selectedRowsCount > 0" class="ml-auto">
+    <!-- กลุ่มด้านขวา: จัดให้ปุ่ม View และปุ่มตัวเลือกอยู่ด้วยกัน -->
+    <div class="flex items-center gap-2 ml-auto">
+      <!-- BulkActionMenu (ตัวเลือก) -->
       <BulkActionMenu 
+        v-if="selectedRowsCount > 0"
         :count="selectedRowsCount"
         :loading="isDeleting"
         @delete="handleBulkDelete"
         @clear="clearRowSelection"
         @export="() => {}"
       />
+
+      <!-- ปุ่ม View อยู่ซ้าย ถัดมาเป็นปุ่มตัวเลือก -->
+      <DataTableViewOptions :table="table" />
     </div>
-  </div>
-  
-  <!-- ตัวเลือกการแสดงคอลัมน์ (จัดให้อยู่ด้านขวาเสมอ) -->
-  <div :class="{ 'ml-auto': selectedRowsCount === 0 }">
-    <DataTableViewOptions :table="table" />
   </div>
   
   <!-- ตารางข้อมูล -->
