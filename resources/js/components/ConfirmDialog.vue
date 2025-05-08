@@ -31,7 +31,12 @@ defineEmits<{
 
 <template>
   <!-- Dialog component จาก shadcn-vue -->
-  <Dialog :open="show" @update:open="$emit('update:show', $event)">
+  <Dialog 
+    :open="show" 
+    @update:open="(val) => { 
+      if (!val) $emit('cancel'); // เมื่อกด X ให้เรียก cancel แทนการพยายามเปลี่ยน show
+    }"
+  >
     <DialogContent class="sm:max-w-[425px]">
       <!-- ส่วนหัวของ dialog -->
       <DialogHeader>
