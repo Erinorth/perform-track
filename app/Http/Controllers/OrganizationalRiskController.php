@@ -522,42 +522,23 @@ class OrganizationalRiskController extends Controller
      */
     public function viewAttachment(OrganizationalRisk $organizationalRisk, $attachmentId)
     {
-        try {
-            // ค้นหาเอกสารแนบตาม ID
-            $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
-            
-            // ตรวจสอบรูปแบบเส้นทางไฟล์ว่าถูกต้อง
-            $filePath = $attachment->file_path;
-            
-            // บันทึก log เพื่อการตรวจสอบ
-            Log::info('พยายามเข้าถึงไฟล์', [
-                'risk_id' => $organizationalRisk->id,
-                'attachment_id' => $attachmentId,
-                'file_path' => $filePath,
-                'exists_check' => Storage::disk('public')->exists($filePath),
-                'storage_path' => Storage::disk('public')->path($filePath)
-            ]);
-            
-            // ลองตรวจสอบรูปแบบเส้นทางแบบต่างๆ
-            if (Storage::disk('public')->exists($filePath)) {
-                return response()->file(Storage::disk('public')->path($filePath));
-            }
-            
-            // ถ้าไม่พบ อาจใช้รูปแบบเส้นทางอื่น
-            $altPath = str_replace('risk_attachments/', '', $filePath); // ลองแบบอื่น
-            if (Storage::disk('public')->exists($altPath)) {
-                return response()->file(Storage::disk('public')->path($altPath));
-            }
-            
-            // หากยังไม่พบ แสดงข้อความผิดพลาด
+        $attachment = OrganizationalRiskAttachment::where('id', $attachmentId)
+            ->where('organizational_risk_id', $organizationalRisk->id)
+            ->firstOrFail();
+        
+        $path = 'public/' . $attachment->file_path;
+        
+        Log::info('ตรวจสอบไฟล์', [
+            'file_path' => $attachment->file_path,
+            'full_path' => $path,
+            'exists' => Storage::exists($path),
+            'real_path' => Storage::path($path)
+        ]);
+        
+        if (!Storage::exists($path)) {
             return response()->json(['error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'], 404);
-        } catch (\Exception $e) {
-            Log::error('เกิดข้อผิดพลาดในการแสดงเอกสารแนบ', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTrace()
-            ]);
-            
-            return response()->json(['error' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()], 500);
         }
+        
+        return response()->file(Storage::path($path));
     }
 }

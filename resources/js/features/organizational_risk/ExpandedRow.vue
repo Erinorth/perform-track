@@ -16,7 +16,7 @@
 import type { OrganizationalRisk, DepartmentRisk, Attachment } from '@/types/types';
 
 // ==================== นำเข้า Vue Composition API ====================
-import { computed, onMounted, ref, h } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 // ==================== นำเข้า Utilities ====================
 // นำเข้า toast notifications
@@ -235,33 +235,12 @@ onMounted(() => {
                         class="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" 
                       />
                       <div class="min-w-0 overflow-hidden">
-                        <p class="font-medium truncate">{{ attachment.file_name }}</p>
+                        <p class="font-medium truncate" @click="viewAttachmentFullScreen(attachment)">{{ attachment.file_name }}</p>
                         <p class="text-xs text-muted-foreground mt-1">
                           {{ formatFileSize(attachment.file_size) }} • 
                           อัปโหลดเมื่อ {{ new Date(attachment.created_at).toLocaleDateString('th-TH') }}
                         </p>
                       </div>
-                    </div>
-                    
-                    <!-- ปุ่มดูเต็มจอและดาวน์โหลดเอกสาร -->
-                    <div class="flex items-center space-x-2 flex-shrink-0">
-                      <!-- ปุ่มดูไฟล์แบบเต็มจอ (เพิ่มใหม่) -->
-                      <button 
-                        @click="viewAttachmentFullScreen(attachment)"
-                        class="text-xs text-primary hover:text-primary/80 transition-colors flex items-center"
-                      >
-                        <Eye class="h-3 w-3 mr-1" />
-                        <span class="hidden sm:inline">ดูเต็มจอ</span>
-                      </button>
-                      
-                      <!-- ปุ่มดาวน์โหลดเอกสาร (ที่มีอยู่แล้ว) -->
-                      <button 
-                        @click="downloadAttachment(attachment)"
-                        class="text-xs text-primary hover:text-primary/80 transition-colors flex items-center"
-                      >
-                        <Download class="h-3 w-3 mr-1" />
-                        <span class="hidden sm:inline">ดาวน์โหลด</span>
-                      </button>
                     </div>
                   </div>
                 </li>
