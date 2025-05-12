@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('level'); // 1-4
             $table->string('name');
             $table->text('description')->nullable();
-            $table->foreignId('department_risk_id')->constrained();
+            $table->foreignId('division_risk_id')->constrained('division_risks');
             $table->timestamps();
         });
     }

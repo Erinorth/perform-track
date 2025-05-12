@@ -31,7 +31,7 @@ class OrganizationalRiskController extends Controller
     public function index()
     {
         // ดึงข้อมูลความเสี่ยงระดับองค์กรทั้งหมด พร้อมโหลดความสัมพันธ์
-        $risks = OrganizationalRisk::with(['departmentRisks', 'attachments'])
+        $risks = OrganizationalRisk::with(['divisionRisks', 'attachments'])
             ->orderBy('risk_name')  // เรียงตามชื่อความเสี่ยง
             ->get();  // ดึงข้อมูลทั้งหมด
 
@@ -70,7 +70,7 @@ class OrganizationalRiskController extends Controller
         ]);
         
         // ดึงข้อมูลความเสี่ยงทั้งหมดมาใหม่หลังจากบันทึกข้อมูล
-        $risks = OrganizationalRisk::with('departmentRisks')
+        $risks = OrganizationalRisk::with('divisionRisks')
             ->orderBy('risk_name')
             ->get();
             
@@ -144,12 +144,12 @@ class OrganizationalRiskController extends Controller
         // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบและบันทึก log
         $oldData = $organizationalRisk->toArray();
         
-        // ตรวจสอบว่ามีความเสี่ยงระดับสายงานที่เชื่อมโยงกับความเสี่ยงนี้หรือไม่
-        $hasDepartmentRisks = $organizationalRisk->departmentRisks()->exists();
+        // ตรวจสอบว่ามีความเสี่ยงระดับฝ่ายที่เชื่อมโยงกับความเสี่ยงนี้หรือไม่
+        $hasDivisionRisks = $organizationalRisk->divisionRisks()->exists();
         
         // ป้องกันการลบข้อมูลที่มีการเชื่อมโยงกับข้อมูลอื่น
-        if ($hasDepartmentRisks) {
-            return redirect()->back()->with('error', 'ไม่สามารถลบความเสี่ยงนี้ได้เนื่องจากมีความเสี่ยงระดับสายงานที่เชื่อมโยงอยู่');
+        if ($hasDivisionRisks) {
+            return redirect()->back()->with('error', 'ไม่สามารถลบความเสี่ยงนี้ได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่');
         }
         
         // ดำเนินการลบข้อมูล (Soft Delete)
@@ -185,9 +185,9 @@ class OrganizationalRiskController extends Controller
         // ดึง IDs ที่ต้องการลบจากข้อมูลที่ตรวจสอบแล้ว
         $ids = $validated['ids'];
         
-        // ตรวจสอบว่ามีความเสี่ยงใดบ้างที่มีความเสี่ยงระดับสายงานเชื่อมโยงอยู่
+        // ตรวจสอบว่ามีความเสี่ยงใดบ้างที่มีความเสี่ยงระดับฝ่ายเชื่อมโยงอยู่
         $risksWithDependencies = OrganizationalRisk::whereIn('id', $ids)
-            ->whereHas('departmentRisks')  // มีความสัมพันธ์กับตาราง department_risks
+            ->whereHas('divisionRisks')  // มีความสัมพันธ์กับตาราง division_risks
             ->pluck('id')  // ดึงเฉพาะ id
             ->toArray();  // แปลงเป็น array
         
@@ -198,8 +198,8 @@ class OrganizationalRiskController extends Controller
             
             // สร้างข้อความแจ้งเตือนตามสถานการณ์
             $errorMessage = count($risksWithDependencies) === count($ids)
-                ? 'ไม่สามารถลบความเสี่ยงที่เลือกได้เนื่องจากมีความเสี่ยงระดับสายงานที่เชื่อมโยงอยู่'
-                : 'ไม่สามารถลบบางรายการได้เนื่องจากมีความเสี่ยงระดับสายงานที่เชื่อมโยงอยู่';
+                ? 'ไม่สามารถลบความเสี่ยงที่เลือกได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่'
+                : 'ไม่สามารถลบบางรายการได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่';
             
             // ถ้าไม่มีรายการที่สามารถลบได้เลย
             if (empty($idsToDelete)) {

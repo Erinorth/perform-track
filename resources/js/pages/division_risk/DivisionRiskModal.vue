@@ -1,6 +1,6 @@
 <!-- 
-  ไฟล์: resources\js\pages\department_risk\DepartmentRiskModal.vue
-  Modal สำหรับการเพิ่มและแก้ไขข้อมูลความเสี่ยงระดับสายงาน
+  ไฟล์: resources\js\pages\division_risk\DivisionRiskModal.vue
+  Modal สำหรับการเพิ่มและแก้ไขข้อมูลความเสี่ยงระดับฝ่าย
   รองรับการใช้งานบนอุปกรณ์ทุกขนาดหน้าจอ
 -->
 
@@ -15,13 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { router } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 import { getYears } from '@/lib/utils'; // ฟังก์ชันสำหรับสร้างช่วงปี
-import type { DepartmentRisk } from '@/features/department_risk/department_risk';
+import type { DivisionRisk } from '@/features/division_risk/division_risk';
 import type { OrganizationalRisk } from '@/features/organizational_risk/organizational_risk';
 
 // กำหนด Props ที่รับเข้ามา
 const props = defineProps<{
   show: boolean; // สถานะการแสดง Modal
-  risk?: DepartmentRisk; // ข้อมูลความเสี่ยงที่ต้องการแก้ไข (ถ้ามี)
+  risk?: DivisionRisk; // ข้อมูลความเสี่ยงที่ต้องการแก้ไข (ถ้ามี)
   organizationalRisks: OrganizationalRisk[]; // รายการความเสี่ยงองค์กรเพื่อให้เลือก
 }>();
 
@@ -53,7 +53,7 @@ const isEditing = computed(() => !!props.risk?.id);
 
 // ชื่อหัวข้อ Modal ขึ้นอยู่กับโหมดการทำงาน
 const modalTitle = computed(() => 
-  isEditing.value ? 'แก้ไขความเสี่ยงสายงาน' : 'เพิ่มความเสี่ยงสายงานใหม่'
+  isEditing.value ? 'แก้ไขความเสี่ยงฝ่าย' : 'เพิ่มความเสี่ยงฝ่ายใหม่'
 );
 
 // ติดตามการเปลี่ยนแปลงข้อมูลความเสี่ยงที่ส่งมา
@@ -93,24 +93,24 @@ const handleSubmit = () => {
   };
 
   const route = isEditing.value 
-    ? `department-risks.update` 
-    : `department-risks.store`;
+    ? `division-risks.update` 
+    : `division-risks.store`;
   
   const method = isEditing.value ? 'put' : 'post';
   
   // กำหนด URL และพารามิเตอร์ตามโหมดการทำงาน
-  const routeParams = isEditing.value ? { departmentRisk: props.risk?.id } : {};
+  const routeParams = isEditing.value ? { divisionRisk: props.risk?.id } : {};
   
   // บันทึก log ข้อมูลสำหรับตรวจสอบ
-  console.log(`กำลังบันทึกข้อมูลความเสี่ยงสายงาน: ${isEditing.value ? 'แก้ไข' : 'เพิ่มใหม่'}`, formData);
+  console.log(`กำลังบันทึกข้อมูลความเสี่ยงฝ่าย: ${isEditing.value ? 'แก้ไข' : 'เพิ่มใหม่'}`, formData);
   
   // ส่งข้อมูลไปยัง server ด้วย Inertia
   router[method](route(routeParams), formData, {
     onSuccess: () => {
       // แสดงข้อความแจ้งเตือนเมื่อบันทึกสำเร็จ
       toast.success(isEditing.value 
-        ? 'แก้ไขข้อมูลความเสี่ยงสายงานเรียบร้อยแล้ว' 
-        : 'เพิ่มข้อมูลความเสี่ยงสายงานเรียบร้อยแล้ว'
+        ? 'แก้ไขข้อมูลความเสี่ยงฝ่ายเรียบร้อยแล้ว' 
+        : 'เพิ่มข้อมูลความเสี่ยงฝ่ายเรียบร้อยแล้ว'
       );
       loading.value = false;
       emit('update:show', false); // ปิด Modal
@@ -131,7 +131,7 @@ const handleSubmit = () => {
     <DialogContent class="sm:max-w-md md:max-w-lg">
       <DialogHeader>
         <DialogTitle>{{ modalTitle }}</DialogTitle>
-        <DialogDescription>กรอกข้อมูลความเสี่ยงระดับสายงาน</DialogDescription>
+        <DialogDescription>กรอกข้อมูลความเสี่ยงระดับฝ่าย</DialogDescription>
       </DialogHeader>
 
       <form @submit.prevent="handleSubmit" class="space-y-4">

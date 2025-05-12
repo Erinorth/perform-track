@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\DepartmentRisk;
+use App\Models\DivisionRisk;
 use App\Models\RiskAssessment;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -17,7 +17,7 @@ class RiskAssessmentFactory extends Factory
             'likelihood_level' => fake()->numberBetween(1, 4),
             'impact_level' => fake()->numberBetween(1, 4),
             'notes' => fake()->paragraph(1),
-            'department_risk_id' => DepartmentRisk::factory(),
+            'division_risk_id' => DivisionRisk::factory(),
         ];
     }
 }

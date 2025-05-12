@@ -1,7 +1,7 @@
 <?php
 /**
- * ไฟล์: app\Http\Requests\UpdateDepartmentRiskRequest.php
- * FormRequest สำหรับตรวจสอบข้อมูลการอัปเดตความเสี่ยงระดับสายงาน
+ * ไฟล์: app\Http\Requests\UpdateDivisionRiskRequest.php
+ * FormRequest สำหรับตรวจสอบข้อมูลการอัปเดตความเสี่ยงระดับฝ่าย
  */
 
 namespace App\Http\Requests;
@@ -10,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
-class UpdateDepartmentRiskRequest extends FormRequest
+class UpdateDivisionRiskRequest extends FormRequest
 {
     /**
      * กำหนดว่าผู้ใช้มีสิทธิ์ในการดำเนินการตาม request นี้หรือไม่
@@ -65,10 +65,10 @@ class UpdateDepartmentRiskRequest extends FormRequest
      */
     protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
     {
-        Log::warning('การตรวจสอบข้อมูลสำหรับการอัปเดตความเสี่ยงระดับสายงานล้มเหลว', [
+        Log::warning('การตรวจสอบข้อมูลสำหรับการอัปเดตความเสี่ยงระดับฝ่ายล้มเหลว', [
             'errors' => $validator->errors()->toArray(),
             'inputs' => $this->except(['_token']),
-            'id' => $this->route('departmentRisk')->id ?? 'ไม่ระบุ',
+            'id' => $this->route('divisionRisk')->id ?? 'ไม่ระบุ',
             'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);

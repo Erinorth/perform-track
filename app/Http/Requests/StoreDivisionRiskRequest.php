@@ -1,7 +1,7 @@
 <?php
 /**
- * ไฟล์: app\Http\Requests\StoreDepartmentRiskRequest.php
- * FormRequest สำหรับตรวจสอบข้อมูลการสร้างความเสี่ยงระดับสายงานใหม่
+ * ไฟล์: app\Http\Requests\StoreDivisionRiskRequest.php
+ * FormRequest สำหรับตรวจสอบข้อมูลการสร้างความเสี่ยงระดับฝ่ายใหม่
  */
 
 namespace App\Http\Requests;
@@ -10,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
-class StoreDepartmentRiskRequest extends FormRequest
+class StoreDivisionRiskRequest extends FormRequest
 {
     /**
      * กำหนดว่าผู้ใช้มีสิทธิ์ในการดำเนินการตาม request นี้หรือไม่
@@ -65,7 +65,7 @@ class StoreDepartmentRiskRequest extends FormRequest
      */
     protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
     {
-        Log::warning('การตรวจสอบข้อมูลสำหรับการสร้างความเสี่ยงระดับสายงานล้มเหลว', [
+        Log::warning('การตรวจสอบข้อมูลสำหรับการสร้างความเสี่ยงระดับฝ่ายล้มเหลว', [
             'errors' => $validator->errors()->toArray(),
             'inputs' => $this->except(['_token']),
             'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',

@@ -24,7 +24,7 @@ export function logAction(message: string, level: 'info' | 'warning' | 'error' =
 /**
  * บันทึกการกระทำในตาราง (DataTable)
  * @param action ประเภทการกระทำ (view, edit, delete, expand)
- * @param entityType ประเภทของข้อมูล (organizational_risk, department_risk, etc.)
+ * @param entityType ประเภทของข้อมูล (organizational_risk, division_risk, etc.)
  * @param entityId ID ของข้อมูล
  */
 export function logTableAction(

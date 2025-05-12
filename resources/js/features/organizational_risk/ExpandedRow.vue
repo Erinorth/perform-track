@@ -5,7 +5,7 @@
   ฟีเจอร์หลัก:
   - แสดงรายละเอียดความเสี่ยงระดับองค์กรแบบเต็ม
   - แสดงวันที่สร้างและแก้ไขล่าสุดในรูปแบบวันที่ไทย
-  - แสดงรายการความเสี่ยงระดับสายงานที่เกี่ยวข้อง
+  - แสดงรายการความเสี่ยงระดับฝ่ายที่เกี่ยวข้อง
   - รองรับการแสดงผลแบบ Responsive ทั้งบนมือถือและหน้าจอขนาดใหญ่
   - มีสถานะ loading สำหรับการโหลดข้อมูล
 -->
@@ -13,7 +13,7 @@
 <script setup lang="ts">
 // ==================== นำเข้า Types และ Interfaces ====================
 // นำเข้า types สำหรับโมเดลข้อมูลความเสี่ยง
-import type { OrganizationalRisk, DepartmentRisk, Attachment } from '@/types/types';
+import type { OrganizationalRisk, DivisionRisk, Attachment } from '@/types/types';
 
 // ==================== นำเข้า Vue Composition API ====================
 import { computed, onMounted, ref } from 'vue';
@@ -37,14 +37,14 @@ const props = defineProps<{
 }>();
 
 // ==================== Computed Properties ====================
-// ตรวจสอบว่ามีความเสี่ยงระดับสายงานที่เกี่ยวข้องหรือไม่
-const hasDepartmentRisks = computed(() => {
-  return props.rowData.department_risks && props.rowData.department_risks.length > 0;
+// ตรวจสอบว่ามีความเสี่ยงระดับฝ่ายที่เกี่ยวข้องหรือไม่
+const hasDivisionRisks = computed(() => {
+  return props.rowData.division_risks && props.rowData.division_risks.length > 0;
 });
 
-// คำนวณจำนวนความเสี่ยงระดับสายงานที่เกี่ยวข้อง
-const departmentRisksCount = computed(() => {
-  return hasDepartmentRisks.value ? props.rowData.department_risks?.length : 0;
+// คำนวณจำนวนความเสี่ยงระดับฝ่ายที่เกี่ยวข้อง
+const divisionRisksCount = computed(() => {
+  return hasDivisionRisks.value ? props.rowData.division_risks?.length : 0;
 });
 
 // ตรวจสอบว่ามีเอกสารแนบหรือไม่
@@ -130,8 +130,8 @@ const downloadAttachment = (attachment: Attachment) => {
   window.open(`/organizational-risks/${props.rowData.id}/attachments/${attachment.id}/download`, '_blank');
 };
 
-// เมธอดสำหรับแสดงรายละเอียดความเสี่ยงระดับสายงานแบบ popup
-const viewDepartmentRiskDetails = (risk: DepartmentRisk) => {
+// เมธอดสำหรับแสดงรายละเอียดความเสี่ยงระดับฝ่ายแบบ popup
+const viewDivisionRiskDetails = (risk: DivisionRisk) => {
   // แสดง toast เมื่อคลิกดูรายละเอียด
   toast.info(`รายละเอียดความเสี่ยง: ${risk.risk_name}`, {
     description: risk.description || 'ไม่มีคำอธิบายเพิ่มเติม',
@@ -139,7 +139,7 @@ const viewDepartmentRiskDetails = (risk: DepartmentRisk) => {
   });
   
   // เพิ่ม log เพื่อการตรวจสอบตามที่กำหนดในคำแนะนำโปรเจค
-  console.log('ดูรายละเอียดความเสี่ยงระดับสายงาน:', risk);
+  console.log('ดูรายละเอียดความเสี่ยงระดับฝ่าย:', risk);
 };
 
 // ฟังก์ชันเปิดหน้าแสดงไฟล์แนบแบบเต็มจอ
@@ -256,28 +256,28 @@ onMounted(() => {
         </div>
       </div>
       
-      <!-- คอลัมน์ขวา: ความเสี่ยงระดับสายงานที่เกี่ยวข้อง -->
+      <!-- คอลัมน์ขวา: ความเสี่ยงระดับฝ่ายที่เกี่ยวข้อง -->
       <div class="overflow-hidden">
         <div class="flex items-start space-x-2">
           <Network class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
           <div class="w-full min-w-0 overflow-hidden">
             <!-- หัวข้อพร้อมตัวนับจำนวนรายการ -->
             <div class="flex items-center justify-between">
-              <h3 class="text-sm font-medium truncate">ความเสี่ยงระดับสายงานที่เกี่ยวข้อง</h3>
-              <span v-if="hasDepartmentRisks" class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full flex-shrink-0">
-                {{ departmentRisksCount }} รายการ
+              <h3 class="text-sm font-medium truncate">ความเสี่ยงระดับฝ่ายที่เกี่ยวข้อง</h3>
+              <span v-if="hasDivisionRisks" class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full flex-shrink-0">
+                {{ divisionRisksCount }} รายการ
               </span>
             </div>
             
-            <!-- แสดงรายการความเสี่ยงระดับสายงาน -->
-            <div v-if="hasDepartmentRisks" class="mt-2">
+            <!-- แสดงรายการความเสี่ยงระดับฝ่าย -->
+            <div v-if="hasDivisionRisks" class="mt-2">
               <ul class="space-y-2">
                 <li 
-                  v-for="dept in (rowData.department_risks as DepartmentRisk[])" 
+                  v-for="dept in (rowData.division_risks as DivisionRisk[])" 
                   :key="dept.id" 
                   class="text-sm bg-background rounded-md p-2 border border-border overflow-hidden"
                 >
-                  <!-- รายละเอียดความเสี่ยงระดับสายงาน -->
+                  <!-- รายละเอียดความเสี่ยงระดับฝ่าย -->
                   <div class="flex flex-col sm:flex-row items-start sm:justify-between gap-2">
                     <div class="flex items-start space-x-2 min-w-0 overflow-hidden">
                       <Users class="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -291,7 +291,7 @@ onMounted(() => {
                     
                     <!-- ปุ่มดูรายละเอียด -->
                     <button 
-                      @click="viewDepartmentRiskDetails(dept)"
+                      @click="viewDivisionRiskDetails(dept)"
                       class="text-xs text-primary hover:text-primary/80 transition-colors flex-shrink-0"
                     >
                       ดูรายละเอียด
@@ -301,10 +301,10 @@ onMounted(() => {
               </ul>
             </div>
             
-            <!-- กรณีไม่มีความเสี่ยงระดับสายงาน -->
+            <!-- กรณีไม่มีความเสี่ยงระดับฝ่าย -->
             <div v-else class="mt-2 flex items-center space-x-2 text-sm text-muted-foreground">
               <AlertTriangle class="h-4 w-4" />
-              <p>ไม่มีความเสี่ยงระดับสายงานที่เกี่ยวข้อง</p>
+              <p>ไม่มีความเสี่ยงระดับฝ่ายที่เกี่ยวข้อง</p>
             </div>
           </div>
         </div>

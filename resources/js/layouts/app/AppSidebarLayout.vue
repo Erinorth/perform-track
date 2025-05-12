@@ -31,7 +31,7 @@ withDefaults(defineProps<Props>(), {
     <AppShell variant="sidebar">
         <!-- 
           แสดง AppSidebar ซึ่งเป็นเมนูด้านข้างสำหรับนำทางไปยังหน้าต่างๆ 
-          เช่น Dashboard, Organizational Risk, Department Risk ฯลฯ
+          เช่น Dashboard, Organizational Risk, Division Risk ฯลฯ
         -->
         <AppSidebar />
         

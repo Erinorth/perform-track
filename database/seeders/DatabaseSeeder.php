@@ -10,7 +10,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             OrganizationalRiskSeeder::class,
-            DepartmentRiskSeeder::class,
+            DivisionRiskSeeder::class,
             LikelihoodCriterionSeeder::class,
             ImpactCriterionSeeder::class,
             RiskAssessmentSeeder::class,

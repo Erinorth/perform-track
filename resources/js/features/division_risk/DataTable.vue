@@ -1,14 +1,14 @@
 <!-- 
-  ไฟล์: resources\js\features\department_risk\DataTable.vue
-  Component หลักสำหรับแสดงตารางข้อมูลความเสี่ยงระดับสายงาน
+  ไฟล์: resources\js\features\division_risk\DataTable.vue
+  Component หลักสำหรับแสดงตารางข้อมูลความเสี่ยงระดับฝ่าย
   รองรับการค้นหา, กรอง, เรียงลำดับ, แบ่งหน้า, และการขยายแถวเพื่อดูรายละเอียดเพิ่มเติม
   ใช้ @tanstack/vue-table เป็นหลักในการจัดการข้อมูลตาราง
   รองรับการแสดงผลแบบ Responsive สำหรับทุกขนาดหน้าจอ
 -->
 
-<script setup lang="ts" generic="TData extends DepartmentRisk, TValue">
+<script setup lang="ts" generic="TData extends DivisionRisk, TValue">
 // นำเข้า types สำหรับโมเดลข้อมูล
-import type { DepartmentRisk, OrganizationalRisk } from '@/types/types';
+import type { DivisionRisk, OrganizationalRisk } from '@/types/types';
 
 // นำเข้า Vue Composition API
 import { ref, watch, computed } from 'vue'

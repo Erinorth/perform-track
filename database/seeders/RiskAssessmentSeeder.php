@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\DepartmentRisk;
+use App\Models\DivisionRisk;
 use App\Models\RiskAssessment;
 use Illuminate\Database\Seeder;
 
@@ -10,14 +10,14 @@ class RiskAssessmentSeeder extends Seeder
 {
     public function run(): void
     {
-        $departmentRisks = DepartmentRisk::all();
+        $divisionRisks = DivisionRisk::all();
         
-        if ($departmentRisks->isEmpty()) {
-            $this->call(DepartmentRiskSeeder::class);
-            $departmentRisks = DepartmentRisk::all();
+        if ($divisionRisks->isEmpty()) {
+            $this->call(DivisionRiskSeeder::class);
+            $divisionRisks = DivisionRisk::all();
         }
 
-        foreach ($departmentRisks as $departmentRisk) {
+        foreach ($divisionRisks as $divisionRisk) {
             // สร้างผลการประเมินย้อนหลังทุก 3 เดือน สำหรับปี 2024
             $assessmentDates = [
                 '2024-01-15',
@@ -34,7 +34,7 @@ class RiskAssessmentSeeder extends Seeder
                     'likelihood_level' => rand(1, 4),
                     'impact_level' => rand(1, 4),
                     'notes' => "ผลการประเมินประจำไตรมาส {$quarter} ปี " . date('Y', strtotime($date)),
-                    'department_risk_id' => $departmentRisk->id,
+                    'division_risk_id' => $divisionRisk->id,
                 ]);
             }
         }

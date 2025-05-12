@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\DepartmentRisk;
+use App\Models\DivisionRisk;
 use App\Models\LikelihoodCriterion;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -25,7 +25,7 @@ class LikelihoodCriterionFactory extends Factory
             'level' => $level,
             'name' => $levels[$level],
             'description' => fake()->paragraph(1),
-            'department_risk_id' => DepartmentRisk::factory(),
+            'division_risk_id' => DivisionRisk::factory(),
         ];
     }
 }

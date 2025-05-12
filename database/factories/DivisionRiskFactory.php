@@ -2,13 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Models\DepartmentRisk;
+use App\Models\DivisionRisk;
 use App\Models\OrganizationalRisk;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-class DepartmentRiskFactory extends Factory
+class DivisionRiskFactory extends Factory
 {
-    protected $model = DepartmentRisk::class;
+    protected $model = DivisionRisk::class;
 
     public function definition(): array
     {

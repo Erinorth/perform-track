@@ -10,10 +10,10 @@ class RiskAssessment extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['assessment_date', 'likelihood_level', 'impact_level', 'notes', 'department_risk_id'];
+    protected $fillable = ['assessment_date', 'likelihood_level', 'impact_level', 'notes', 'division_risk_id'];
 
-    public function departmentRisk(): BelongsTo
+    public function divisionRisk(): BelongsTo
     {
-        return $this->belongsTo(DepartmentRisk::class);
+        return $this->belongsTo(DivisionRisk::class);
     }
 }

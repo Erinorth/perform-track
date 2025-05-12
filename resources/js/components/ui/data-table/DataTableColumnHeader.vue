@@ -2,7 +2,7 @@
   ไฟล์: resources\js\components\ui\data-table\DataTableColumnHeader.vue
   Generic Component สำหรับแสดงหัวคอลัมน์ของ DataTable
   รองรับการ sort, dropdown menu สำหรับ sort/ซ่อนคอลัมน์
-  ใช้ร่วมกันระหว่างหน้า department_risk และ organizational_risk
+  ใช้ร่วมกันระหว่างหน้า division_risk และ organizational_risk
 -->
 
 <script setup lang="ts">

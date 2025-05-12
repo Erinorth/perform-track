@@ -1,24 +1,24 @@
 /* 
-  ไฟล์: resources\js\features\department_risk\columns.ts
-  หน้านี้กำหนดคอลัมน์สำหรับ DataTable ของ Department Risk
+  ไฟล์: resources\js\features\division_risk\columns.ts
+  หน้านี้กำหนดคอลัมน์สำหรับ DataTable ของ Division Risk
   เพิ่ม event สำหรับลบ (delete) ข้อมูลใน action
 */
 
 import { h } from 'vue'
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
 import { DataTableColumnHeader, DataTableDropDown } from '@/components/ui/data-table'
-import type { DepartmentRisk } from '@/types/types';
+import type { DivisionRisk } from '@/types/types';
 
 // ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล
 declare module '@tanstack/vue-table' {
   interface TableMeta<TData extends RowData> {
-    onEdit?: (department_risk: TData) => void
-    onDelete?: (department_risk: TData) => void
+    onEdit?: (division_risk: TData) => void
+    onDelete?: (division_risk: TData) => void
   }
 }
 
 // กำหนด columns สำหรับ DataTable
-export const columns: ColumnDef<DepartmentRisk>[] = [
+export const columns: ColumnDef<DivisionRisk>[] = [
   {
     accessorKey: "id", // คีย์หลักของข้อมูล
     header: ({ column }) => (
@@ -127,25 +127,25 @@ export const columns: ColumnDef<DepartmentRisk>[] = [
     id: "actions",
     enableHiding: false,
     cell: ({ row, table }) => {
-      const department_risk = row.original;
-      const meta = table.options.meta as TableMeta<DepartmentRisk>
+      const division_risk = row.original;
+      const meta = table.options.meta as TableMeta<DivisionRisk>
       
       // ใช้ Generic DataTableDropDown component โดยส่งข้อมูลผ่าน data prop
       return h('div', { class: 'relative' }, [
         h(DataTableDropDown, {
-          data: department_risk, // ส่งข้อมูล department_risk ผ่าน data prop
+          data: division_risk, // ส่งข้อมูล division_risk ผ่าน data prop
           menuLabel: 'ตัวเลือกความเสี่ยงแผนก', // custom label สำหรับเมนู
           onExpand: () => {
-            //logTableAction('expand', 'department_risk', department_risk.id)
+            //logTableAction('expand', 'division_risk', division_risk.id)
             row.toggleExpanded()
           },
           onEdit: () => {
-            //logTableAction('edit', 'department_risk', department_risk.id)
-            meta?.onEdit?.(department_risk)
+            //logTableAction('edit', 'division_risk', division_risk.id)
+            meta?.onEdit?.(division_risk)
           },
           onDelete: () => {
-            //logTableAction('delete', 'department_risk', department_risk.id)
-            meta?.onDelete?.(department_risk)
+            //logTableAction('delete', 'division_risk', division_risk.id)
+            meta?.onDelete?.(division_risk)
           },
         }),
       ]);

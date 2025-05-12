@@ -30,8 +30,8 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้าความเสี่ยงระดับองค์กร
     },
     {
-        title: 'Department Risk',
-        href: '/department-risks',
+        title: 'Division Risk',
+        href: '/division-risks',
         icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้าความเสี่ยงระดับแผนก
     },
     {

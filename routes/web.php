@@ -7,13 +7,13 @@
  * ไฟล์นี้กำหนดเส้นทางทั้งหมดในระบบ แบ่งเป็นหมวดหมู่ดังนี้:
  * - เส้นทางหลัก (หน้าแรกและแดชบอร์ด)
  * - เส้นทางสำหรับจัดการความเสี่ยงระดับองค์กร
- * - เส้นทางสำหรับจัดการความเสี่ยงระดับสายงาน
+ * - เส้นทางสำหรับจัดการความเสี่ยงระดับฝ่าย
  * - เส้นทางสำหรับการประเมินความเสี่ยง
  * - เส้นทางสำหรับรายงาน
  */
 
 // นำเข้า Controllers ที่เกี่ยวข้องและคลาสพื้นฐานที่จำเป็น
-use App\Http\Controllers\DepartmentRiskController;
+use App\Http\Controllers\DivisionRiskController;
 use App\Http\Controllers\OrganizationalRiskController;
 use App\Http\Controllers\RiskAssessmentController;
 use App\Http\Controllers\ReportController;
@@ -99,45 +99,45 @@ Route::middleware('auth')->group(function () {
     });
 
     /**
-     * กลุ่มเส้นทางสำหรับจัดการความเสี่ยงระดับสายงาน
+     * กลุ่มเส้นทางสำหรับจัดการความเสี่ยงระดับฝ่าย
      * 
      * ประกอบด้วยเส้นทางสำหรับการดำเนินการ CRUD และการจัดการเกณฑ์การประเมิน
-     * ความเสี่ยงทั้งด้านโอกาสเกิดและผลกระทบสำหรับแต่ละความเสี่ยงระดับสายงาน
+     * ความเสี่ยงทั้งด้านโอกาสเกิดและผลกระทบสำหรับแต่ละความเสี่ยงระดับฝ่าย
      */
-    Route::prefix('department-risks')->group(function () {
-        // แสดงรายการความเสี่ยงระดับสายงานทั้งหมด
-        Route::get('/', [DepartmentRiskController::class, 'index'])
-            ->name('department-risks.index');
+    Route::prefix('division-risks')->group(function () {
+        // แสดงรายการความเสี่ยงระดับฝ่ายทั้งหมด
+        Route::get('/', [DivisionRiskController::class, 'index'])
+            ->name('division-risks.index');
         
-        // แสดงหน้าสร้างความเสี่ยงระดับสายงานใหม่
-        Route::get('/create', [DepartmentRiskController::class, 'create'])
-            ->name('department-risks.create');
+        // แสดงหน้าสร้างความเสี่ยงระดับฝ่ายใหม่
+        Route::get('/create', [DivisionRiskController::class, 'create'])
+            ->name('division-risks.create');
         
-        // บันทึกความเสี่ยงระดับสายงานใหม่
-        Route::post('/', [DepartmentRiskController::class, 'store'])
-            ->name('department-risks.store');
+        // บันทึกความเสี่ยงระดับฝ่ายใหม่
+        Route::post('/', [DivisionRiskController::class, 'store'])
+            ->name('division-risks.store');
         
-        // แสดงหน้าแก้ไขความเสี่ยงระดับสายงาน
-        Route::get('/{departmentRisk}/edit', [DepartmentRiskController::class, 'edit'])
-            ->name('department-risks.edit');
+        // แสดงหน้าแก้ไขความเสี่ยงระดับฝ่าย
+        Route::get('/{divisionRisk}/edit', [DivisionRiskController::class, 'edit'])
+            ->name('division-risks.edit');
         
-        // อัปเดตข้อมูลความเสี่ยงระดับสายงาน
-        Route::put('/{departmentRisk}', [DepartmentRiskController::class, 'update'])
-            ->name('department-risks.update');
+        // อัปเดตข้อมูลความเสี่ยงระดับฝ่าย
+        Route::put('/{divisionRisk}', [DivisionRiskController::class, 'update'])
+            ->name('division-risks.update');
         
-        // ลบความเสี่ยงระดับสายงาน
-        Route::delete('/{departmentRisk}', [DepartmentRiskController::class, 'destroy'])
-            ->name('department-risks.destroy');
+        // ลบความเสี่ยงระดับฝ่าย
+        Route::delete('/{divisionRisk}', [DivisionRiskController::class, 'destroy'])
+            ->name('division-risks.destroy');
         
         // แสดงหน้าจัดการเกณฑ์การประเมินความเสี่ยง
-        Route::get('/{departmentRisk}/criteria', [DepartmentRiskController::class, 'manageCriteria'])
-            ->name('department-risks.criteria');
+        Route::get('/{divisionRisk}/criteria', [DivisionRiskController::class, 'manageCriteria'])
+            ->name('division-risks.criteria');
         
         // บันทึกเกณฑ์โอกาสเกิดความเสี่ยง
-        Route::post('/{departmentRisk}/likelihood-criteria', [DepartmentRiskController::class, 'storeLikelihoodCriteria']);
+        Route::post('/{divisionRisk}/likelihood-criteria', [DivisionRiskController::class, 'storeLikelihoodCriteria']);
         
         // บันทึกเกณฑ์ผลกระทบของความเสี่ยง
-        Route::post('/{departmentRisk}/impact-criteria', [DepartmentRiskController::class, 'storeImpactCriteria']);
+        Route::post('/{divisionRisk}/impact-criteria', [DivisionRiskController::class, 'storeImpactCriteria']);
     });
 
     /**

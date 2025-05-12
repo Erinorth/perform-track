@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
-use App\Models\DepartmentRisk;
+use App\Models\DivisionRisk;
 use App\Models\OrganizationalRisk;
 use Illuminate\Database\Seeder;
 
-class DepartmentRiskSeeder extends Seeder
+class DivisionRiskSeeder extends Seeder
 {
     public function run(): void
     {
@@ -19,7 +19,7 @@ class DepartmentRiskSeeder extends Seeder
         }
 
         // สร้างข้อมูลตัวอย่างที่มีความหมาย
-        $departmentRisks = [
+        $divisionRisks = [
             // ความเสี่ยงด้านการเงิน
             [
                 'risk_name' => 'การบริหารงบประมาณไม่เป็นไปตามแผน',
@@ -43,13 +43,13 @@ class DepartmentRiskSeeder extends Seeder
             ],
         ];
 
-        foreach ($departmentRisks as $risk) {
-            DepartmentRisk::create($risk);
+        foreach ($divisionRisks as $risk) {
+            DivisionRisk::create($risk);
         }
 
         // สร้างข้อมูลเพิ่มเติมแบบสุ่ม
         foreach ($orgRisks as $orgRisk) {
-            DepartmentRisk::factory()->count(2)->create([
+            DivisionRisk::factory()->count(2)->create([
                 'organizational_risk_id' => $orgRisk->id,
                 'year' => 2024,
             ]);

@@ -19,8 +19,8 @@ class OrganizationalRisk extends Model
         return $this->hasMany(OrganizationalRiskAttachment::class);
     }
 
-    public function departmentRisks(): HasMany
+    public function divisionRisks(): HasMany
     {
-        return $this->hasMany(DepartmentRisk::class);
+        return $this->hasMany(DivisionRisk::class);
     }
 }

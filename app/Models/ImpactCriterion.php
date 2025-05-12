@@ -10,10 +10,10 @@ class ImpactCriterion extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['level', 'name', 'description', 'department_risk_id'];
+    protected $fillable = ['level', 'name', 'description', 'division_risk_id'];
 
-    public function departmentRisk(): BelongsTo
+    public function divisionRisk(): BelongsTo
     {
-        return $this->belongsTo(DepartmentRisk::class);
+        return $this->belongsTo(DivisionRisk::class);
     }
 }

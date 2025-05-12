@@ -1,6 +1,6 @@
 <!-- 
-  ไฟล์: resources\js\pages\department_risk\DepartmentRisk.vue
-  หน้าหลักสำหรับแสดงและจัดการข้อมูลความเสี่ยงระดับสายงาน
+  ไฟล์: resources\js\pages\division_risk\DivisionRisk.vue
+  หน้าหลักสำหรับแสดงและจัดการข้อมูลความเสี่ยงระดับฝ่าย
   รองรับการดูรายการ, เพิ่ม, แก้ไข, และเปลี่ยนสถานะความเสี่ยง
   ออกแบบให้รองรับการแสดงผลบนทุกขนาดหน้าจอ (Responsive Design)
 -->
@@ -10,14 +10,14 @@
 import AppLayout from '@/layouts/AppLayout.vue';         // Layout หลักของแอปพลิเคชัน
 import { Head, router } from '@inertiajs/vue3';          // Component สำหรับกำหนด <title> ของหน้า
 import { type BreadcrumbItem } from '@/types';           // Type สำหรับ breadcrumb
-import { columns } from '@/features/department_risk/columns';  // คอลัมน์สำหรับตาราง
-import DataTable from '@/features/department_risk/DataTable.vue';  // Component ตาราง
-import { useDepartmentRiskData } from '@/composables/useDepartmentRiskData';  // Composable function สำหรับจัดการข้อมูล
-import type { DepartmentRisk } from '@/features/department_risk/department_risk';  // Type ของความเสี่ยงสายงาน
+import { columns } from '@/features/division_risk/columns';  // คอลัมน์สำหรับตาราง
+import DataTable from '@/features/division_risk/DataTable.vue';  // Component ตาราง
+import { useDivisionRiskData } from '@/composables/useDivisionRiskData';  // Composable function สำหรับจัดการข้อมูล
+import type { DivisionRisk } from '@/features/division_risk/division_risk';  // Type ของความเสี่ยงฝ่าย
 import type { OrganizationalRisk } from '@/features/organizational_risk/organizational_risk';  // Type ของความเสี่ยงองค์กร
 import { Button } from '@/components/ui/button';         // Component ปุ่ม
 import { PlusIcon } from 'lucide-vue-next';              // ไอคอนปุ่มเพิ่มข้อมูล
-import DepartmentRiskModal from './DepartmentRiskModal.vue';  // Modal สำหรับเพิ่ม/แก้ไขข้อมูล
+import DivisionRiskModal from './DivisionRiskModal.vue';  // Modal สำหรับเพิ่ม/แก้ไขข้อมูล
 import { ref } from 'vue';                               // Ref API สำหรับข้อมูลแบบ reactive
 import { useConfirm } from '@/composables/useConfirm';   // เพิ่ม import สำหรับ confirmation dialog
 import { toast } from 'vue-sonner';                      // สำหรับแสดงข้อความแจ้งเตือน
@@ -26,23 +26,23 @@ import { toast } from 'vue-sonner';                      // สำหรับ�
 // แสดงเส้นทางการนำทางปัจจุบันให้ผู้ใช้ทราบว่าอยู่ที่หน้าใด
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'จัดการความเสี่ยงสายงาน',
-        href: '/department-risks',
+        title: 'จัดการความเสี่ยงฝ่าย',
+        href: '/division-risks',
     },
 ];
 
 // รับข้อมูลเริ่มต้นจาก props ที่ส่งมาจาก Inertia
 const props = defineProps<{
-  risks: DepartmentRisk[];  // ข้อมูลความเสี่ยงสายงานทั้งหมดจากเซิร์ฟเวอร์
+  risks: DivisionRisk[];  // ข้อมูลความเสี่ยงฝ่ายทั้งหมดจากเซิร์ฟเวอร์
   organizationalRisks: OrganizationalRisk[];  // ข้อมูลความเสี่ยงองค์กรเพื่อใช้ในการเลือก
 }>();
 
-// ใช้ composable function เพื่อจัดการข้อมูลความเสี่ยงสายงาน
-const { data, updateRiskStatus, deleteRisk } = useDepartmentRiskData(props.risks);
+// ใช้ composable function เพื่อจัดการข้อมูลความเสี่ยงฝ่าย
+const { data, updateRiskStatus, deleteRisk } = useDivisionRiskData(props.risks);
 
 // ตัวแปรสำหรับจัดการสถานะ Modal และข้อมูลที่กำลังแก้ไข
 const showModal = ref(false);                         // ควบคุมการแสดง/ซ่อน Modal
-const currentRisk = ref<DepartmentRisk | undefined>(undefined);  // ข้อมูลความเสี่ยงที่กำลังแก้ไข
+const currentRisk = ref<DivisionRisk | undefined>(undefined);  // ข้อมูลความเสี่ยงที่กำลังแก้ไข
 
 // ฟังก์ชันเปิด Modal สำหรับเพิ่มข้อมูลใหม่
 // กำหนดให้ currentRisk เป็น undefined เพื่อให้ Modal ทำงานในโหมดเพิ่มข้อมูล
@@ -53,7 +53,7 @@ const openCreateModal = () => {
 
 // ฟังก์ชันเปิด Modal สำหรับแก้ไขข้อมูล
 // กำหนด currentRisk เป็นข้อมูลที่ต้องการแก้ไข
-const openEditModal = (risk: DepartmentRisk) => {
+const openEditModal = (risk: DivisionRisk) => {
   currentRisk.value = risk;       // กำหนดข้อมูลที่ต้องการแก้ไข
   showModal.value = true;         // แสดง Modal
 };
@@ -61,7 +61,7 @@ const openEditModal = (risk: DepartmentRisk) => {
 // ฟังก์ชันจัดการเมื่อบันทึกข้อมูลสำเร็จ
 // โหลดหน้าเว็บใหม่เพื่อให้แสดงข้อมูลล่าสุด
 const handleSaved = () => {
-  router.visit(route('department-risks.index'), {
+  router.visit(route('division-risks.index'), {
     preserveScroll: true,
     only: ['risks']
   });
@@ -71,7 +71,7 @@ const handleSaved = () => {
 const { confirm } = useConfirm();
 
 // เพิ่มฟังก์ชันจัดการการลบข้อมูล
-const handleDelete = (risk: DepartmentRisk) => {
+const handleDelete = (risk: DivisionRisk) => {
   // แสดง dialog ยืนยันการลบ
   confirm({
     title: 'ยืนยันการลบ',
@@ -98,7 +98,7 @@ const handleDelete = (risk: DepartmentRisk) => {
 
 <template>
   <!-- กำหนดชื่อเรื่องของหน้าเว็บ -->
-  <Head title="จัดการความเสี่ยงสายงาน" />
+  <Head title="จัดการความเสี่ยงฝ่าย" />
 
   <!-- ใช้ Layout หลักพร้อมกำหนด breadcrumbs -->
   <AppLayout :breadcrumbs="breadcrumbs">
@@ -108,17 +108,17 @@ const handleDelete = (risk: DepartmentRisk) => {
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <!-- ส่วนหัวข้อหน้า แสดงชื่อหน้าและคำอธิบาย -->
           <div>
-            <h1 class="text-2xl font-bold">จัดการความเสี่ยงสายงาน</h1>
-            <p class="text-muted-foreground">รายการความเสี่ยงสายงานทั้งหมดในระบบ</p>
+            <h1 class="text-2xl font-bold">จัดการความเสี่ยงฝ่าย</h1>
+            <p class="text-muted-foreground">รายการความเสี่ยงฝ่ายทั้งหมดในระบบ</p>
           </div>
           <!-- ปุ่มเพิ่มข้อมูล (Responsive: แบบเต็มจอบนมือถือ, แบบปกติบนจอใหญ่) -->
           <Button @click="openCreateModal" class="flex items-center gap-2 w-full sm:w-auto">
             <PlusIcon class="h-4 w-4" />
-            <span>เพิ่มความเสี่ยงสายงาน</span>
+            <span>เพิ่มความเสี่ยงฝ่าย</span>
           </Button>
         </div>
         
-        <!-- แสดงตารางข้อมูลความเสี่ยงสายงาน -->
+        <!-- แสดงตารางข้อมูลความเสี่ยงฝ่าย -->
         <DataTable 
           :columns="columns"
           :data="data"
@@ -126,7 +126,7 @@ const handleDelete = (risk: DepartmentRisk) => {
         />
 
         <!-- Modal สำหรับเพิ่ม/แก้ไขข้อมูล -->
-        <DepartmentRiskModal 
+        <DivisionRiskModal 
           v-model:show="showModal"        
           :risk="currentRisk"             
           :organizational-risks="props.organizationalRisks"

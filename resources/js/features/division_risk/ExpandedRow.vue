@@ -1,13 +1,13 @@
 <!--
-  ไฟล์: resources\js\features\department_risk\ExpandedRow.vue
-  Component สำหรับแสดงข้อมูลเพิ่มเติมเมื่อขยายแถวในตารางความเสี่ยงระดับสายงาน
+  ไฟล์: resources\js\features\division_risk\ExpandedRow.vue
+  Component สำหรับแสดงข้อมูลเพิ่มเติมเมื่อขยายแถวในตารางความเสี่ยงระดับฝ่าย
   แสดงรายละเอียดความเสี่ยง, ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง และการประเมินความเสี่ยง
   รองรับการแสดงผลแบบ Responsive โดยใช้ grid layout
 -->
 
 <script setup lang="ts">
 // นำเข้า types สำหรับโมเดลข้อมูล
-import type { OrganizationalRisk, DepartmentRisk, RiskAssessment } from '@/types/types';
+import type { OrganizationalRisk, DivisionRisk, RiskAssessment } from '@/types/types';
 import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 // นำเข้า icons จาก Lucide
@@ -24,7 +24,7 @@ import {
 
 // กำหนด props ที่ต้องการรับ: ข้อมูลแถวที่ขยาย
 const props = defineProps<{
-  rowData: DepartmentRisk
+  rowData: DivisionRisk
 }>();
 
 // สร้าง computed property เพื่อตรวจสอบว่ามีความเสี่ยงระดับองค์กรที่เกี่ยวข้องหรือไม่
