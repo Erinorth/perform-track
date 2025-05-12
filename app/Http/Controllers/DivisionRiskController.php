@@ -13,6 +13,8 @@ namespace App\Http\Controllers;
 use App\Models\DivisionRisk;  // โมเดลสำหรับจัดการข้อมูลความเสี่ยงระดับฝ่าย
 use App\Models\DivisionRiskAttachment;  // โมเดลสำหรับจัดการข้อมูลเอกสารแนบ
 use App\Models\OrganizationalRisk;  // โมเดลสำหรับจัดการข้อมูลความเสี่ยงระดับหน่วยงาน
+use App\Models\LikelihoodCriterion;  // โมเดลสำหรับจัดการข้อมูลเกณฑ์ความเสี่ยง
+use App\Models\ImpactCriterion;  // โมเดลสำหรับจัดการข้อมูลเกณฑ์ผลกระทบ
 use App\Http\Requests\StoreDivisionRiskRequest;  // Form Request สำหรับตรวจสอบข้อมูลการเพิ่ม
 use App\Http\Requests\UpdateDivisionRiskRequest;  // Form Request สำหรับตรวจสอบข้อมูลการแก้ไข
 use Illuminate\Http\Request;  // สำหรับจัดการคำขอจาก HTTP
@@ -32,7 +34,12 @@ class DivisionRiskController extends Controller
     public function index()
     {
         // ดึงข้อมูลความเสี่ยงระดับฝ่ายทั้งหมด พร้อมโหลดความสัมพันธ์
-        $risks = DivisionRisk::with(['riskAssessments', 'attachments', 'organizationalRisk'])
+        $risks = DivisionRisk::with(['riskAssessments',
+            'attachments',
+            'organizationalRisk',
+            'likelihoodCriteria',
+            'impactCriteria'  
+            ])
             ->orderBy('risk_name')  // เรียงตามชื่อความเสี่ยง
             ->get();  // ดึงข้อมูลทั้งหมด
 

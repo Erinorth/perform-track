@@ -13,7 +13,7 @@
 <script setup lang="ts">
 // ==================== นำเข้า Types และ Interfaces ====================
 // นำเข้า types สำหรับโมเดลข้อมูลความเสี่ยง
-import type { OrganizationalRisk, DivisionRisk, DivisionRiskAttachment } from '@/types/types';
+import type { OrganizationalRisk, DivisionRisk, DivisionRiskAttachment, CriteriaItem } from '@/types/types';
 
 // ==================== นำเข้า Vue Composition API ====================
 import { computed, onMounted, ref } from 'vue';
@@ -27,7 +27,8 @@ import { toast } from 'vue-sonner';
 import { 
   ClipboardList, AlertTriangle, Network, 
   CalendarDays, Users, Paperclip, Download, 
-  FileText, FileImage, FileSpreadsheet, Eye
+  FileText, FileImage, FileSpreadsheet, Eye,
+  AlertCircle
 } from 'lucide-vue-next';
 
 // ==================== กำหนด Props ====================
@@ -45,6 +46,28 @@ const hasOrganizationalRisk = computed(() => {
 // คำนวณจำนวนความเสี่ยงระดับองค์กรที่เกี่ยวข้อง (จะเป็น 0 หรือ 1)
 const organizationalRiskCount = computed(() => {
   return hasOrganizationalRisk.value ? 1 : 0;
+});
+
+// ตรวจสอบว่ามีเกณฑ์โอกาสเกิดหรือไม่
+const hasLikelihoodCriteria = computed(() => {
+  return props.rowData.likelihood_criteria && props.rowData.likelihood_criteria.length > 0;
+});
+
+// ตรวจสอบว่ามีเกณฑ์ผลกระทบหรือไม่
+const hasImpactCriteria = computed(() => {
+  return props.rowData.impact_criteria && props.rowData.impact_criteria.length > 0;
+});
+
+// จัดเรียงเกณฑ์โอกาสเกิดตามระดับ
+const sortedLikelihoodCriteria = computed(() => {
+  if (!hasLikelihoodCriteria.value) return [];
+  return [...props.rowData.likelihood_criteria].sort((a, b) => a.level - b.level);
+});
+
+// จัดเรียงเกณฑ์ผลกระทบตามระดับ
+const sortedImpactCriteria = computed(() => {
+  if (!hasImpactCriteria.value) return [];
+  return [...props.rowData.impact_criteria].sort((a, b) => a.level - b.level);
 });
 
 // ตรวจสอบว่ามีเอกสารแนบหรือไม่
@@ -306,6 +329,59 @@ onMounted(() => {
             </div>
           </div>
         </div>
+        
+        <!-- เพิ่มส่วนเกณฑ์การประเมินความเสี่ยง -->
+        <div class="flex items-start space-x-2">
+                <AlertCircle class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                <div class="w-full min-w-0 overflow-hidden">
+                  <!-- หัวข้อเกณฑ์การประเมิน -->
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-medium truncate">เกณฑ์การประเมินความเสี่ยง</h3>
+                  </div>
+                  
+                  <!-- เกณฑ์โอกาสเกิด -->
+                  <div class="mt-2">
+                    <h4 class="text-xs font-medium text-muted-foreground mb-1">เกณฑ์โอกาสเกิด (Likelihood)</h4>
+                    <div v-if="hasLikelihoodCriteria" class="space-y-2">
+                      <div v-for="criteria in sortedLikelihoodCriteria" :key="criteria.id" 
+                          class="flex items-start gap-2 p-2 bg-background rounded-md border border-border text-sm">
+                        <div class="bg-primary/10 text-primary font-medium rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
+                          {{ criteria.level }}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <p class="font-medium">{{ criteria.name }}</p>
+                          <p class="text-xs text-muted-foreground mt-0.5">{{ criteria.description || 'ไม่มีคำอธิบายเพิ่มเติม' }}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <AlertTriangle class="h-4 w-4" />
+                      <p>ไม่มีเกณฑ์โอกาสเกิดที่กำหนดไว้</p>
+                    </div>
+                  </div>
+                  
+                  <!-- เกณฑ์ผลกระทบ -->
+                  <div class="mt-3">
+                    <h4 class="text-xs font-medium text-muted-foreground mb-1">เกณฑ์ผลกระทบ (Impact)</h4>
+                    <div v-if="hasImpactCriteria" class="space-y-2">
+                      <div v-for="criteria in sortedImpactCriteria" :key="criteria.id" 
+                          class="flex items-start gap-2 p-2 bg-background rounded-md border border-border text-sm">
+                        <div class="bg-primary/10 text-primary font-medium rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
+                          {{ criteria.level }}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <p class="font-medium">{{ criteria.name }}</p>
+                          <p class="text-xs text-muted-foreground mt-0.5">{{ criteria.description || 'ไม่มีคำอธิบายเพิ่มเติม' }}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <AlertTriangle class="h-4 w-4" />
+                      <p>ไม่มีเกณฑ์ผลกระทบที่กำหนดไว้</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
       </div>
     </div>
   </div>

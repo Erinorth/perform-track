@@ -45,6 +45,17 @@ export interface OrganizationalRisk {
     updated_at: string               // วันเวลาที่แก้ไขล่าสุด (timestamp)
     division_risk?: DivisionRisk // ความสัมพันธ์แบบ many-to-one กับความเสี่ยงระดับฝ่าย
   }
+
+  // อินเตอร์เฟซทั่วไปสำหรับเกณฑ์ประเมินความเสี่ยง (ใช้ร่วมกันระหว่างเกณฑ์โอกาสเกิดและเกณฑ์ผลกระทบ)
+  export interface CriteriaItem {
+    id: number;                       // รหัสเกณฑ์ (Primary Key)
+    level: number;                    // ระดับเกณฑ์ (1-4)
+    name: string;                     // ชื่อระดับ
+    description: string;              // รายละเอียดเกณฑ์
+    division_risk_id: number;         // รหัสความเสี่ยงระดับฝ่ายที่เกี่ยวข้อง (Foreign Key)
+    created_at: string;               // วันเวลาที่สร้าง (timestamp)
+    updated_at: string;               // วันเวลาที่แก้ไขล่าสุด (timestamp)
+  }
   
   // อินเตอร์เฟซสำหรับเกณฑ์ผลกระทบ
   export interface ImpactCriteria {

@@ -56,7 +56,7 @@ class DivisionRisk extends Model
      */
     public function likelihoodCriteria(): HasMany
     {
-        return $this->hasMany(LikelihoodCriteria::class);
+        return $this->hasMany(LikelihoodCriterion::class);
     }
 
     /**
@@ -66,6 +66,6 @@ class DivisionRisk extends Model
      */
     public function impactCriteria(): HasMany
     {
-        return $this->hasMany(ImpactCriteria::class);
+        return $this->hasMany(ImpactCriterion::class);
     }
 }

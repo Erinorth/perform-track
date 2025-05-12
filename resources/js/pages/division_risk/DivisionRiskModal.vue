@@ -17,15 +17,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
 import { SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, Trash2Icon, HelpCircleIcon, Loader2Icon } from 'lucide-vue-next'
-import type { DivisionRisk, OrganizationalRisk } from '@/types/types'
+import type { DivisionRisk, OrganizationalRisk, CriteriaItem } from '@/types/types'
 import { useDivisionRiskData } from '@/composables/useDivisionRiskData'
-
-// เพิ่มนิยาม Types สำหรับเกณฑ์ประเมินความเสี่ยง
-type CriteriaItem = {
-  level: number;
-  name: string;
-  description: string;
-}
 
 // กำหนด Types สำหรับฟอร์ม
 type RiskFormData = {
