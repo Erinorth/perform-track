@@ -18,6 +18,8 @@ interface RiskFormData {
   description: string;
   organizational_risk_id?: number | null;
   attachments?: File[] | null;
+  likelihood_criteria?: Array<{ level: number, name: string, description: string }>;
+  impact_criteria?: Array<{ level: number, name: string, description: string }>;
 }
 
 // ฟังก์ชัน composable สำหรับจัดการข้อมูลความเสี่ยงระดับฝ่าย
@@ -121,6 +123,24 @@ export function useDivisionRiskData(initialRisks: DivisionRisk[] = [], triggerPr
       // เพิ่มความเสี่ยงระดับองค์กรที่เกี่ยวข้อง (ถ้ามี)
       if (formData.organizational_risk_id) {
         form.append('organizational_risk_id', formData.organizational_risk_id.toString());
+      }
+
+      // เพิ่มข้อมูล likelihood_criteria ถ้ามี
+      if (formData.likelihood_criteria && formData.likelihood_criteria.length > 0) {
+        formData.likelihood_criteria.forEach((criteria, index) => {
+          form.append(`likelihood_criteria[${index}][level]`, criteria.level.toString());
+          form.append(`likelihood_criteria[${index}][name]`, criteria.name);
+          form.append(`likelihood_criteria[${index}][description]`, criteria.description);
+        });
+      }
+      
+      // เพิ่มข้อมูล impact_criteria ถ้ามี
+      if (formData.impact_criteria && formData.impact_criteria.length > 0) {
+        formData.impact_criteria.forEach((criteria, index) => {
+          form.append(`impact_criteria[${index}][level]`, criteria.level.toString());
+          form.append(`impact_criteria[${index}][name]`, criteria.name);
+          form.append(`impact_criteria[${index}][description]`, criteria.description);
+        });
       }
       
       // เพิ่มไฟล์แนบและรายการไฟล์ที่ต้องการลบ

@@ -20,12 +20,21 @@ import { SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, Trash2Icon, HelpCir
 import type { DivisionRisk, OrganizationalRisk } from '@/types/types'
 import { useDivisionRiskData } from '@/composables/useDivisionRiskData'
 
+// เพิ่มนิยาม Types สำหรับเกณฑ์ประเมินความเสี่ยง
+type CriteriaItem = {
+  level: number;
+  name: string;
+  description: string;
+}
+
 // กำหนด Types สำหรับฟอร์ม
 type RiskFormData = {
   risk_name: string;
   description: string;
   organizational_risk_id?: number | null;
   attachments: File[] | null;
+  likelihood_criteria: CriteriaItem[];
+  impact_criteria: CriteriaItem[];
 }
 
 // กำหนด props และ events
@@ -35,6 +44,14 @@ const props = defineProps<{
   initialRisks?: DivisionRisk[]; // ข้อมูลความเสี่ยงทั้งหมด
   organizationalRisks?: OrganizationalRisk[]; // ข้อมูลความเสี่ยงระดับองค์กรทั้งหมด
 }>()
+
+// เพิ่มตัวแปรเก็บสถานะการแสดงส่วนเกณฑ์การประเมิน
+const showCriteriaSection = ref<boolean>(false);
+
+// ฟังก์ชันสลับการแสดง/ซ่อนส่วนเกณฑ์การประเมิน
+const toggleCriteriaSection = () => {
+  showCriteriaSection.value = !showCriteriaSection.value;
+}
 
 const emit = defineEmits<{
   (e: 'update:show', value: boolean): void; // อัปเดตสถานะ Modal
@@ -62,6 +79,20 @@ const form = useForm<RiskFormData>({
   description: props.risk?.description ?? '',
   organizational_risk_id: props.risk?.organizational_risk_id ?? null,
   attachments: null,
+  // เพิ่มค่าเริ่มต้นสำหรับเกณฑ์โอกาสเกิด 4 ระดับ
+  likelihood_criteria: [
+    { level: 1, name: 'น้อยมาก', description: 'โอกาสเกิดน้อยกว่า 25%' },
+    { level: 2, name: 'น้อย', description: 'โอกาสเกิด 25-50%' },
+    { level: 3, name: 'ปานกลาง', description: 'โอกาสเกิด 51-75%' },
+    { level: 4, name: 'สูง', description: 'โอกาสเกิดมากกว่า 75%' }
+  ],
+  // เพิ่มค่าเริ่มต้นสำหรับเกณฑ์ผลกระทบ 4 ระดับ
+  impact_criteria: [
+    { level: 1, name: 'น้อยมาก', description: 'ผลกระทบต่อฝ่ายเล็กน้อย' },
+    { level: 2, name: 'น้อย', description: 'ผลกระทบต่อฝ่ายพอสมควร' },
+    { level: 3, name: 'ปานกลาง', description: 'ผลกระทบต่อฝ่ายค่อนข้างมาก' },
+    { level: 4, name: 'สูง', description: 'ผลกระทบต่อฝ่ายอย่างรุนแรง' }
+  ],
 })
 
 // Watchers
@@ -72,9 +103,16 @@ watch(() => props.show, (newVal) => {
     form.risk_name = props.risk.risk_name
     form.description = props.risk.description
     form.organizational_risk_id = props.risk.organizational_risk_id
-    loadAttachments(props.risk) // โหลดเอกสารแนบ
+    loadAttachments(props.risk)
+    
+    // โหลดข้อมูลเกณฑ์การประเมิน (ถ้ามี)
+    if (props.risk.likelihood_criteria && props.risk.likelihood_criteria.length > 0) {
+      form.likelihood_criteria = props.risk.likelihood_criteria;
+    }
+    if (props.risk.impact_criteria && props.risk.impact_criteria.length > 0) {
+      form.impact_criteria = props.risk.impact_criteria;
+    }
   } else if (newVal) {
-    // รีเซ็ตฟอร์มสำหรับการเพิ่มใหม่
     form.reset()
     loadAttachments()
   }
@@ -154,9 +192,11 @@ const handleSubmit = async () => {
     
     await submitForm(
       { 
-        risk_name: form.risk_name, 
+        risk_name: form.risk_name,
         description: form.description,
-        organizational_risk_id: form.organizational_risk_id
+        organizational_risk_id: form.organizational_risk_id,
+        likelihood_criteria: form.likelihood_criteria,
+        impact_criteria: form.impact_criteria
       }, 
       isEditing.value ? props.risk?.id : undefined,
       closeModal
@@ -267,6 +307,92 @@ const toggleHelp = () => {
             <p v-if="form.errors.description" class="text-sm text-red-500">
               {{ form.errors.description }}
             </p>
+          </div>
+
+          <!-- ส่วนของเกณฑ์การประเมินความเสี่ยง -->
+          <div class="grid gap-2 border-t border-gray-200 pt-4 mt-4">
+            <div class="flex items-center justify-between">
+              <Label class="text-base font-medium flex items-center gap-1">
+                เกณฑ์การประเมินความเสี่ยง
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon"
+                  class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                  @click="toggleCriteriaSection"
+                >
+                  <HelpCircleIcon class="h-4 w-4" />
+                </Button>
+              </Label>
+              
+              <Button 
+                type="button"
+                variant="outline"
+                size="sm"
+                @click="toggleCriteriaSection"
+                class="text-xs"
+              >
+                {{ showCriteriaSection ? 'ซ่อนรายละเอียด' : 'แสดงรายละเอียด' }}
+              </Button>
+            </div>
+            
+            <!-- รายละเอียดเกณฑ์การประเมิน (แสดงเมื่อกดปุ่ม) -->
+            <div v-if="showCriteriaSection" class="space-y-4 mt-2 animate-in fade-in-50 duration-300">
+              <!-- 1. เกณฑ์โอกาสเกิด (Likelihood) -->
+              <div class="border rounded-md p-4 bg-muted/30">
+                <h3 class="font-medium mb-2">เกณฑ์โอกาสเกิด (Likelihood)</h3>
+                <div class="space-y-3">
+                  <div v-for="(criteria, index) in form.likelihood_criteria" :key="`likelihood-${index}`" class="grid gap-2">
+                    <div class="flex items-center gap-2">
+                      <div class="bg-primary/10 text-primary font-medium rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                        {{ criteria.level }}
+                      </div>
+                      <Input
+                        v-model="criteria.name" 
+                        :placeholder="`ชื่อระดับ ${criteria.level}`"
+                        class="max-w-[150px]"
+                      />
+                    </div>
+                    <Textarea
+                      v-model="criteria.description"
+                      :placeholder="`คำอธิบายระดับ ${criteria.level}`"
+                      rows="2"
+                      class="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 2. เกณฑ์ผลกระทบ (Impact) -->
+              <div class="border rounded-md p-4 bg-muted/30">
+                <h3 class="font-medium mb-2">เกณฑ์ผลกระทบ (Impact)</h3>
+                <div class="space-y-3">
+                  <div v-for="(criteria, index) in form.impact_criteria" :key="`impact-${index}`" class="grid gap-2">
+                    <div class="flex items-center gap-2">
+                      <div class="bg-primary/10 text-primary font-medium rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                        {{ criteria.level }}
+                      </div>
+                      <Input
+                        v-model="criteria.name" 
+                        :placeholder="`ชื่อระดับ ${criteria.level}`"
+                        class="max-w-[150px]"
+                      />
+                    </div>
+                    <Textarea
+                      v-model="criteria.description"
+                      :placeholder="`คำอธิบายระดับ ${criteria.level}`"
+                      rows="2"
+                      class="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- คำแนะนำสำหรับเกณฑ์การประเมิน -->
+            <div v-if="!showCriteriaSection" class="text-xs text-muted-foreground">
+              คลิก "แสดงรายละเอียด" เพื่อกำหนดเกณฑ์การประเมินความเสี่ยงทั้ง 4 ระดับ
+            </div>
           </div>
 
           <!-- ส่วนของเอกสารแนบ -->
