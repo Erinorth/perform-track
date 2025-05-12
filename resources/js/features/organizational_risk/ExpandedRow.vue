@@ -13,7 +13,7 @@
 <script setup lang="ts">
 // ==================== นำเข้า Types และ Interfaces ====================
 // นำเข้า types สำหรับโมเดลข้อมูลความเสี่ยง
-import type { OrganizationalRisk, DivisionRisk, Attachment } from '@/types/types';
+import type { OrganizationalRisk, DivisionRisk, OrganizationalRiskAttachment } from '@/types/types';
 
 // ==================== นำเข้า Vue Composition API ====================
 import { computed, onMounted, ref } from 'vue';
@@ -116,7 +116,7 @@ const formatFileSize = (sizeInBytes: number): string => {
 };
 
 // ฟังก์ชันดาวน์โหลดเอกสารแนบ
-const downloadAttachment = (attachment: Attachment) => {
+const downloadAttachment = (attachment: OrganizationalRiskAttachment) => {
   // แสดง toast แจ้งเตือนผู้ใช้
   toast.info('กำลังดาวน์โหลดเอกสาร', {
     description: `ไฟล์ ${attachment.file_name} กำลังถูกดาวน์โหลด`,
@@ -143,7 +143,7 @@ const viewDivisionRiskDetails = (risk: DivisionRisk) => {
 };
 
 // ฟังก์ชันเปิดหน้าแสดงไฟล์แนบแบบเต็มจอ
-const viewAttachmentFullScreen = (attachment: Attachment) => {
+const viewAttachmentFullScreen = (attachment: OrganizationalRiskAttachment) => {
   // เปิดหน้าแสดงไฟล์แนบในแท็บใหม่โดยใช้ route ใหม่
   window.open(`/organizational-risks/${props.rowData.id}/attachments/${attachment.id}/view`, '_blank');
   
@@ -223,7 +223,7 @@ onMounted(() => {
             <div v-if="hasAttachments" class="mt-2">
               <ul class="space-y-2">
                 <li 
-                  v-for="attachment in (rowData.attachments as Attachment[])" 
+                  v-for="attachment in (rowData.attachments as OrganizationalRiskAttachment[])" 
                   :key="attachment.id" 
                   class="text-sm bg-background rounded-md p-2 border border-border overflow-hidden"
                 >

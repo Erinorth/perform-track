@@ -1,8 +1,4 @@
 <?php
-/**
- * ไฟล์: app\Policies\DivisionRiskPolicy.php
- * Policy กำหนดสิทธิ์การเข้าถึงและจัดการข้อมูลความเสี่ยงระดับฝ่าย
- */
 
 namespace App\Policies;
 
@@ -15,76 +11,77 @@ class DivisionRiskPolicy
     use HandlesAuthorization;
 
     /**
-     * ตรวจสอบว่าผู้ใช้สามารถดูรายการความเสี่ยงระดับฝ่ายทั้งหมดได้หรือไม่
-     *
-     * @param  \App\Models\User  $user
-     * @return \Illuminate\Auth\Access\Response|bool
+     * กำหนดว่าผู้ใช้สามารถดูรายการความเสี่ยงทั้งหมดได้หรือไม่
      */
-    public function viewAny(User $user)
+    public function viewAny(User $user): bool
     {
-        // ตัวอย่างเช่น ผู้ใช้ที่มีบทบาทดังนี้สามารถดูรายการได้
-        // return $user->hasRole(['admin', 'risk_manager', 'division_head']);
-        
-        // เปิดให้ทุกคนที่ล็อกอินเข้าใช้งานสามารถดูรายการได้
-        return true;
+        return true; // ผู้ใช้ที่ล็อกอินทุกคนสามารถดูรายการได้
     }
 
     /**
-     * ตรวจสอบว่าผู้ใช้สามารถดูข้อมูลความเสี่ยงระดับฝ่ายเฉพาะรายการได้หรือไม่
-     *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\DivisionRisk  $divisionRisk
-     * @return \Illuminate\Auth\Access\Response|bool
+     * กำหนดว่าผู้ใช้สามารถดูรายละเอียดความเสี่ยงได้หรือไม่
      */
-    public function view(User $user, DivisionRisk $divisionRisk)
+    public function view(User $user, DivisionRisk $divisionRisk): bool
     {
-        // ตัวอย่างเช่น ผู้ใช้ที่มีบทบาทดังนี้หรือเป็นเจ้าของฝ่ายสามารถดูข้อมูลได้
-        // return $user->hasRole(['admin', 'risk_manager']) || $user->division_id === $divisionRisk->division_id;
-        
-        return true;
+        return true; // ผู้ใช้ที่ล็อกอินทุกคนสามารถดูรายละเอียดได้
     }
 
     /**
-     * ตรวจสอบว่าผู้ใช้สามารถสร้างข้อมูลความเสี่ยงระดับฝ่ายได้หรือไม่
-     *
-     * @param  \App\Models\User  $user
-     * @return \Illuminate\Auth\Access\Response|bool
+     * กำหนดว่าผู้ใช้สามารถสร้างความเสี่ยงใหม่ได้หรือไม่
      */
-    public function create(User $user)
+    public function create(User $user): bool
     {
-        // ตัวอย่างเช่น ผู้ใช้ที่มีบทบาทดังนี้สามารถสร้างข้อมูลได้
-        // return $user->hasRole(['admin', 'risk_manager']);
-        
-        return true;
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        return $user->hasPermission('create_division_risk');
     }
 
     /**
-     * ตรวจสอบว่าผู้ใช้สามารถอัปเดตข้อมูลความเสี่ยงระดับฝ่ายได้หรือไม่
-     *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\DivisionRisk  $divisionRisk
-     * @return \Illuminate\Auth\Access\Response|bool
+     * กำหนดว่าผู้ใช้สามารถแก้ไขความเสี่ยงได้หรือไม่
      */
-    public function update(User $user, DivisionRisk $divisionRisk)
+    public function update(User $user, DivisionRisk $divisionRisk): bool
     {
-        // ตัวอย่างเช่น ผู้ใช้ที่มีบทบาทดังนี้หรือเป็นเจ้าของฝ่ายสามารถแก้ไขข้อมูลได้
-        // return $user->hasRole(['admin', 'risk_manager']) || $user->division_id === $divisionRisk->division_id;
-        
-        return true;
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        return $user->hasPermission('update_division_risk');
     }
 
     /**
-     * ตรวจสอบว่าผู้ใช้สามารถลบข้อมูลความเสี่ยงระดับฝ่ายได้หรือไม่
-     *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\DivisionRisk  $divisionRisk
-     * @return \Illuminate\Auth\Access\Response|bool
+     * กำหนดว่าผู้ใช้สามารถลบความเสี่ยงได้หรือไม่
      */
-    public function delete(User $user, DivisionRisk $divisionRisk)
+    public function delete(User $user, DivisionRisk $divisionRisk): bool
     {
-        // ตัวอย่างเช่น เฉพาะผู้ใช้ที่มีบทบาทดังนี้สามารถลบข้อมูลได้
-        // return $user->hasRole(['admin', 'risk_manager']);
-        
-        return true;
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        if (!$user->hasPermission('delete_division_risk')) {
+            return false;
+        }
+
+        // ตรวจสอบว่าความเสี่ยงนี้มีการประเมินความเสี่ยงที่เชื่อมโยงอยู่หรือไม่
+        return !$divisionRisk->riskAssessments()->exists();
+    }
+
+    /**
+     * กำหนดว่าผู้ใช้สามารถลบความเสี่ยงหลายรายการพร้อมกันได้หรือไม่
+     */
+    public function bulkDelete(User $user): bool
+    {
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        return $user->hasPermission('delete_division_risk');
+    }
+
+    /**
+     * กำหนดว่าผู้ใช้สามารถอัปโหลดไฟล์แนบได้หรือไม่
+     */
+    public function uploadAttachment(User $user, DivisionRisk $divisionRisk): bool
+    {
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        return $user->hasPermission('update_division_risk');
+    }
+
+    /**
+     * กำหนดว่าผู้ใช้สามารถลบไฟล์แนบได้หรือไม่
+     */
+    public function deleteAttachment(User $user, DivisionRisk $divisionRisk): bool
+    {
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        return $user->hasPermission('update_division_risk');
     }
 }

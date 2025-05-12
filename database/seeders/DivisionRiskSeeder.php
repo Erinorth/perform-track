@@ -24,13 +24,11 @@ class DivisionRiskSeeder extends Seeder
             [
                 'risk_name' => 'การบริหารงบประมาณไม่เป็นไปตามแผน',
                 'description' => 'ความเสี่ยงที่การใช้จ่ายงบประมาณของฝ่ายอาจเกินกว่าที่กำหนด หรือไม่เป็นไปตามแผนงานที่วางไว้',
-                'year' => 2024,
                 'organizational_risk_id' => $orgRisks->where('risk_name', 'ความเสี่ยงด้านการเงิน')->first()->id ?? $orgRisks->first()->id,
             ],
             [
                 'risk_name' => 'การจัดซื้อจัดจ้างล่าช้า',
                 'description' => 'ความเสี่ยงที่กระบวนการจัดซื้อจัดจ้างอาจล่าช้า ส่งผลให้การดำเนินงานตามแผนงานหรือโครงการไม่เป็นไปตามกำหนด',
-                'year' => 2024,
                 'organizational_risk_id' => $orgRisks->where('risk_name', 'ความเสี่ยงด้านการเงิน')->first()->id ?? $orgRisks->first()->id,
             ],
             
@@ -38,7 +36,6 @@ class DivisionRiskSeeder extends Seeder
             [
                 'risk_name' => 'ระบบ IT สำคัญไม่พร้อมใช้งาน',
                 'description' => 'ความเสี่ยงที่ระบบเทคโนโลยีสารสนเทศสำคัญของฝ่ายอาจไม่พร้อมใช้งาน ส่งผลกระทบต่อการปฏิบัติงาน',
-                'year' => 2024,
                 'organizational_risk_id' => $orgRisks->where('risk_name', 'ความเสี่ยงด้านเทคโนโลยีและการรักษาความปลอดภัยทางไซเบอร์')->first()->id ?? $orgRisks->first()->id,
             ],
         ];
@@ -51,7 +48,6 @@ class DivisionRiskSeeder extends Seeder
         foreach ($orgRisks as $orgRisk) {
             DivisionRisk::factory()->count(2)->create([
                 'organizational_risk_id' => $orgRisk->id,
-                'year' => 2024,
             ]);
         }
     }

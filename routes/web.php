@@ -101,43 +101,58 @@ Route::middleware('auth')->group(function () {
     /**
      * กลุ่มเส้นทางสำหรับจัดการความเสี่ยงระดับฝ่าย
      * 
-     * ประกอบด้วยเส้นทางสำหรับการดำเนินการ CRUD และการจัดการเกณฑ์การประเมิน
-     * ความเสี่ยงทั้งด้านโอกาสเกิดและผลกระทบสำหรับแต่ละความเสี่ยงระดับฝ่าย
+     * ประกอบด้วยเส้นทางสำหรับการดำเนินการ CRUD และการจัดการเอกสารแนบ
+     * รวมถึงการจัดการเกณฑ์การประเมินความเสี่ยงสำหรับแต่ละความเสี่ยงระดับฝ่าย
      */
     Route::prefix('division-risks')->group(function () {
         // แสดงรายการความเสี่ยงระดับฝ่ายทั้งหมด
         Route::get('/', [DivisionRiskController::class, 'index'])
             ->name('division-risks.index');
         
-        // แสดงหน้าสร้างความเสี่ยงระดับฝ่ายใหม่
-        Route::get('/create', [DivisionRiskController::class, 'create'])
-            ->name('division-risks.create');
-        
         // บันทึกความเสี่ยงระดับฝ่ายใหม่
         Route::post('/', [DivisionRiskController::class, 'store'])
             ->name('division-risks.store');
-        
-        // แสดงหน้าแก้ไขความเสี่ยงระดับฝ่าย
-        Route::get('/{divisionRisk}/edit', [DivisionRiskController::class, 'edit'])
-            ->name('division-risks.edit');
         
         // อัปเดตข้อมูลความเสี่ยงระดับฝ่าย
         Route::put('/{divisionRisk}', [DivisionRiskController::class, 'update'])
             ->name('division-risks.update');
         
+        // ลบความเสี่ยงระดับฝ่ายหลายรายการพร้อมกัน
+        Route::delete('/bulk-destroy', [DivisionRiskController::class, 'bulkDestroy'])
+            ->name('division-risks.bulk-destroy');
+        
         // ลบความเสี่ยงระดับฝ่าย
         Route::delete('/{divisionRisk}', [DivisionRiskController::class, 'destroy'])
             ->name('division-risks.destroy');
+
+        // เพิ่มเอกสารแนบสำหรับความเสี่ยงระดับฝ่าย
+        Route::post('/{divisionRisk}/attachments', [DivisionRiskController::class, 'storeAttachment'])
+            ->name('division-risks.attachments.store');
         
+        // ลบเอกสารแนบของความเสี่ยงระดับฝ่าย
+        Route::delete('/{divisionRisk}/attachments/{attachmentId}', [DivisionRiskController::class, 'destroyAttachment'])
+            ->name('division-risks.attachments.destroy');
+
+        // ดาวน์โหลดเอกสารแนบของความเสี่ยงระดับฝ่าย
+        Route::get('/{divisionRisk}/attachments/{attachmentId}/download', [DivisionRiskController::class, 'downloadAttachment'])
+            ->name('division-risks.attachments.download');
+
+        // แสดงเอกสารแนบของความเสี่ยงระดับฝ่ายในเบราว์เซอร์
+        Route::get('/{divisionRisk}/attachments/{attachmentId}/view', [DivisionRiskController::class, 'viewAttachment'])
+            ->name('division-risks.attachments.view');
+        
+        // เส้นทางสำหรับจัดการเกณฑ์การประเมินความเสี่ยง (ส่วนเพิ่มเติมเฉพาะของความเสี่ยงระดับฝ่าย)
         // แสดงหน้าจัดการเกณฑ์การประเมินความเสี่ยง
         Route::get('/{divisionRisk}/criteria', [DivisionRiskController::class, 'manageCriteria'])
             ->name('division-risks.criteria');
         
         // บันทึกเกณฑ์โอกาสเกิดความเสี่ยง
-        Route::post('/{divisionRisk}/likelihood-criteria', [DivisionRiskController::class, 'storeLikelihoodCriteria']);
+        Route::post('/{divisionRisk}/likelihood-criteria', [DivisionRiskController::class, 'storeLikelihoodCriteria'])
+            ->name('division-risks.likelihood-criteria.store');
         
         // บันทึกเกณฑ์ผลกระทบของความเสี่ยง
-        Route::post('/{divisionRisk}/impact-criteria', [DivisionRiskController::class, 'storeImpactCriteria']);
+        Route::post('/{divisionRisk}/impact-criteria', [DivisionRiskController::class, 'storeImpactCriteria'])
+            ->name('division-risks.impact-criteria.store');
     });
 
     /**

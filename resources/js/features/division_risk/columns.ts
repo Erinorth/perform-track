@@ -7,7 +7,8 @@
 import { h } from 'vue'
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
 import { DataTableColumnHeader, DataTableDropDown } from '@/components/ui/data-table'
-import type { DivisionRisk } from '@/types/types';
+import type { DivisionRisk } from '@/types/types'
+import { Checkbox } from '@/components/ui/checkbox'
 
 // ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล
 declare module '@tanstack/vue-table' {
@@ -20,6 +21,21 @@ declare module '@tanstack/vue-table' {
 // กำหนด columns สำหรับ DataTable
 export const columns: ColumnDef<DivisionRisk>[] = [
   {
+    id: "select",
+    header: ({ table }) => h(Checkbox, {
+      'modelValue': table.getIsAllPageRowsSelected(),
+      'onUpdate:modelValue': (value: boolean | "indeterminate") => table.toggleAllPageRowsSelected(!!value),
+      'aria-label': 'Select all',
+    }),
+    cell: ({ row }) => h(Checkbox, {
+      'modelValue': row.getIsSelected(),
+      'onUpdate:modelValue': (value: boolean | "indeterminate") => row.toggleSelected(!!value),
+      'aria-label': 'Select row',
+    }),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
     accessorKey: "id", // คีย์หลักของข้อมูล
     header: ({ column }) => (
       // ใช้ component DataTableColumnHeader สำหรับหัวตาราง
@@ -30,49 +46,20 @@ export const columns: ColumnDef<DivisionRisk>[] = [
     ),
   },
   {
-    accessorKey: "year", // ปีของความเสี่ยง
-    header: ({ column }) => (
-      h(DataTableColumnHeader, {
-        column: column,
-        title: 'ปี'
-      })
-    ),
-    // ฟังก์ชันกรองข้อมูลตามปี
-    filterFn: (row, id, filterValues) => {
-      if (!filterValues || filterValues.length === 0) return true;
-      const rowValue = row.getValue(id);
-      return filterValues.includes(rowValue?.toString());
-    },
-  },
-  {
     accessorKey: "risk_name", // ชื่อความเสี่ยง
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
-        title: 'ชื่อความเสี่ยง'
+        title: 'Risk Name'
       })
     ),
-  },
-  {
-    accessorKey: "organizational_risk", // ความเสี่ยงระดับองค์กรที่เชื่อมโยง
-    header: ({ column }) => (
-      h(DataTableColumnHeader, {
-        column: column,
-        title: 'ความเสี่ยงระดับองค์กร'
-      })
-    ),
-    // แสดงชื่อความเสี่ยงระดับองค์กรที่เชื่อมโยง
-    cell: ({ row }) => {
-      const orgRisk = row.getValue("organizational_risk");
-      return orgRisk ? (orgRisk as any).risk_name : '-';
-    }
   },
   {
     accessorKey: "description", // รายละเอียดความเสี่ยง
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
-        title: 'รายละเอียด'
+        title: 'Description'
       })
     ),
     // แสดงรายละเอียดไม่เกิน 50 ตัวอักษร ถ้ายาวให้เติม ...
@@ -86,7 +73,7 @@ export const columns: ColumnDef<DivisionRisk>[] = [
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
-        title: 'วันที่สร้าง'
+        title: 'Created Date'
       })
     ),
     // แปลงวันที่ให้อยู่ในรูปแบบไทย พร้อมแสดงเวลา
@@ -107,7 +94,7 @@ export const columns: ColumnDef<DivisionRisk>[] = [
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
-        title: 'อัปเดตล่าสุด'
+        title: 'Last Updated'
       })
     ),
     // แปลงวันที่ให้อยู่ในรูปแบบไทย พร้อมแสดงเวลา
@@ -134,7 +121,7 @@ export const columns: ColumnDef<DivisionRisk>[] = [
       return h('div', { class: 'relative' }, [
         h(DataTableDropDown, {
           data: division_risk, // ส่งข้อมูล division_risk ผ่าน data prop
-          menuLabel: 'ตัวเลือกความเสี่ยงแผนก', // custom label สำหรับเมนู
+          menuLabel: 'ตัวเลือกความเสี่ยงฝ่าย', // custom label สำหรับเมนู
           onExpand: () => {
             //logTableAction('expand', 'division_risk', division_risk.id)
             row.toggleExpanded()

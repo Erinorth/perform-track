@@ -12,7 +12,7 @@ export interface OrganizationalRisk {
     description: string              // รายละเอียดความเสี่ยง
     created_at: string               // วันเวลาที่สร้าง (timestamp)
     updated_at: string               // วันเวลาที่แก้ไขล่าสุด (timestamp)
-    attachments?: Attachment[];
+    attachments?: OrganizationalRiskAttachment[];
     division_risks?: DivisionRisk[] // ความสัมพันธ์แบบ one-to-many กับความเสี่ยงระดับฝ่าย (อาจมีหรือไม่มีก็ได้)
   }
   
@@ -26,6 +26,7 @@ export interface OrganizationalRisk {
     updated_at: string                // วันเวลาที่แก้ไขล่าสุด (timestamp)
     deleted_at: string | null         // วันเวลาที่ลบ (soft delete)
     organizational_risk?: OrganizationalRisk // ความสัมพันธ์แบบ many-to-one กับความเสี่ยงระดับองค์กร (อาจมีหรือไม่มีก็ได้)
+    attachments?: DivisionRiskAttachment[];
     risk_assessments?: RiskAssessment[] // ความสัมพันธ์แบบ one-to-many กับการประเมินความเสี่ยง
     impact_criteria?: ImpactCriteria[] // ความสัมพันธ์แบบ one-to-many กับเกณฑ์ผลกระทบ
     likelihood_criteria?: LikelihoodCriteria[] // ความสัมพันธ์แบบ one-to-many กับเกณฑ์โอกาสเกิด
@@ -69,7 +70,18 @@ export interface OrganizationalRisk {
     division_risk?: DivisionRisk // ความสัมพันธ์แบบ many-to-one กับความเสี่ยงระดับฝ่าย
   }
 
-  export interface Attachment {
+  export interface OrganizationalRiskAttachment {
+    id: number;
+    file_name: string;
+    file_path: string;
+    file_type: string;
+    file_size: number;
+    url: string;
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface DivisionRiskAttachment {
     id: number;
     file_name: string;
     file_path: string;

@@ -13,7 +13,6 @@ class RiskAssessmentFactory extends Factory
     public function definition(): array
     {
         return [
-            'assessment_date' => fake()->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
             'likelihood_level' => fake()->numberBetween(1, 4),
             'impact_level' => fake()->numberBetween(1, 4),
             'notes' => fake()->paragraph(1),

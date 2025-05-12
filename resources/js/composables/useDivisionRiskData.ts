@@ -1,229 +1,402 @@
-/*
-ไฟล์: resources\js\composables\useDivisionRiskData.ts
-Composable function สำหรับจัดการข้อมูลความเสี่ยงระดับฝ่าย
-ใช้หลักการของ Vue Composition API เพื่อแยกโลจิกการจัดการข้อมูลออกจาก component
+/* 
+  ไฟล์: resources/js/composables/useDivisionRiskData.ts
+  คำอธิบาย: Composable function สำหรับจัดการข้อมูลความเสี่ยงระดับฝ่าย
+  ทำหน้าที่: แยกโลจิกการจัดการข้อมูลออกจาก component เพื่อเพิ่มความเป็นระเบียบ
+  หลักการ: แบ่งโลจิกเป็นหมวดหมู่ - การโหลดข้อมูล, การจัดการฟอร์ม, การจัดการไฟล์แนบ
+  ใช้ร่วมกับ: DivisionRiskController.php ในฝั่ง Backend
 */
 
-import { ref, onMounted } from 'vue';
-import { router, usePage } from '@inertiajs/vue3'; // เพิ่ม useForm
+import { ref, onMounted, watch } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
-import { CheckCircle2Icon } from 'lucide-vue-next'; // เพิ่ม icons ที่จำเป็น
-import type { DivisionRisk } from '@/types/types';
+import { CheckCircle2Icon, FileIcon, FileTextIcon, ImageIcon, FileSpreadsheetIcon, AlertTriangleIcon } from 'lucide-vue-next';
+import type { DivisionRisk, DivisionRiskAttachment } from '@/types/types';
+
+// นิยาม interface สำหรับข้อมูลฟอร์ม
+interface RiskFormData {
+  risk_name: string;
+  description: string;
+  organizational_risk_id?: number | null;
+  attachments?: File[] | null;
+}
 
 // ฟังก์ชัน composable สำหรับจัดการข้อมูลความเสี่ยงระดับฝ่าย
-// รับพารามิเตอร์เป็นข้อมูลเริ่มต้นจาก props
-export function useDivisionRiskData(initialRisks: DivisionRisk[]) {
-// สร้าง reactive reference สำหรับเก็บข้อมูลความเสี่ยงระดับฝ่าย
-// ใช้ ref เพื่อให้ข้อมูลเป็น reactive (เมื่อข้อมูลเปลี่ยน component จะ re-render โดยอัตโนมัติ)
-const data = ref<DivisionRisk[]>([]);
-// ใช้ usePage hook ของ Inertia เพื่อเข้าถึงข้อมูลจาก props
-const page = usePage();
-    // ทำงานเมื่อ component ถูก mount
-    onMounted(() => {
-        // ตรวจสอบการรับข้อมูลตามลำดับความสำคัญ:
-        // 1. ถ้ามี initialRisks ส่งมาจากพารามิเตอร์ ใช้ข้อมูลจาก initialRisks ก่อน
-        // 2. ถ้าไม่มี initialRisks แต่มีข้อมูลจาก page props ใช้ข้อมูลจาก page.props.risks
-        // 3. ถ้าไม่มีทั้งสองแหล่ง ให้เป็นอาร์เรย์ว่าง
-        if (initialRisks && initialRisks.length > 0) {
-            data.value = [...initialRisks];
-        } else if (page.props.risks) {
-            // ดึงข้อมูลจาก Inertia page props
-            data.value = [...page.props.risks as DivisionRisk[]];
-        } else {
-            console.warn('ไม่พบข้อมูลความเสี่ยงฝ่ายจากทั้ง props และ Inertia page');
-            data.value = [];
+export function useDivisionRiskData(initialRisks: DivisionRisk[] = [], triggerProp?: any) {
+  // ============ STATE MANAGEMENT ============
+  const data = ref<DivisionRisk[]>([]);
+  const existingAttachments = ref<DivisionRiskAttachment[]>([]);
+  const attachmentsToDelete = ref<number[]>([]);
+  const selectedFiles = ref<File[]>([]);
+  const fileNames = ref<string[]>([]);
+  const isLoading = ref<boolean>(false);
+  const isSubmitting = ref<boolean>(false);
+  
+  // ใช้ usePage hook ของ Inertia เพื่อเข้าถึงข้อมูลจาก props
+  const page = usePage();
+
+  // ทำงานเมื่อ component ถูก mount
+  onMounted(() => {
+    loadData();
+  });
+  
+  // ถ้ามี triggerProp ส่งมา ให้ watch การเปลี่ยนแปลง
+  if (triggerProp !== undefined) {
+    watch(() => triggerProp, (newVal, oldVal) => {
+      if (newVal !== oldVal) {
+        loadData();
+      }
+    }, { deep: true });
+  }
+  
+  // ============ DATA LOADING FUNCTIONS ============
+  const loadData = () => {
+    isLoading.value = true;
+    
+    try {
+      if (initialRisks && initialRisks.length > 0) {
+        data.value = [...initialRisks];
+      } else if (page.props.risks) {
+        data.value = [...page.props.risks as DivisionRisk[]];
+      } else {
+        console.warn('ไม่พบข้อมูลความเสี่ยงฝ่ายจากทั้ง props และ Inertia page');
+        data.value = [];
+      }
+      
+      console.log('📊 โหลดข้อมูลความเสี่ยงฝ่ายสำเร็จ', {
+        count: data.value.length,
+        source: initialRisks && initialRisks.length > 0 ? 'initialRisks' : 'page.props',
+        timestamp: new Date().toLocaleString('th-TH')
+      });
+    } finally {
+      isLoading.value = false;
+    }
+  };
+  
+  // โหลดข้อมูลเอกสารแนบของความเสี่ยง
+  const loadAttachments = (risk?: DivisionRisk) => {
+    resetAttachmentState();
+    
+    if (risk?.attachments && risk.attachments.length > 0) {
+      existingAttachments.value = [...risk.attachments];
+      console.log('📄 โหลดข้อมูลเอกสารแนบสำเร็จ', {
+        count: existingAttachments.value.length,
+        risk_id: risk.id,
+        risk_name: risk.risk_name
+      });
+    } else {
+      existingAttachments.value = [];
+    }
+  };
+  
+  // ============ FORM SUBMISSION FUNCTIONS ============
+  /**
+   * ฟังก์ชันเพื่อส่งข้อมูลแบบฟอร์มไปยัง backend
+   */
+  const submitForm = (
+    formData: RiskFormData, 
+    riskId?: number, 
+    onSuccess?: () => void
+  ): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      // ป้องกันการส่งซ้ำ
+      if (isSubmitting.value) {
+        reject(new Error('กำลังดำเนินการส่งข้อมูล โปรดรอสักครู่'));
+        return;
+      }
+      
+      isSubmitting.value = true;
+      
+      // สร้าง FormData object
+      const form = new FormData();
+      
+      // เพิ่ม Method Spoofing สำหรับ PUT request กรณีแก้ไขข้อมูล
+      if (riskId) {
+        form.append('_method', 'put');
+      }
+      
+      // เพิ่มข้อมูลหลัก
+      form.append('risk_name', formData.risk_name.trim());
+      form.append('description', formData.description.trim());
+      
+      // เพิ่มความเสี่ยงระดับองค์กรที่เกี่ยวข้อง (ถ้ามี)
+      if (formData.organizational_risk_id) {
+        form.append('organizational_risk_id', formData.organizational_risk_id.toString());
+      }
+      
+      // เพิ่มไฟล์แนบและรายการไฟล์ที่ต้องการลบ
+      if (selectedFiles.value.length > 0) {
+        selectedFiles.value.forEach((file, index) => {
+          form.append(`attachments[${index}]`, file);
+        });
+      }
+      
+      if (attachmentsToDelete.value.length > 0) {
+        attachmentsToDelete.value.forEach(id => {
+          form.append('attachments_to_delete[]', id.toString());
+        });
+      }
+      
+      // ส่งข้อมูลไปยัง backend ด้วย Inertia
+      router.post(
+        riskId 
+          ? route('division-risks.update', riskId) 
+          : route('division-risks.store'),
+        form,
+        {
+          forceFormData: true,
+          preserveState: false,
+          onSuccess: (page) => {
+            // แสดงข้อความแจ้งเตือนสำเร็จ
+            toast.success(riskId ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', {
+              icon: CheckCircle2Icon,
+              description: `ความเสี่ยง "${formData.risk_name}" ${riskId ? 'ได้รับการแก้ไข' : 'ได้รับการเพิ่ม'}เรียบร้อยแล้ว`
+            });
+            
+            resetAttachmentState();
+            if (onSuccess) onSuccess();
+            resolve(page);
+            isSubmitting.value = false;
+          },
+          onError: (errors) => {
+            console.error('❌ ไม่สามารถบันทึกข้อมูลความเสี่ยงฝ่ายได้:', errors);
+            reject(errors);
+            isSubmitting.value = false;
+          }
         }
-        
-        // บันทึก log สำหรับการตรวจสอบ
-        console.log('📊 โหลดข้อมูลความเสี่ยงฝ่ายสำเร็จ', {
-            count: data.value.length,
-            source: initialRisks && initialRisks.length > 0 ? 'initialRisks' : 'page.props',
-            timestamp: new Date().toLocaleString('th-TH')
+      );
+    });
+  };
+
+  // ฟังก์ชันลบข้อมูลความเสี่ยง
+  const deleteRisk = async (risk: DivisionRisk): Promise<void> => {
+    if (!risk || !risk.id) {
+        throw new Error('ไม่พบข้อมูลที่ต้องการลบ');
+    }
+    
+    return new Promise((resolve, reject) => {
+        router.delete(route('division-risks.destroy', risk.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                data.value = data.value.filter(item => item.id !== risk.id);
+                toast.success('ลบความเสี่ยงระดับฝ่ายเรียบร้อยแล้ว');
+                
+                console.log('✅ ลบความเสี่ยงฝ่ายสำเร็จ', {
+                    risk: risk.risk_name,
+                    id: risk.id
+                });
+                
+                resolve();
+            },
+            onError: (errors) => {
+                if (errors.error) toast.error(errors.error);
+                else toast.error('เกิดข้อผิดพลาดในการลบข้อมูล');
+                
+                reject(errors);
+            }
         });
     });
+  };
 
-    // เพิ่มฟังก์ชันลบข้อมูลความเสี่ยง
-    const deleteRisk = async (risk: DivisionRisk): Promise<void> => {
-        if (!risk || !risk.id) {
-            console.error('ไม่พบข้อมูล ID สำหรับความเสี่ยงที่ต้องการลบ');
-            throw new Error('ไม่พบข้อมูลที่ต้องการลบ');
+  // ฟังก์ชันสำหรับลบข้อมูลหลายรายการพร้อมกัน
+  const bulkDeleteRisks = async (riskIds: number[]): Promise<void> => {
+      if (!riskIds || riskIds.length === 0) {
+          throw new Error('ไม่มีรายการที่ต้องการลบ');
+      }
+      
+      return new Promise((resolve, reject) => {
+          router.delete('/division-risks/bulk-destroy', {
+              data: { ids: riskIds },
+              preserveScroll: true,
+              onSuccess: () => {
+                  data.value = data.value.filter(item => !riskIds.includes(item.id));
+                  toast.success(`ลบ ${riskIds.length} รายการเรียบร้อยแล้ว`);
+                  resolve();
+              },
+              onError: (errors) => {
+                  if (errors.error) toast.error(errors.error);
+                  else toast.error('เกิดข้อผิดพลาดในการลบข้อมูล');
+                  reject(errors);
+              }
+          });
+      });
+  };
+
+  // ============ ATTACHMENT MANAGEMENT FUNCTIONS ============
+  // รีเซ็ตสถานะของเอกสารแนบทั้งหมด
+  const resetAttachmentState = () => {
+    selectedFiles.value = [];
+    fileNames.value = [];
+    attachmentsToDelete.value = [];
+    existingAttachments.value = [];
+  };
+  
+  // เพิ่มไฟล์ที่เลือกเข้าในรายการ
+  const addSelectedFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    // ตรวจสอบความถูกต้องของไฟล์ก่อนเพิ่ม
+    const filesToAdd: File[] = [];
+    const fileNamesToAdd: string[] = [];
+    const validationResult = validateFiles(Array.from(files));
+    
+    if (!validationResult.valid) {
+      // แสดงข้อความแจ้งเตือนข้อผิดพลาด
+      toast.error('ไฟล์บางรายการไม่ถูกต้อง', {
+        icon: AlertTriangleIcon,
+        description: validationResult.errors.join(', ')
+      });
+      
+      // เพิ่มเฉพาะไฟล์ที่ถูกต้อง
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        const allowedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'];
+        
+        if (allowedFileTypes.includes(fileExtension) && file.size <= maxSize) {
+          filesToAdd.push(file);
+          fileNamesToAdd.push(file.name);
+        }
+      }
+    } else {
+      for (let i = 0; i < files.length; i++) {
+        filesToAdd.push(files[i]);
+        fileNamesToAdd.push(files[i].name);
+      }
+    }
+    
+    // เพิ่มไฟล์ที่ถูกต้องทั้งหมดเข้าในรายการ
+    if (filesToAdd.length > 0) {
+      selectedFiles.value = [...selectedFiles.value, ...filesToAdd];
+      fileNames.value = [...fileNames.value, ...fileNamesToAdd];
+    }
+  };
+
+  // ลบไฟล์ที่เลือกออกจากรายการ
+  const removeSelectedFile = (index: number) => {
+    if (index < 0 || index >= selectedFiles.value.length) {
+        console.warn('ไม่พบไฟล์ที่ต้องการลบในรายการ');
+        return;
+    }
+    
+    const newSelectedFiles: File[] = [];
+    const newFileNames: string[] = [];
+    
+    for (let i = 0; i < selectedFiles.value.length; i++) {
+        if (i !== index) {
+            newSelectedFiles.push(selectedFiles.value[i]);
+            newFileNames.push(fileNames.value[i]);
+        }
+    }
+    
+    selectedFiles.value = newSelectedFiles;
+    fileNames.value = newFileNames;
+  };
+
+  // มาร์คเอกสารแนบที่มีอยู่แล้วเพื่อลบ
+  const markAttachmentForDeletion = (attachmentId: number) => {
+    if (!attachmentId) return;
+    
+    attachmentsToDelete.value.push(attachmentId);
+    
+    existingAttachments.value = existingAttachments.value.filter(
+        attachment => !attachmentsToDelete.value.includes(attachment.id)
+    );
+    
+    toast.success('เอกสารถูกมาร์คให้ลบเมื่อบันทึกข้อมูล');
+  };
+
+  // เปิดไฟล์เอกสารแนบในแท็บใหม่
+  const openAttachment = (url: string) => {
+    if (!url) return;
+    window.open(url, '_blank');
+  };
+
+  // ตรวจสอบความถูกต้องของไฟล์
+  const validateFiles = (files: File[]): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const allowedFileTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    
+    for (const file of files) {
+        const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+        
+        if (!allowedFileTypes.includes(fileExtension)) {
+            errors.push(`ไฟล์ "${file.name}" มีนามสกุลไม่ถูกต้อง (รองรับ pdf, word, excel, รูปภาพ)`);
+            continue;
         }
         
-        return new Promise((resolve, reject) => {
-            // ส่งคำขอลบข้อมูลไปยัง Laravel Backend
-            router.delete(route('division-risks.destroy', risk.id), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    // ลบข้อมูลออกจาก data เมื่อลบสำเร็จ
-                    data.value = data.value.filter(item => item.id !== risk.id);
-                    // แสดงข้อความแจ้งเตือนสำเร็จ
-                    toast.success('ลบความเสี่ยงระดับฝ่ายเรียบร้อยแล้ว');
-                    
-                    // บันทึก log สำหรับติดตาม
-                    console.log('✅ ลบความเสี่ยงฝ่ายสำเร็จ', {
-                        risk: risk.risk_name,
-                        id: risk.id,
-                        timestamp: new Date().toLocaleString('th-TH')
-                    });
-                    
-                    resolve();
-                },
-                onError: (errors) => {
-                    // แสดงข้อความแจ้งเตือนเมื่อเกิดข้อผิดพลาด
-                    if (errors.error) {
-                        toast.error(errors.error);
-                    } else {
-                        toast.error('เกิดข้อผิดพลาดในการลบข้อมูล');
-                    }
-                    
-                    // บันทึก log ข้อผิดพลาด
-                    console.error('❌ ไม่สามารถลบความเสี่ยงฝ่ายได้', {
-                        risk: risk.risk_name,
-                        id: risk.id,
-                        errors: errors,
-                        timestamp: new Date().toLocaleString('th-TH')
-                    });
-                    
-                    reject(errors);
-                }
-            });
-        });
-    };
-
-    // เพิ่มฟังก์ชัน submitForm
-    const submitForm = async (
-        formData: { risk_name: string; description: string; year: number; organizational_risk_id?: number | null },
-        riskId?: number,
-        onSuccess?: () => void
-    ) => {
-        // บันทึก log เพื่อการตรวจสอบ
-        console.log('📝 กำลังบันทึกข้อมูลความเสี่ยงฝ่าย:', {
-            data: formData,
-            mode: riskId ? 'แก้ไข' : 'เพิ่มใหม่',
-            timestamp: new Date().toLocaleString('th-TH')
-        });
-
-        return new Promise((resolve, reject) => {
-            if (riskId) {
-                // กรณีแก้ไข: ใช้ PUT request
-                router.put(`/division-risks/${riskId}`, formData, {
-                    onSuccess: (page) => {
-                        // อัปเดตข้อมูลใน data array
-                        const index = data.value.findIndex(item => item.id === riskId);
-                        if (index !== -1) {
-                            // แก้ไขเพื่อรักษาโครงสร้างข้อมูลเดิมพร้อมอัปเดตเฉพาะส่วนที่เปลี่ยน
-                            data.value[index] = { 
-                                ...data.value[index], 
-                                risk_name: formData.risk_name,
-                                description: formData.description,
-                                organizational_risk_id: formData.organizational_risk_id ?? null
-                            };
-                            // สร้าง array ใหม่เพื่อทริกเกอร์การ re-render
-                            data.value = [...data.value];
-                        }
-                        
-                        // แสดงข้อความแจ้งเตือนสำเร็จ
-                        toast.success('บันทึกข้อมูลความเสี่ยงสำเร็จ', {
-                            icon: CheckCircle2Icon,
-                            description: `ความเสี่ยงฝ่าย "${formData.risk_name}" ได้รับการแก้ไขเรียบร้อยแล้ว`,
-                            duration: 4000,
-                            closeButton: true
-                        });
-                        
-                        // เรียกฟังก์ชัน callback ถ้ามี
-                        if (onSuccess) onSuccess();
-                        resolve(page);
-                    },
-                    onError: (errors) => {
-                        // แสดงข้อความแจ้งเตือนกรณีเกิดข้อผิดพลาด
-                        toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล', {
-                            description: Object.values(errors).flat().join('\n'),
-                            duration: 5000,
-                            closeButton: true
-                        });
-                        
-                        // บันทึก log ข้อผิดพลาด
-                        console.error('❌ ไม่สามารถบันทึกข้อมูลความเสี่ยงฝ่ายได้', {
-                            data: formData,
-                            errors: errors,
-                            timestamp: new Date().toLocaleString('th-TH')
-                        });
-                        
-                        reject(errors);
-                    }
-                });
-            } else {
-                // กรณีเพิ่มใหม่: ใช้ POST request
-                router.post('/division-risks', formData, {
-                    onSuccess: (page) => {
-                        // แก้ไขส่วนนี้เพื่อตรวจสอบข้อมูลที่ได้รับจาก response
-                        if (page.props.risk && typeof page.props.risk === 'object' && 'id' in page.props.risk) {
-                            // ตรวจสอบให้แน่ใจว่าวัตถุมีโครงสร้างที่ถูกต้องตาม DivisionRisk
-                            const newRisk = page.props.risk as DivisionRisk;
-                            
-                            // เพิ่มข้อมูลใหม่ใน array
-                            data.value.push(newRisk);
-                            // สร้าง array ใหม่เพื่อทริกเกอร์การ re-render
-                            data.value = [...data.value];
-                        } else {
-                            console.warn('ได้รับข้อมูลความเสี่ยงที่ไม่สมบูรณ์จาก response:', page.props.risk);
-                        }
-                        
-                        // แสดงข้อความแจ้งเตือนสำเร็จ
-                        toast.success('เพิ่มความเสี่ยงสำเร็จ', {
-                            icon: CheckCircle2Icon,
-                            description: `ความเสี่ยงฝ่าย "${formData.risk_name}" ถูกเพิ่มเรียบร้อยแล้ว`,
-                            duration: 4000,
-                            closeButton: true
-                        });
-                        
-                        // เรียกฟังก์ชัน callback ถ้ามี
-                        if (onSuccess) onSuccess();
-                        resolve(page);
-                    },
-                    onError: (errors) => {
-                        // แสดงข้อความแจ้งเตือนกรณีเกิดข้อผิดพลาด
-                        toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล', {
-                            description: Object.values(errors).flat().join('\n'),
-                            duration: 5000,
-                            closeButton: true
-                        });
-                        
-                        // บันทึก log ข้อผิดพลาด
-                        console.error('❌ ไม่สามารถเพิ่มข้อมูลความเสี่ยงฝ่ายได้', {
-                            data: formData,
-                            errors: errors,
-                            timestamp: new Date().toLocaleString('th-TH')
-                        });
-                        
-                        reject(errors);
-                    }
-                });
-            }
-        });
-    };
-
-    // ฟังก์ชัน refresh สำหรับโหลดข้อมูลใหม่
-    const refreshData = () => {
-        // ใช้ Inertia router เพื่อโหลดหน้าปัจจุบันใหม่โดยไม่รีเฟรชหน้าเว็บทั้งหมด
-        router.reload({
-            only: ['risks'],
-            //preserveScroll: true,
-            onSuccess: () => {
-                // อัปเดตข้อมูลจาก page props
-                if (page.props.risks) {
-                    data.value = [...page.props.risks as DivisionRisk[]];
-                }
-                toast.success('รีเฟรชข้อมูลความเสี่ยงสำเร็จ');
-            }
-        });
-    };
-
-    // ส่งคืนข้อมูลและฟังก์ชันที่ต้องการให้ component อื่นใช้งาน
+        if (file.size > maxSize) {
+            errors.push(`ไฟล์ "${file.name}" มีขนาดใหญ่เกินไป (ไม่เกิน 10MB)`);
+        }
+    }
+    
     return {
-        data,
-        deleteRisk,
-        submitForm,  // เพิ่มฟังก์ชัน submitForm
-        refreshData  // เพิ่มฟังก์ชัน refreshData
+        valid: errors.length === 0,
+        errors
     };
-};
+  };
+  
+  // ดึงไอคอนตามประเภทไฟล์
+  const getFileIcon = (fileName: string) => {
+    if (!fileName) return FileIcon;
+    
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    
+    switch (extension) {
+        case 'pdf':
+            return FileTextIcon;
+        case 'doc':
+        case 'docx':
+            return FileTextIcon;
+        case 'xls':
+        case 'xlsx':
+            return FileSpreadsheetIcon;
+        case 'jpg':
+        case 'jpeg':
+        case 'png':
+            return ImageIcon;
+        default:
+            return FileIcon;
+    }
+  };
+
+  // จัดรูปแบบขนาดไฟล์ให้อ่านง่าย
+  const formatFileSize = (bytes: number): string => {
+    if (!bytes || bytes === 0) return '0 B';
+    
+    if (bytes < 1024) {
+        return bytes + ' B';
+    } else if (bytes < 1024 * 1024) {
+        return (bytes / 1024).toFixed(1) + ' KB';
+    } else {
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+  };
+  
+  return {
+    // ข้อมูลและสถานะ
+    data,
+    existingAttachments,
+    selectedFiles,
+    fileNames,
+    attachmentsToDelete,
+    isLoading,
+    isSubmitting,
+    
+    // ฟังก์ชันต่างๆ
+    loadData,
+    loadAttachments,
+    submitForm,
+    deleteRisk,
+    bulkDeleteRisks,
+    resetAttachmentState,
+    addSelectedFiles,
+    removeSelectedFile,
+    markAttachmentForDeletion,
+    openAttachment,
+    validateFiles,
+    getFileIcon,
+    formatFileSize
+  };
+}

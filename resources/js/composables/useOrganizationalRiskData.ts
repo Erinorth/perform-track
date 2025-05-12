@@ -6,11 +6,11 @@
   ใช้ร่วมกับ: OrganizationalRiskController.php ในฝั่ง Backend
 */
 
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 import { CheckCircle2Icon, FileIcon, FileTextIcon, ImageIcon, FileSpreadsheetIcon, AlertTriangleIcon } from 'lucide-vue-next';
-import type { OrganizationalRisk, Attachment } from '@/types/types';
+import type { OrganizationalRisk, OrganizationalRiskAttachment } from '@/types/types';
 
 // นิยาม interface สำหรับข้อมูลฟอร์ม
 interface RiskFormData {
@@ -23,7 +23,7 @@ interface RiskFormData {
 export function useOrganizationalRiskData(initialRisks: OrganizationalRisk[] = [], triggerProp?: any) {
   // ============ STATE MANAGEMENT ============
   const data = ref<OrganizationalRisk[]>([]);
-  const existingAttachments = ref<Attachment[]>([]);
+  const existingAttachments = ref<OrganizationalRiskAttachment[]>([]);
   const attachmentsToDelete = ref<number[]>([]);
   const selectedFiles = ref<File[]>([]);
   const fileNames = ref<string[]>([]);
