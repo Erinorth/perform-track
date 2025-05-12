@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Log;  // สำหรับบันทึก log
 use Inertia\Inertia;  // เชื่อมต่อกับ Vue frontend
 use Illuminate\Support\Facades\Auth;  // จัดการข้อมูลผู้ใช้ที่ล็อกอิน
 use Illuminate\Support\Facades\Storage;  // จัดการไฟล์ในระบบ
+use Illuminate\Support\Facades\DB;
 
 class DivisionRiskController extends Controller
 {
@@ -66,29 +67,58 @@ class DivisionRiskController extends Controller
      */
     public function store(StoreDivisionRiskRequest $request)
     {
-        // สร้างข้อมูลความเสี่ยงใหม่โดยใช้ข้อมูลที่ผ่านการตรวจสอบแล้ว
-        $risk = DivisionRisk::create($request->validated());
+        // เริ่ม transaction เพื่อให้มั่นใจว่าข้อมูลถูกบันทึกครบทุกส่วนหรือไม่ถูกบันทึกเลย
+        DB::beginTransaction();
         
-        // จัดการเอกสารแนบที่ส่งมาพร้อมคำขอ
-        $this->handleAttachments($request, $risk);
-        
-        // บันทึกล็อกสำหรับการติดตามและตรวจสอบ
-        Log::info('สร้างความเสี่ยงฝ่ายใหม่', [
-            'id' => $risk->id, 
-            'name' => $risk->risk_name, 
-            'user' => Auth::check() ? Auth::user()->name : null,
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-        
-        // ดึงข้อมูลความเสี่ยงทั้งหมดมาใหม่หลังจากบันทึกข้อมูล
-        $risks = DivisionRisk::with('riskAssessments')
-            ->orderBy('risk_name')
-            ->get();
+        try {
+            // สร้างข้อมูลความเสี่ยงใหม่โดยใช้ข้อมูลที่ผ่านการตรวจสอบแล้ว
+            $risk = DivisionRisk::create($request->validated());
             
-        // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จและข้อมูลล่าสุด
-        return redirect()->back()
-            ->with('success', 'เพิ่มความเสี่ยงฝ่ายเรียบร้อยแล้ว')
-            ->with('risks', $risks);
+            // จัดการเอกสารแนบที่ส่งมาพร้อมคำขอ
+            $this->handleAttachments($request, $risk);
+            
+            // จัดการเกณฑ์โอกาสเกิดและผลกระทบ (ถ้ามี)
+            if ($request->has('likelihood_criteria')) {
+                $this->handleLikelihoodCriteria($risk, $request->likelihood_criteria);
+            }
+            
+            if ($request->has('impact_criteria')) {
+                $this->handleImpactCriteria($risk, $request->impact_criteria);
+            }
+            
+            // บันทึกล็อกสำหรับการติดตามและตรวจสอบ
+            Log::info('สร้างความเสี่ยงฝ่ายใหม่', [
+                'id' => $risk->id, 
+                'name' => $risk->risk_name, 
+                'user' => auth()->check() ? auth()->user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
+            
+            // ยืนยันการทำรายการ
+            DB::commit();
+            
+            // ดึงข้อมูลความเสี่ยงทั้งหมดมาใหม่หลังจากบันทึกข้อมูล
+            $risks = DivisionRisk::with(['riskAssessments', 'likelihoodCriteria', 'impactCriteria'])
+                ->orderBy('risk_name')
+                ->get();
+                
+            // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จและข้อมูลล่าสุด
+            return redirect()->back()
+                ->with('success', 'เพิ่มความเสี่ยงฝ่ายเรียบร้อยแล้ว')
+                ->with('risks', $risks);
+                
+        } catch (\Exception $e) {
+            // ยกเลิกการทำรายการทั้งหมดหากเกิดข้อผิดพลาด
+            DB::rollBack();
+            
+            Log::error('เกิดข้อผิดพลาดในการสร้างความเสี่ยงฝ่าย', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()
+                ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -100,6 +130,9 @@ class DivisionRiskController extends Controller
      */
     public function update(UpdateDivisionRiskRequest $request, DivisionRisk $divisionRisk)
     {
+        // เริ่ม transaction
+        DB::beginTransaction();
+        
         try {
             // อัปเดตข้อมูลพื้นฐาน
             $divisionRisk->update([
@@ -108,35 +141,40 @@ class DivisionRiskController extends Controller
                 'organizational_risk_id' => $request->organizational_risk_id,
             ]);
             
-            // จัดการไฟล์แนบเสมอ โดยไม่ต้องตรวจสอบว่ามีไฟล์หรือไม่
+            // จัดการไฟล์แนบและไฟล์ที่ต้องการลบ
             $this->handleAttachments($request, $divisionRisk);
+            $this->handleAttachmentsToDelete($request, $divisionRisk);
             
-            // จัดการไฟล์ที่ต้องการลบ
-            if ($request->has('attachments_to_delete') && is_array($request->attachments_to_delete)) {
-                foreach ($request->attachments_to_delete as $attachmentId) {
-                    $attachment = DivisionRiskAttachment::find($attachmentId);
-                    if ($attachment && $attachment->division_risk_id == $divisionRisk->id) {
-                        // ลบไฟล์จริงจาก storage
-                        if (Storage::exists('public/' . $attachment->file_path)) {
-                            Storage::delete('public/' . $attachment->file_path);
-                        }
-                        // ลบข้อมูลจากฐานข้อมูล
-                        $attachment->delete();
-                    }
-                }
+            // จัดการเกณฑ์โอกาสเกิดและผลกระทบ (ถ้ามี)
+            if ($request->has('likelihood_criteria')) {
+                $this->handleLikelihoodCriteria($divisionRisk, $request->likelihood_criteria);
             }
             
-            // ดึงข้อมูลที่อัปเดตเรียบร้อยแล้วพร้อมเอกสารแนบ
-            $updatedRisk = DivisionRisk::with('attachments')->find($divisionRisk->id);
+            if ($request->has('impact_criteria')) {
+                $this->handleImpactCriteria($divisionRisk, $request->impact_criteria);
+            }
+            
+            // ยืนยันการทำรายการ
+            DB::commit();
+                
+            // ดึงข้อมูลที่อัปเดตเรียบร้อยแล้วพร้อมเอกสารแนบและเกณฑ์
+            $updatedRisk = DivisionRisk::with([
+                'attachments', 
+                'likelihoodCriteria', 
+                'impactCriteria'
+            ])->find($divisionRisk->id);
             
             return redirect()->back()->with([
                 'message' => 'อัปเดตข้อมูลความเสี่ยงเรียบร้อยแล้ว',
                 'updatedRisk' => $updatedRisk  // ส่งข้อมูลที่อัปเดตแล้วกลับไป
             ]);
         } catch (\Exception $e) {
+            // ยกเลิกการทำรายการทั้งหมดหากเกิดข้อผิดพลาด
+            DB::rollBack();
+            
             Log::error('การอัปเดตความเสี่ยงล้มเหลว: ' . $e->getMessage(), [
                 'risk_id' => $divisionRisk->id,
-                'user' => Auth::user()->name ?? 'ไม่ระบุ',
+                'user' => auth()->user()->name ?? 'ไม่ระบุ',
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -256,6 +294,66 @@ class DivisionRiskController extends Controller
             ->with('success', $successMessage)
             ->with('risks', $risks)
             ->with('deleted_count', $deletedCount);
+    }
+
+    /**
+     * จัดการเกณฑ์โอกาสเกิด (likelihood criteria)
+     * 
+     * @param DivisionRisk $divisionRisk ข้อมูลความเสี่ยงระดับฝ่าย
+     * @param array $likelihoodCriteria ข้อมูลเกณฑ์โอกาสเกิด
+     * @return void
+     */
+    private function handleLikelihoodCriteria(DivisionRisk $divisionRisk, array $likelihoodCriteria): void
+    {
+        // ลบข้อมูลเกณฑ์เดิม (ถ้ามี)
+        $divisionRisk->likelihoodCriteria()->delete();
+        
+        // บันทึกข้อมูลเกณฑ์ใหม่
+        foreach ($likelihoodCriteria as $criteria) {
+            $divisionRisk->likelihoodCriteria()->create([
+                'level' => $criteria['level'],
+                'name' => $criteria['name'],
+                'description' => $criteria['description'] ?? null
+            ]);
+        }
+        
+        // บันทึกล็อกสำหรับการตรวจสอบ
+        Log::info('บันทึกเกณฑ์โอกาสเกิดความเสี่ยง', [
+            'division_risk_id' => $divisionRisk->id,
+            'risk_name' => $divisionRisk->risk_name,
+            'criteria_count' => count($likelihoodCriteria),
+            'user' => auth()->check() ? auth()->user()->name : 'ไม่ระบุ'
+        ]);
+    }
+    
+    /**
+     * จัดการเกณฑ์ผลกระทบ (impact criteria)
+     * 
+     * @param DivisionRisk $divisionRisk ข้อมูลความเสี่ยงระดับฝ่าย
+     * @param array $impactCriteria ข้อมูลเกณฑ์ผลกระทบ
+     * @return void
+     */
+    private function handleImpactCriteria(DivisionRisk $divisionRisk, array $impactCriteria): void
+    {
+        // ลบข้อมูลเกณฑ์เดิม (ถ้ามี)
+        $divisionRisk->impactCriteria()->delete();
+        
+        // บันทึกข้อมูลเกณฑ์ใหม่
+        foreach ($impactCriteria as $criteria) {
+            $divisionRisk->impactCriteria()->create([
+                'level' => $criteria['level'],
+                'name' => $criteria['name'],
+                'description' => $criteria['description'] ?? null
+            ]);
+        }
+        
+        // บันทึกล็อกสำหรับการตรวจสอบ
+        Log::info('บันทึกเกณฑ์ผลกระทบความเสี่ยง', [
+            'division_risk_id' => $divisionRisk->id,
+            'risk_name' => $divisionRisk->risk_name,
+            'criteria_count' => count($impactCriteria),
+            'user' => auth()->check() ? auth()->user()->name : 'ไม่ระบุ'
+        ]);
     }
 
     /**
