@@ -12,6 +12,7 @@ namespace App\Http\Controllers;
 // นำเข้า Models และ Requests ที่เกี่ยวข้อง
 use App\Models\DivisionRisk;  // โมเดลสำหรับจัดการข้อมูลความเสี่ยงระดับฝ่าย
 use App\Models\DivisionRiskAttachment;  // โมเดลสำหรับจัดการข้อมูลเอกสารแนบ
+use App\Models\OrganizationalRisk;  // โมเดลสำหรับจัดการข้อมูลความเสี่ยงระดับหน่วยงาน
 use App\Http\Requests\StoreDivisionRiskRequest;  // Form Request สำหรับตรวจสอบข้อมูลการเพิ่ม
 use App\Http\Requests\UpdateDivisionRiskRequest;  // Form Request สำหรับตรวจสอบข้อมูลการแก้ไข
 use Illuminate\Http\Request;  // สำหรับจัดการคำขอจาก HTTP
@@ -35,6 +36,8 @@ class DivisionRiskController extends Controller
             ->orderBy('risk_name')  // เรียงตามชื่อความเสี่ยง
             ->get();  // ดึงข้อมูลทั้งหมด
 
+        $organizationalRisks = OrganizationalRisk::orderBy('risk_name')->get();
+
         // บันทึก log การเข้าถึงหน้ารายการความเสี่ยง เพื่อติดตามการใช้งาน
         Log::info('เข้าถึงรายการความเสี่ยงระดับฝ่าย', [
             'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
@@ -43,7 +46,8 @@ class DivisionRiskController extends Controller
 
         // ส่งข้อมูลไปยังหน้า Vue ผ่าน Inertia
         return Inertia::render('division_risk/DivisionRisk', [
-            'risks' => $risks  // ส่งข้อมูลความเสี่ยงไปยัง Vue component
+            'risks' => $risks,  // ส่งข้อมูลความเสี่ยงไปยัง Vue component
+            'organizationalRisks' => $organizationalRisks
         ]);
     }
 
