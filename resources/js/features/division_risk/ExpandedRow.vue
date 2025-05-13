@@ -61,13 +61,13 @@ const hasImpactCriteria = computed(() => {
 // จัดเรียงเกณฑ์โอกาสเกิดตามระดับ
 const sortedLikelihoodCriteria = computed(() => {
   if (!hasLikelihoodCriteria.value) return [];
-  return [...props.rowData.likelihood_criteria].sort((a, b) => a.level - b.level);
+  return [...(props.rowData.likelihood_criteria || [])].sort((a, b) => a.level - b.level);
 });
 
 // จัดเรียงเกณฑ์ผลกระทบตามระดับ
 const sortedImpactCriteria = computed(() => {
   if (!hasImpactCriteria.value) return [];
-  return [...props.rowData.impact_criteria].sort((a, b) => a.level - b.level);
+  return [...(props.rowData.impact_criteria || [])].sort((a, b) => a.level - b.level);
 });
 
 // ตรวจสอบว่ามีเอกสารแนบหรือไม่
@@ -331,7 +331,7 @@ onMounted(() => {
         </div>
         
         <!-- เพิ่มส่วนเกณฑ์การประเมินความเสี่ยง -->
-        <div class="flex items-start space-x-2">
+        <div class="flex items-start space-x-2 mt-2">
                 <AlertCircle class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                 <div class="w-full min-w-0 overflow-hidden">
                   <!-- หัวข้อเกณฑ์การประเมิน -->
