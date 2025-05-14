@@ -22,6 +22,10 @@ import type { OrganizationalRisk } from '@/types/types';
 import DataTable from '@/features/organizational_risk/DataTable.vue';
 import OrganizationalRiskModal from './OrganizationalRiskModal.vue';
 import HeaderSection from '@/features/organizational_risk/HeaderSection.vue';
+// นำเข้า component สำหรับแสดง alert dialog ยืนยันการทำงานต่างๆ เช่น การลบข้อมูล
+import AlertConfirmDialog from '@/components/AlertConfirmDialog.vue';
+// นำเข้า composable สำหรับจัดการสถานะและการทำงานของ confirm dialog
+import { useConfirm } from '@/composables/useConfirm';
 
 // ==================== นำเข้า Composables และ Utilities ====================
 import { columns } from '@/features/organizational_risk/columns';
@@ -29,10 +33,10 @@ import { useOrganizationalRiskActions } from '@/composables/useOrganizationalRis
 
 // ==================== กำหนด Breadcrumbs ====================
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'จัดการความเสี่ยงองค์กร',
-        href: '/organizational-risks',
-    },
+  {
+    title: 'จัดการความเสี่ยงองค์กร',
+    href: '/organizational-risks',
+  },
 ];
 
 // ==================== กำหนด Props ====================
@@ -51,6 +55,9 @@ const {
   handleDelete,
   handleBulkDelete
 } = useOrganizationalRiskActions(props.risks);
+
+// ใช้ composable useConfirm เพื่อจัดการกับการแสดง confirm dialog และการตอบสนองต่อการกระทำของผู้ใช้
+const { isOpen, options, isProcessing, handleConfirm, handleCancel } = useConfirm();
 </script>
 
 <template>
@@ -84,6 +91,18 @@ const {
         v-model:show="showModal"
         :risk="currentRisk"
         @saved="handleSaved"
+      />
+      
+      <!-- AlertConfirmDialog สำหรับการยืนยันการทำงานที่สำคัญ แทนที่ ConfirmDialog เดิม -->
+      <AlertConfirmDialog
+        v-model:show="isOpen"
+        :title="options?.title || ''"
+        :message="options?.message || ''"
+        :confirm-text="options?.confirmText"
+        :cancel-text="options?.cancelText"
+        :processing="isProcessing"
+        @confirm="handleConfirm"
+        @cancel="handleCancel"
       />
     </div>
   </AppLayout>

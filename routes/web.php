@@ -169,6 +169,9 @@ Route::middleware('auth')->group(function () {
         // แสดงหน้าสร้างการประเมินความเสี่ยงใหม่
         Route::get('/create', [RiskAssessmentController::class, 'create'])
             ->name('risk-assessments.create');
+
+        Route::get('/{riskAssessment}', [RiskAssessmentController::class, 'show'])
+            ->name('risk-assessments.show');
         
         // บันทึกการประเมินความเสี่ยงใหม่
         Route::post('/', [RiskAssessmentController::class, 'store'])

@@ -1,13 +1,22 @@
 <!-- 
-  ไฟล์: resources\js\components\ConfirmDialog.vue
-  Component แสดงกล่องยืนยันการทำงานสำคัญ เช่น การลบข้อมูล
+  ไฟล์: resources\js\components\AlertConfirmDialog.vue
+  คอมโพเนนต์แสดงกล่องยืนยันการทำงานสำคัญ เช่น การลบข้อมูล
   ใช้ร่วมกับ composable useConfirm เพื่อแสดงข้อความยืนยัน
   รองรับการแสดงผลแบบ Responsive
 -->
 <script setup lang="ts">
-// นำเข้า components จาก shadcn-vue สำหรับสร้าง dialog
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+// นำเข้า components จาก shadcn-vue สำหรับสร้าง alert dialog
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+
 // นำเข้าไอคอนจาก lucide-vue-next
 import { AlertTriangleIcon } from 'lucide-vue-next';
 
@@ -30,51 +39,47 @@ defineEmits<{
 </script>
 
 <template>
-  <!-- Dialog component จาก shadcn-vue -->
-  <Dialog 
+  <!-- AlertDialog component จาก shadcn-vue -->
+  <AlertDialog 
     :open="show" 
-    @update:open="(val) => { 
-      if (!val) $emit('cancel'); // เมื่อกด X ให้เรียก cancel แทนการพยายามเปลี่ยน show
-    }"
+    @update:open="(val) => $emit('update:show', val)"
   >
-    <DialogContent class="sm:max-w-[425px]">
+    <AlertDialogContent class="sm:max-w-[425px]">
       <!-- ส่วนหัวของ dialog -->
-      <DialogHeader>
-        <DialogTitle>
+      <AlertDialogHeader>
+        <AlertDialogTitle>
           <div class="flex items-center gap-2">
             <!-- ไอคอนเตือน -->
             <AlertTriangleIcon class="h-5 w-5 text-warning" />
             <span>{{ title }}</span>
           </div>
-        </DialogTitle>
+        </AlertDialogTitle>
         <!-- ข้อความรายละเอียด -->
-        <DialogDescription>
+        <AlertDialogDescription>
           <span v-html="message"></span>
-        </DialogDescription>
-      </DialogHeader>
+        </AlertDialogDescription>
+      </AlertDialogHeader>
       
       <!-- ส่วนท้ายของ dialog แสดงปุ่มดำเนินการ -->
-      <DialogFooter class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-        <!-- ปุ่มยกเลิก แบบ responsive -->
-        <Button 
-          variant="outline" 
+      <AlertDialogFooter class="flex flex-col sm:flex-row gap-2">
+        <!-- ปุ่มยกเลิก -->
+        <AlertDialogCancel 
+          :disabled="processing"
           @click="$emit('cancel')"
           class="w-full sm:w-auto"
-          :disabled="processing"
         >
           {{ cancelText || 'ยกเลิก' }}
-        </Button>
-        <!-- ปุ่มยืนยัน แบบ responsive และสีแดง (destructive) -->
-        <Button 
-          variant="destructive" 
-          @click="$emit('confirm')"
-          class="w-full sm:w-auto"
+        </AlertDialogCancel>
+        <!-- ปุ่มยืนยัน สีแดง -->
+        <AlertDialogAction
+          class="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
           :disabled="processing"
+          @click="$emit('confirm')"
         >
           <span v-if="processing">กำลังดำเนินการ...</span>
           <span v-else>{{ confirmText || 'ยืนยัน' }}</span>
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

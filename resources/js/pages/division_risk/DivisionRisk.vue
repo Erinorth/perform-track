@@ -22,6 +22,10 @@ import type { DivisionRisk } from '@/types/types';
 import DataTable from '@/features/division_risk/DataTable.vue';
 import DivisionRiskModal from './DivisionRiskModal.vue';
 import HeaderSection from '@/features/division_risk/HeaderSection.vue';
+// นำเข้า component สำหรับแสดง dialog ยืนยันการทำงานต่างๆ เช่น การลบข้อมูล
+import AlertConfirmDialog from '@/components/AlertConfirmDialog.vue';
+// นำเข้า composable สำหรับจัดการสถานะและการทำงานของ confirm dialog
+import { useConfirm } from '@/composables/useConfirm';
 
 // ==================== นำเข้า Composables และ Utilities ====================
 import { columns } from '@/features/division_risk/columns';
@@ -52,6 +56,9 @@ const {
   handleDelete,
   handleBulkDelete
 } = useDivisionRiskActions(props.risks);
+
+// ใช้ composable useConfirm เพื่อจัดการกับการแสดง confirm dialog และการตอบสนองต่อการกระทำของผู้ใช้
+const { isOpen, options, isProcessing, handleConfirm, handleCancel } = useConfirm();
 </script>
 
 <template>
@@ -86,6 +93,18 @@ const {
         :risk="currentRisk"
         :organizational-risks="props.organizationalRisks"
         @saved="handleSaved"
+      />
+
+      <!-- AlertConfirmDialog สำหรับการยืนยันการทำงานที่สำคัญ แทนที่ ConfirmDialog เดิม -->
+      <AlertConfirmDialog
+        v-model:show="isOpen"
+        :title="options?.title || ''"
+        :message="options?.message || ''"
+        :confirm-text="options?.confirmText"
+        :cancel-text="options?.cancelText"
+        :processing="isProcessing"
+        @confirm="handleConfirm"
+        @cancel="handleCancel"
       />
     </div>
   </AppLayout>
