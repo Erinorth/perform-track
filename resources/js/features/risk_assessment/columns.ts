@@ -103,6 +103,34 @@ export const columns: ColumnDef<RiskAssessment>[] = [
         title: 'ระดับโอกาสเกิด'
       })
     ),
+    // แก้ไขส่วนแสดงผลเพื่อแสดงข้อความระดับโอกาสจากฐานข้อมูล
+    cell: ({ row }) => {
+      const level = row.getValue("likelihood_level");
+      const divisionRisk = row.original.division_risk;
+      let levelName = '';
+      
+      // ตรวจสอบว่ามีข้อมูลเกณฑ์ในฐานข้อมูลหรือไม่
+      if (divisionRisk?.likelihoodCriteria?.length > 0) {
+        const criteria = divisionRisk.likelihoodCriteria.find(c => c.level === level);
+        if (criteria) {
+          levelName = criteria.name;
+        }
+      }
+      
+      // ถ้าไม่พบข้อมูลในฐานข้อมูล ใช้ค่าเริ่มต้น
+      if (!levelName) {
+        switch (level) {
+          case 1: levelName = 'น้อยมาก'; break;
+          case 2: levelName = 'น้อย'; break;
+          case 3: levelName = 'ปานกลาง'; break;
+          case 4: levelName = 'สูง'; break;
+          default: levelName = 'ไม่ระบุ';
+        }
+      }
+      
+      console.log(`แสดงระดับโอกาสเกิด: ${levelName} (${level})`);
+      return `${levelName} (${level})`;
+    },
   },
   {
     accessorKey: "impact_level", // ระดับผลกระทบ
@@ -112,6 +140,34 @@ export const columns: ColumnDef<RiskAssessment>[] = [
         title: 'ระดับผลกระทบ'
       })
     ),
+    // แก้ไขส่วนแสดงผลเพื่อแสดงข้อความระดับผลกระทบจากฐานข้อมูล
+    cell: ({ row }) => {
+      const level = row.getValue("impact_level");
+      const divisionRisk = row.original.division_risk;
+      let levelName = '';
+      
+      // ตรวจสอบว่ามีข้อมูลเกณฑ์ในฐานข้อมูลหรือไม่
+      if (divisionRisk?.impactCriteria?.length > 0) {
+        const criteria = divisionRisk.impactCriteria.find(c => c.level === level);
+        if (criteria) {
+          levelName = criteria.name;
+        }
+      }
+      
+      // ถ้าไม่พบข้อมูลในฐานข้อมูล ใช้ค่าเริ่มต้น
+      if (!levelName) {
+        switch (level) {
+          case 1: levelName = 'น้อยมาก'; break;
+          case 2: levelName = 'น้อย'; break;
+          case 3: levelName = 'ปานกลาง'; break;
+          case 4: levelName = 'สูง'; break;
+          default: levelName = 'ไม่ระบุ';
+        }
+      }
+      
+      console.log(`แสดงระดับผลกระทบ: ${levelName} (${level})`);
+      return `${levelName} (${level})`;
+    },
   },
   {
     accessorKey: "risk_score", // คะแนนความเสี่ยง

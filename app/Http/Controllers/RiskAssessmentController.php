@@ -35,22 +35,29 @@ class RiskAssessmentController extends Controller
         // ดึงข้อมูลการประเมินความเสี่ยงทั้งหมด พร้อมโหลดความสัมพันธ์
         $assessments = RiskAssessment::with([
             'riskAssessmentAttachment',
-            'divisionRisk'
+            'divisionRisk',
+            'divisionRisk.impactCriteria', // เพิ่มการดึงข้อมูลเกณฑ์ผลกระทบ
+            'divisionRisk.likelihoodCriteria' // เพิ่มการดึงข้อมูลเกณฑ์โอกาส
             ])
-            ->orderBy('assessment_date', 'desc')  // เรียงตามวันที่ประเมิน จากใหม่ไปเก่า
-            ->get();  // ดึงข้อมูลทั้งหมด
+            ->orderBy('assessment_date', 'desc')
+            ->get();
 
-        $divisionRisks = DivisionRisk::orderBy('risk_name')->get();
+        // ดึงข้อมูล division_risks พร้อมเกณฑ์
+        $divisionRisks = DivisionRisk::with([
+            'impactCriteria',
+            'likelihoodCriteria'
+        ])->orderBy('risk_name')->get();
 
-        // บันทึก log การเข้าถึงหน้ารายการการประเมินความเสี่ยง เพื่อติดตามการใช้งาน
+        // บันทึก log การเข้าถึงหน้ารายการ
         Log::info('เข้าถึงรายการการประเมินความเสี่ยง', [
             'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'timestamp' => now()->format('Y-m-d H:i:s')
+            'timestamp' => now()->format('Y-m-d H:i:s'),
+            'has_criteria_data' => $divisionRisks->first() ? 
+                ($divisionRisks->first()->likelihoodCriteria->count() > 0 ? 'มี' : 'ไม่มี') : 'ไม่มีข้อมูล'
         ]);
 
-        // ส่งข้อมูลไปยังหน้า Vue ผ่าน Inertia
         return Inertia::render('risk_assessment/RiskAssessment', [
-            'assessments' => $assessments,  // ส่งข้อมูลการประเมินความเสี่ยงไปยัง Vue component
+            'assessments' => $assessments,
             'divisionRisks' => $divisionRisks
         ]);
     }

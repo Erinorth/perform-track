@@ -28,8 +28,14 @@ export interface OrganizationalRisk {
     organizational_risk?: OrganizationalRisk // ความสัมพันธ์แบบ many-to-one กับความเสี่ยงระดับองค์กร (อาจมีหรือไม่มีก็ได้)
     attachments?: DivisionRiskAttachment[];
     risk_assessments?: RiskAssessment[] // ความสัมพันธ์แบบ one-to-many กับการประเมินความเสี่ยง
-    impact_criteria?: ImpactCriteria[] // ความสัมพันธ์แบบ one-to-many กับเกณฑ์ผลกระทบ
-    likelihood_criteria?: LikelihoodCriteria[] // ความสัมพันธ์แบบ one-to-many กับเกณฑ์โอกาสเกิด
+    
+    // รองรับทั้งสองรูปแบบ (snake_case จาก Laravel และ camelCase ใน Vue)
+    impact_criteria?: ImpactCriteria[] // snake_case จาก Laravel
+    impactCriteria?: ImpactCriteria[] // camelCase ใน Vue
+    
+    // รองรับทั้งสองรูปแบบ (snake_case จาก Laravel และ camelCase ใน Vue)
+    likelihood_criteria?: LikelihoodCriteria[] // snake_case จาก Laravel
+    likelihoodCriteria?: LikelihoodCriteria[] // camelCase ใน Vue
   }
   
   // อินเตอร์เฟซสำหรับการประเมินความเสี่ยง
@@ -84,6 +90,7 @@ export interface OrganizationalRisk {
 
   export interface OrganizationalRiskAttachment {
     id: number;
+    organizational_risk_id: number;
     file_name: string;
     file_path: string;
     file_type: string;
@@ -95,6 +102,7 @@ export interface OrganizationalRisk {
 
   export interface DivisionRiskAttachment {
     id: number;
+    division_risk_id: number;
     file_name: string;
     file_path: string;
     file_type: string;
@@ -106,6 +114,7 @@ export interface OrganizationalRisk {
 
   export interface RiskAssessmentAttachment {
     id: number;
+    risk_assessment_id: number;
     file_name: string;
     file_path: string;
     file_type: string;

@@ -31,6 +31,9 @@ import { useConfirm } from '@/composables/useConfirm';
 import { columns } from '@/features/risk_assessment/columns';
 import { useRiskAssessmentActions } from '@/composables/useRiskAssessmentActions';
 
+import { onMounted } from 'vue'
+import { toast } from 'vue-sonner'
+
 // ==================== กำหนด Breadcrumbs ====================
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -59,6 +62,28 @@ const {
 
 // ใช้ composable useConfirm เพื่อจัดการกับการแสดง confirm dialog และการตอบสนองต่อการกระทำของผู้ใช้
 const { isOpen, options, isProcessing, handleConfirm, handleCancel } = useConfirm();
+
+// เพิ่มในส่วน script setup
+onMounted(() => {
+  // ตรวจสอบข้อมูลจากฐานข้อมูลในส่วนของเกณฑ์
+  const hasCriteria = props.divisionRisks?.some(risk => {
+    const hasLikelihoodCriteria = (risk.likelihoodCriteria?.length > 0) || 
+                                 (risk.likelihood_criteria?.length > 0);
+    const hasImpactCriteria = (risk.impactCriteria?.length > 0) || 
+                             (risk.impact_criteria?.length > 0);
+                             
+    return hasLikelihoodCriteria || hasImpactCriteria;
+  })
+  
+  console.log('มีข้อมูลเกณฑ์ในฐานข้อมูลหรือไม่:', hasCriteria ? 'มี' : 'ไม่มี')
+  
+  // แจ้งเตือนหากไม่มีข้อมูลเกณฑ์
+  if (!hasCriteria) {
+    toast.warning('ไม่พบข้อมูลเกณฑ์ในฐานข้อมูล กรุณาเพิ่มข้อมูลเกณฑ์การประเมินความเสี่ยง', {
+      duration: 5000,
+    })
+  }
+})
 </script>
 
 <template>

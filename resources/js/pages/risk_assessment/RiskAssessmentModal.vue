@@ -1,9 +1,8 @@
 <!-- 
   ไฟล์: resources/js/pages/risk_assessment/RiskAssessmentModal.vue
   คำอธิบาย: Modal component สำหรับเพิ่ม/แก้ไขข้อมูลการประเมินความเสี่ยง
-  ทำหน้าที่: แสดงฟอร์มสำหรับกรอกข้อมูลการประเมินความเสี่ยง, อัปโหลดเอกสารแนบ
-  หลักการ: ใช้ Dialog จาก shadcn-vue เป็นพื้นฐาน, แสดงฟอร์มและการจัดการเอกสารแนบ
-  ใช้ร่วมกับ: RiskAssessmentController.php ในฝั่ง Backend
+  ใช้: แสดงฟอร์มสำหรับกรอกข้อมูลการประเมินความเสี่ยง และจัดการเอกสารแนบ
+  การทำงาน: รองรับการแสดงระดับความเสี่ยงจากฐานข้อมูลและคำนวณคะแนนอัตโนมัติ
 -->
 
 <script setup lang="ts">
@@ -52,8 +51,8 @@ const {
   getFileIcon, formatFileSize 
 } = useRiskAssessmentData(props.initialAssessments, props.show)
 
-// สถานะสำหรับแสดง tooltip ช่วยเหลือ
-const showHelp = ref<boolean>(false)
+// สถานะสำหรับแสดง tooltip ช่วยเหลือ (ตำแหน่งเดียวกับที่ใช้จริง)
+const showTooltip = ref<string | null>(null)
 
 // Computed Properties
 const isEditing = computed(() => !!props.assessment?.id)
@@ -76,11 +75,102 @@ const form = useForm<AssessmentFormData>({
   attachments: null,
 })
 
-// Watchers
+/**
+ * ระดับความเสี่ยงและการแสดงผล
+ * กำหนดระดับความเสี่ยงตามคะแนน พร้อมสีและคำอธิบาย
+ */
+const getRiskLevelDisplay = computed(() => {
+  const score = form.risk_score || 0;
+  if (score <= 3) return { text: 'ต่ำ', color: 'bg-green-100 text-green-800' };
+  if (score <= 6) return { text: 'ปานกลาง', color: 'bg-yellow-100 text-yellow-800' };
+  if (score <= 9) return { text: 'สูง', color: 'bg-orange-100 text-orange-800' };
+  return { text: 'สูงมาก', color: 'bg-red-100 text-red-800' };
+})
+
+/**
+ * ความเสี่ยงระดับฝ่ายที่เลือก
+ * สำหรับเข้าถึงข้อมูลเกณฑ์
+ */
+const selectedDivisionRisk = computed(() => {
+  if (!form.division_risk_id) return null;
+  return props.divisionRisks?.find(risk => risk.id === form.division_risk_id);
+})
+
+/**
+ * เกณฑ์การให้คะแนนโอกาสเกิด
+ * ดึงจากฐานข้อมูลหรือใช้ค่าเริ่มต้น
+ */
+const likelihoodCriteria = computed(() => {
+  // ตรวจสอบทั้ง camelCase และ snake_case ในข้อมูลจาก API
+  return selectedDivisionRisk.value?.likelihoodCriteria || 
+         selectedDivisionRisk.value?.likelihood_criteria || 
+         [];
+})
+
+/**
+ * เกณฑ์การให้คะแนนผลกระทบ
+ * ดึงจากฐานข้อมูลหรือใช้ค่าเริ่มต้น
+ */
+const impactCriteria = computed(() => {
+  // ตรวจสอบทั้ง camelCase และ snake_case ในข้อมูลจาก API
+  return selectedDivisionRisk.value?.impactCriteria || 
+         selectedDivisionRisk.value?.impact_criteria || 
+         [];
+})
+
+/**
+ * ดึงชื่อระดับความเสี่ยงจากเกณฑ์ในฐานข้อมูล
+ * @param level ระดับความเสี่ยง (1-4)
+ * @param criteriaList รายการเกณฑ์จากฐานข้อมูล
+ * @returns ชื่อระดับความเสี่ยงที่มาจากฐานข้อมูล หรือค่าเริ่มต้น
+ */
+function getCriteriaName(level: number, criteriaList: any[]): string {
+  // แปลงระดับเป็นตัวเลขเพื่อเปรียบเทียบค่าได้ถูกต้อง
+  const numericLevel = Number(level);
+  
+  // ค้นหาเกณฑ์ที่ตรงกับระดับที่ต้องการ
+  const criteria = criteriaList.find(c => Number(c.level) === numericLevel);
+  
+  // กรณีพบเกณฑ์ในฐานข้อมูล ใช้ชื่อจากฐานข้อมูล
+  if (criteria) {
+    return criteria.name;
+  }
+  
+  // กรณีไม่พบ ใช้ค่าเริ่มต้น
+  return getDefaultLevelName(level);
+}
+
+/**
+ * ชื่อระดับโอกาสเกิดตามค่าที่เลือก
+ */
+function getLikelihoodLevelName(level: number): string {
+  return getCriteriaName(level, likelihoodCriteria.value);
+}
+
+/**
+ * ชื่อระดับผลกระทบตามค่าที่เลือก
+ */
+function getImpactLevelName(level: number): string {
+  return getCriteriaName(level, impactCriteria.value);
+}
+
+/**
+ * ชื่อระดับความเสี่ยงเริ่มต้น (กรณีไม่พบในฐานข้อมูล)
+ */
+function getDefaultLevelName(level: number): string {
+  switch (Number(level)) {
+    case 1: return 'น้อยมาก';
+    case 2: return 'น้อย';
+    case 3: return 'ปานกลาง';
+    case 4: return 'สูง';
+    default: return 'ไม่ระบุ';
+  }
+}
+
+// โหลดข้อมูลเมื่อ Modal เปิด
 watch(() => props.show, (newVal) => {
   if (newVal && props.assessment) {
     // โหลดข้อมูลสำหรับการแก้ไข
-    console.log('กำลังโหลดข้อมูลสำหรับแก้ไข:', new Date(props.assessment.assessment_date).toLocaleDateString('th-TH'))
     form.assessment_date = props.assessment.assessment_date
     form.likelihood_level = props.assessment.likelihood_level
     form.impact_level = props.assessment.impact_level
@@ -89,8 +179,9 @@ watch(() => props.show, (newVal) => {
     form.notes = props.assessment.notes ?? ''
     loadAttachments(props.assessment)
   } else if (newVal) {
+    // รีเซ็ตฟอร์มสำหรับการเพิ่มใหม่
     form.reset()
-    form.assessment_date = new Date().toISOString().split('T')[0] // กำหนดวันที่เป็นวันปัจจุบันสำหรับการเพิ่มใหม่
+    form.assessment_date = new Date().toISOString().split('T')[0]
     loadAttachments()
   }
 })
@@ -121,6 +212,13 @@ const handleFileUpload = (event: Event) => {
 }
 
 /**
+ * แสดงหรือซ่อน tooltip ช่วยเหลือ
+ */
+const toggleTooltip = (name: string) => {
+  showTooltip.value = showTooltip.value === name ? null : name
+}
+
+/**
  * ตรวจสอบความถูกต้องของฟอร์ม
  */
 const validateForm = () => {
@@ -130,6 +228,11 @@ const validateForm = () => {
   // ตรวจสอบข้อมูลสำคัญ
   if (!form.assessment_date) {
     errors.push('กรุณาระบุวันที่ประเมิน')
+    isValid = false
+  }
+  
+  if (!form.division_risk_id) {
+    errors.push('กรุณาเลือกความเสี่ยงระดับฝ่าย')
     isValid = false
   }
   
@@ -175,8 +278,6 @@ const handleSubmit = async () => {
       duration: 60000 // ตั้งเวลานานพอที่จะรอการประมวลผลเสร็จ
     })
     
-    console.log('กำลังส่งข้อมูล, mode:', isEditing.value ? 'แก้ไข' : 'เพิ่ม', 'id:', props.assessment?.id)
-    
     await submitForm(
       { 
         assessment_date: form.assessment_date,
@@ -206,35 +307,6 @@ const handleSubmit = async () => {
     })
   }
 }
-
-/**
- * สลับการแสดงข้อความช่วยเหลือ
- */
-const toggleHelp = () => {
-  showHelp.value = !showHelp.value
-}
-
-// ฟังก์ชันสำหรับแปลงค่าระดับโอกาสเป็นข้อความ
-const getLikelihoodLevelName = (level: number): string => {
-  switch (level) {
-    case 1: return 'น้อยมาก';
-    case 2: return 'น้อย';
-    case 3: return 'ปานกลาง';
-    case 4: return 'สูง';
-    default: return 'ไม่ระบุ';
-  }
-}
-
-// ฟังก์ชันสำหรับแปลงค่าระดับผลกระทบเป็นข้อความ
-const getImpactLevelName = (level: number): string => {
-  switch (level) {
-    case 1: return 'น้อยมาก';
-    case 2: return 'น้อย';
-    case 3: return 'ปานกลาง';
-    case 4: return 'สูง';
-    default: return 'ไม่ระบุ';
-  }
-}
 </script>
 
 <template>
@@ -261,14 +333,14 @@ const getImpactLevelName = (level: number): string => {
                 variant="ghost" 
                 size="icon"
                 class="h-5 w-5 text-gray-500 hover:text-gray-700"
-                @click="toggleHelp"
+                @click="toggleTooltip('assessment_date')"
               >
                 <HelpCircleIcon class="h-4 w-4" />
               </Button>
             </Label>
             
-            <!-- ข้อความช่วยเหลือ - แสดงเมื่อคลิกปุ่มช่วยเหลือ -->
-            <div v-if="showHelp" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+            <!-- ข้อความช่วยเหลือ - แสดงเฉพาะเมื่อคลิกปุ่มช่วยเหลือ -->
+            <div v-if="showTooltip === 'assessment_date'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
               ระบุวันที่ทำการประเมินความเสี่ยงนี้ เพื่อติดตามการเปลี่ยนแปลงของระดับความเสี่ยงตามระยะเวลา
             </div>
             
@@ -284,7 +356,24 @@ const getImpactLevelName = (level: number): string => {
 
           <!-- ฟิลด์ความเสี่ยงฝ่ายที่เกี่ยวข้อง -->
           <div class="grid gap-2">
-            <Label for="division_risk_id">ความเสี่ยงฝ่ายที่ประเมิน</Label>
+            <Label for="division_risk_id" class="flex items-center gap-1">
+              ความเสี่ยงฝ่ายที่ประเมิน
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon"
+                class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                @click="toggleTooltip('division_risk')"
+              >
+                <HelpCircleIcon class="h-4 w-4" />
+              </Button>
+            </Label>
+            
+            <!-- คำอธิบายสำหรับความเสี่ยงฝ่าย -->
+            <div v-if="showTooltip === 'division_risk'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+              เลือกความเสี่ยงระดับฝ่ายที่ต้องการประเมิน ซึ่งจะมีเกณฑ์เฉพาะของแต่ละความเสี่ยง
+            </div>
+            
             <select
               id="division_risk_id"
               v-model="form.division_risk_id"
@@ -308,206 +397,307 @@ const getImpactLevelName = (level: number): string => {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- โอกาสเกิด (Likelihood) -->
             <div class="grid gap-2">
-              <Label for="likelihood_level">
-              ระดับโอกาสเกิด
-              <span class="text-sm text-gray-500">(1-4)</span>
-            </Label>
-            <div>
-              <input
-                type="range"
-                min="1"
-                max="4"
-                step="1"
-                v-model="form.likelihood_level"
-                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <div class="flex justify-between text-xs text-gray-500 mt-1">
-                <span>1 - น้อยมาก</span>
-                <span>2 - น้อย</span>
-                <span>3 - ปานกลาง</span>
-                <span>4 - สูง</span>
+              <Label for="likelihood_level" class="flex items-center gap-1">
+                ระดับโอกาสเกิด
+                <span class="text-sm text-gray-500">(1-4)</span>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon"
+                  class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                  @click="toggleTooltip('likelihood')"
+                >
+                  <HelpCircleIcon class="h-4 w-4" />
+                </Button>
+              </Label>
+              
+              <!-- คำอธิบายเกณฑ์โอกาสเกิด -->
+              <div v-if="showTooltip === 'likelihood'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+                <div v-if="likelihoodCriteria.length > 0">
+                  <div v-for="criteria in likelihoodCriteria" :key="'l'+criteria.id" class="mb-1">
+                    <strong>{{ criteria.level }} - {{ criteria.name }}:</strong> {{ criteria.description || 'ไม่มีคำอธิบาย' }}
+                  </div>
+                </div>
+                <div v-else>
+                  <div>1 - น้อยมาก: โอกาสเกิดเหตุการณ์น้อยมาก</div>
+                  <div>2 - น้อย: โอกาสเกิดเหตุการณ์น้อย</div>
+                  <div>3 - ปานกลาง: โอกาสเกิดเหตุการณ์ปานกลาง</div>
+                  <div>4 - สูง: โอกาสเกิดเหตุการณ์สูง</div>
+                </div>
               </div>
-              <div class="text-center mt-2 text-sm font-medium">
-                {{ getLikelihoodLevelName(form.likelihood_level) }} ({{ form.likelihood_level }})
+                
+              <div>
+                <input
+                  type="range"
+                  min="1"
+                  max="4"
+                  step="1"
+                  v-model="form.likelihood_level"
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>1</span>
+                  <span>2</span>
+                  <span>3</span>
+                  <span>4</span>
+                </div>
+                <div class="text-center mt-2 text-sm font-medium">
+                  {{ getLikelihoodLevelName(form.likelihood_level) }} ({{ form.likelihood_level }})
+                </div>
               </div>
+              <p v-if="form.errors.likelihood_level" class="text-sm text-red-500">
+                {{ form.errors.likelihood_level }}
+              </p>
             </div>
-            <p v-if="form.errors.likelihood_level" class="text-sm text-red-500">
-              {{ form.errors.likelihood_level }}
-            </p>
+
+            <!-- ฟิลด์ระดับผลกระทบ (Impact) -->
+            <div class="grid gap-2">
+              <Label for="impact_level" class="flex items-center gap-1">
+                ระดับผลกระทบ
+                <span class="text-sm text-gray-500">(1-4)</span>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon"
+                  class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                  @click="toggleTooltip('impact')"
+                >
+                  <HelpCircleIcon class="h-4 w-4" />
+                </Button>
+              </Label>
+              
+              <!-- คำอธิบายเกณฑ์ผลกระทบ -->
+              <div v-if="showTooltip === 'impact'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+                <div v-if="impactCriteria.length > 0">
+                  <div v-for="criteria in impactCriteria" :key="'i'+criteria.id" class="mb-1">
+                    <strong>{{ criteria.level }} - {{ criteria.name }}:</strong> {{ criteria.description || 'ไม่มีคำอธิบาย' }}
+                  </div>
+                </div>
+                <div v-else>
+                  <div>1 - น้อยมาก: ผลกระทบต่อองค์กรน้อยมาก</div>
+                  <div>2 - น้อย: ผลกระทบต่อองค์กรน้อย</div>
+                  <div>3 - ปานกลาง: ผลกระทบต่อองค์กรปานกลาง</div>
+                  <div>4 - สูง: ผลกระทบต่อองค์กรสูง</div>
+                </div>
+              </div>
+              
+              <div>
+                <input
+                  type="range"
+                  min="1"
+                  max="4"
+                  step="1"
+                  v-model="form.impact_level"
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>1</span>
+                  <span>2</span>
+                  <span>3</span>
+                  <span>4</span>
+                </div>
+                <div class="text-center mt-2 text-sm font-medium">
+                  {{ getImpactLevelName(form.impact_level) }} ({{ form.impact_level }})
+                </div>
+              </div>
+              <p v-if="form.errors.impact_level" class="text-sm text-red-500">
+                {{ form.errors.impact_level }}
+              </p>
+            </div>
           </div>
 
-          <!-- ฟิลด์ระดับผลกระทบ (Impact) -->
+          <!-- แสดงคะแนนความเสี่ยง (Risk Score) ที่คำนวณอัตโนมัติ -->
           <div class="grid gap-2">
-            <Label for="impact_level">
-              ระดับผลกระทบ
-              <span class="text-sm text-gray-500">(1-4)</span>
+            <Label for="risk_score" class="flex items-center gap-1">
+              คะแนนความเสี่ยง
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon"
+                class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                @click="toggleTooltip('risk_score')"
+              >
+                <HelpCircleIcon class="h-4 w-4" />
+              </Button>
             </Label>
-            <div>
-              <input
-                type="range"
-                min="1"
-                max="4"
-                step="1"
-                v-model="form.impact_level"
-                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <div class="flex justify-between text-xs text-gray-500 mt-1">
-                <span>1 - น้อยมาก</span>
-                <span>2 - น้อย</span>
-                <span>3 - ปานกลาง</span>
-                <span>4 - สูง</span>
+            
+            <!-- คำอธิบายคะแนนความเสี่ยง -->
+            <div v-if="showTooltip === 'risk_score'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+              คะแนนความเสี่ยงคำนวณจาก ระดับโอกาสเกิด × ระดับผลกระทบ แบ่งเป็น 4 ระดับ:<br>
+              1-3: ความเสี่ยงต่ำ | 4-6: ความเสี่ยงปานกลาง | 7-9: ความเสี่ยงสูง | 10-16: ความเสี่ยงสูงมาก
+            </div>
+            
+            <!-- แสดงคะแนนและระดับความเสี่ยง -->
+            <div class="flex gap-2 items-center">
+              <!-- แสดงคะแนน -->
+              <div class="flex-1 border rounded-md px-3 py-2 bg-muted/50">
+                {{ form.risk_score }}
               </div>
-              <div class="text-center mt-2 text-sm font-medium">
-                {{ getImpactLevelName(form.impact_level) }} ({{ form.impact_level }})
+              
+              <!-- แสดงระดับความเสี่ยงด้วยแถบสี -->
+              <div 
+                :class="[
+                  'px-3 py-2 rounded-md text-sm font-medium',
+                  getRiskLevelDisplay.color
+                ]"
+              >
+                {{ getRiskLevelDisplay.text }}
               </div>
             </div>
-            <p v-if="form.errors.impact_level" class="text-sm text-red-500">
-              {{ form.errors.impact_level }}
+          </div>
+
+          <!-- บันทึกเพิ่มเติม (Notes) -->
+          <div class="grid gap-2">
+            <Label for="notes" class="flex items-center gap-1">
+              บันทึกเพิ่มเติม
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon"
+                class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                @click="toggleTooltip('notes')"
+              >
+                <HelpCircleIcon class="h-4 w-4" />
+              </Button>
+            </Label>
+            
+            <!-- คำอธิบายสำหรับช่องบันทึกเพิ่มเติม -->
+            <div v-if="showTooltip === 'notes'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+              ระบุรายละเอียดการประเมินหรือข้อมูลเพิ่มเติมที่เกี่ยวข้องกับการประเมินความเสี่ยงครั้งนี้
+            </div>
+            
+            <Textarea
+              id="notes"
+              v-model="form.notes"
+              placeholder="ระบุบันทึกเพิ่มเติมหรือรายละเอียดของการประเมินความเสี่ยง..."
+              rows="3"
+            />
+            <p v-if="form.errors.notes" class="text-sm text-red-500">
+              {{ form.errors.notes }}
             </p>
           </div>
-        </div>
 
-        <!-- แสดงคะแนนความเสี่ยง (Risk Score) ที่คำนวณอัตโนมัติ -->
-        <div class="grid gap-2">
-          <Label for="risk_score">คะแนนความเสี่ยง (คำนวณอัตโนมัติ)</Label>
-          <div class="flex gap-2 items-center">
-            <Input id="risk_score" v-model="form.risk_score" type="text" readonly />
-            <div 
-              :class="{
-                'px-3 py-1 rounded-full text-xs inline-flex items-center': true,
-                'bg-green-100 text-green-800': form.risk_score <= 3,
-                'bg-yellow-100 text-yellow-800': form.risk_score > 3 && form.risk_score <= 6,
-                'bg-orange-100 text-orange-800': form.risk_score > 6 && form.risk_score <= 9,
-                'bg-red-100 text-red-800': form.risk_score > 9,
-              }"
-            >
-              {{ form.risk_score <= 3 ? 'ต่ำ' : form.risk_score <= 6 ? 'ปานกลาง' : form.risk_score <= 9 ? 'สูง' : 'สูงมาก' }}
+          <!-- ส่วนเอกสารแนบ -->
+          <div class="grid gap-2">
+            <Label class="flex items-center gap-1">
+              เอกสารแนบ
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon"
+                class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                @click="toggleTooltip('attachments')"
+              >
+                <HelpCircleIcon class="h-4 w-4" />
+              </Button>
+            </Label>
+            
+            <!-- คำอธิบายสำหรับเอกสารแนบ -->
+            <div v-if="showTooltip === 'attachments'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+              แนบไฟล์เอกสารที่เกี่ยวข้องกับการประเมินความเสี่ยง เช่น รายงาน หลักฐาน หรือเอกสารอ้างอิงอื่นๆ
             </div>
-          </div>
-          <p v-if="form.errors.risk_score" class="text-sm text-red-500">
-            {{ form.errors.risk_score }}
-          </p>
-        </div>
-
-        <!-- บันทึกเพิ่มเติม (Notes) -->
-        <div class="grid gap-2">
-          <Label for="notes">บันทึกเพิ่มเติม</Label>
-          <Textarea
-            id="notes"
-            v-model="form.notes"
-            placeholder="ระบุบันทึกเพิ่มเติมหรือรายละเอียดของการประเมินความเสี่ยง..."
-            rows="3"
-          />
-          <p v-if="form.errors.notes" class="text-sm text-red-500">
-            {{ form.errors.notes }}
-          </p>
-        </div>
-
-        <!-- ส่วนเอกสารแนบ -->
-        <div class="grid gap-2">
-          <Label>เอกสารแนบ</Label>
-          
-          <!-- ปุ่มอัปโหลดไฟล์ -->
-          <div class="flex flex-col gap-2">
-            <div
-              class="border border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary"
-              @click="$refs.fileInput.click()"
-            >
-              <UploadIcon class="h-6 w-6 text-gray-400" />
-              <div class="text-sm text-center">
-                <span class="font-medium text-primary">อัปโหลดไฟล์</span>
-                <p class="text-gray-500 text-xs mt-1">
-                  รองรับ PDF, Word, Excel และรูปภาพ (สูงสุด 10MB)
-                </p>
+            
+            <!-- ปุ่มอัปโหลดไฟล์ -->
+            <div class="flex flex-col gap-2">
+              <div
+                class="border border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary"
+                @click="$refs.fileInput.click()"
+              >
+                <UploadIcon class="h-6 w-6 text-gray-400" />
+                <div class="text-sm text-center">
+                  <span class="font-medium text-primary">อัปโหลดไฟล์</span>
+                  <p class="text-gray-500 text-xs mt-1">
+                    รองรับ PDF, Word, Excel และรูปภาพ (สูงสุด 10MB)
+                  </p>
+                </div>
               </div>
+              <input
+                ref="fileInput"
+                type="file"
+                multiple
+                class="hidden"
+                @change="handleFileUpload"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+              />
             </div>
-            <input
-              ref="fileInput"
-              type="file"
-              multiple
-              class="hidden"
-              @change="handleFileUpload"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-            />
-          </div>
 
-          <!-- แสดงรายการไฟล์ที่เลือก -->
-          <div v-if="selectedFiles.length > 0" class="mt-2">
-            <div class="text-sm font-medium mb-2">ไฟล์ที่เลือก ({{ selectedFiles.length }} ไฟล์)</div>
-            <ul class="space-y-2">
-              <li
-                v-for="(file, index) in selectedFiles"
-                :key="`new-${index}`"
-                class="flex justify-between items-center p-2 bg-gray-50 rounded-md"
-              >
-                <div class="flex items-center gap-2 overflow-hidden">
-                  <component :is="getFileIcon(file.name)" class="h-4 w-4 text-gray-500" />
-                  <span class="text-sm truncate">{{ file.name }}</span>
-                  <span class="text-xs text-gray-500">({{ formatFileSize(file.size) }})</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  class="h-6 w-6 hover:bg-gray-200"
-                  @click="removeSelectedFile(index)"
+            <!-- แสดงรายการไฟล์ที่เลือก -->
+            <div v-if="selectedFiles.length > 0" class="mt-2">
+              <div class="text-sm font-medium mb-2">ไฟล์ที่เลือก ({{ selectedFiles.length }} ไฟล์)</div>
+              <ul class="space-y-2">
+                <li
+                  v-for="(file, index) in selectedFiles"
+                  :key="`new-${index}`"
+                  class="flex justify-between items-center p-2 bg-gray-50 rounded-md"
                 >
-                  <XCircleIcon class="h-4 w-4 text-gray-500" />
-                </Button>
-              </li>
-            </ul>
-          </div>
+                  <div class="flex items-center gap-2 overflow-hidden">
+                    <component :is="getFileIcon(file.name)" class="h-4 w-4 text-gray-500" />
+                    <span class="text-sm truncate">{{ file.name }}</span>
+                    <span class="text-xs text-gray-500">({{ formatFileSize(file.size) }})</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    class="h-6 w-6 hover:bg-gray-200"
+                    @click="removeSelectedFile(index)"
+                  >
+                    <XCircleIcon class="h-4 w-4 text-gray-500" />
+                  </Button>
+                </li>
+              </ul>
+            </div>
 
-          <!-- แสดงรายการไฟล์ที่มีอยู่แล้ว -->
-          <div v-if="existingAttachments.length > 0" class="mt-2">
-            <div class="text-sm font-medium mb-2">เอกสารแนบที่มีอยู่ ({{ existingAttachments.length }} ไฟล์)</div>
-            <ul class="space-y-2">
-              <li
-                v-for="attachment in existingAttachments"
-                :key="`existing-${attachment.id}`"
-                class="flex justify-between items-center p-2 bg-gray-50 rounded-md"
-              >
-                <div class="flex items-center gap-2 overflow-hidden cursor-pointer" @click="openAttachment(attachment.url)">
-                  <component :is="getFileIcon(attachment.file_name)" class="h-4 w-4 text-gray-500" />
-                  <span class="text-sm truncate">{{ attachment.file_name }}</span>
-                  <span class="text-xs text-gray-500">({{ formatFileSize(attachment.file_size) }})</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  class="h-6 w-6 hover:bg-gray-200"
-                  @click="markAttachmentForDeletion(attachment.id)"
+            <!-- แสดงรายการไฟล์ที่มีอยู่แล้ว -->
+            <div v-if="existingAttachments.length > 0" class="mt-2">
+              <div class="text-sm font-medium mb-2">เอกสารแนบที่มีอยู่ ({{ existingAttachments.length }} ไฟล์)</div>
+              <ul class="space-y-2">
+                <li
+                  v-for="attachment in existingAttachments"
+                  :key="`existing-${attachment.id}`"
+                  class="flex justify-between items-center p-2 bg-gray-50 rounded-md"
                 >
-                  <Trash2Icon class="h-4 w-4 text-gray-500" />
-                </Button>
-              </li>
-            </ul>
+                  <div class="flex items-center gap-2 overflow-hidden cursor-pointer" @click="openAttachment(attachment.url)">
+                    <component :is="getFileIcon(attachment.file_name)" class="h-4 w-4 text-gray-500" />
+                    <span class="text-sm truncate">{{ attachment.file_name }}</span>
+                    <span class="text-xs text-gray-500">({{ formatFileSize(attachment.file_size) }})</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    class="h-6 w-6 hover:bg-gray-200"
+                    @click="markAttachmentForDeletion(attachment.id)"
+                  >
+                    <Trash2Icon class="h-4 w-4 text-gray-500" />
+                  </Button>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- ปุ่มบันทึกและยกเลิก -->
-      <DialogFooter>
-        <div class="flex justify-end gap-2 mt-4">
-          <Button 
-            type="button" 
-            variant="secondary" 
-            @click="closeModal"
-          >
-            <XIcon class="h-4 w-4 mr-2" />
-            ยกเลิก
-          </Button>
-          <Button 
-            type="submit" 
-            :disabled="form.processing"
-            :class="{'opacity-50 cursor-not-allowed': form.processing}"
-          >
-            <SaveIcon class="h-4 w-4 mr-2" />
-            {{ isEditing ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล' }}
-            <Loader2Icon v-if="form.processing" class="animate-spin h-4 w-4 ml-2" />
-          </Button>
-        </div>
-      </DialogFooter>
-    </form>
-  </DialogContent>
-</Dialog>
+        <!-- ปุ่มบันทึกและยกเลิก -->
+        <DialogFooter>
+          <div class="flex justify-end gap-2 mt-4">
+            <Button 
+              type="button" 
+              variant="secondary" 
+              @click="closeModal"
+            >
+              <XIcon class="h-4 w-4 mr-2" />
+              ยกเลิก
+            </Button>
+            <Button 
+              type="submit" 
+              :disabled="form.processing"
+              :class="{'opacity-50 cursor-not-allowed': form.processing}"
+            >
+              <SaveIcon class="h-4 w-4 mr-2" />
+              {{ isEditing ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล' }}
+              <Loader2Icon v-if="form.processing" class="animate-spin h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
 </template>
