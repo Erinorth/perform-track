@@ -1,3 +1,4 @@
+<!-- resources\js\pages\risk_assessment\Index.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'

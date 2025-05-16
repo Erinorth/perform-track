@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('likelihood_criteria', function (Blueprint $table) {
+        Schema::create('risk_assessment_attachments', function (Blueprint $table) {
             $table->id();
-            $table->unsignedTinyInteger('level'); // 1-4
-            $table->string('name');
-            $table->text('description')->nullable();
-            $table->foreignId('division_risk_id')->constrained('division_risks');
+            $table->foreignId('risk_assessment_id')->constrained()->cascadeOnDelete();
+            $table->string('file_name');
+            $table->string('file_path');
+            $table->string('file_type')->nullable();
+            $table->unsignedBigInteger('file_size')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('likelihood_criteria');
+        Schema::dropIfExists('risk_assessment_attachments');
     }
 };

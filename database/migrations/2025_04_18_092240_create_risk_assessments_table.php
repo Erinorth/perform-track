@@ -23,6 +23,7 @@ return new class extends Migration
             $table->foreignId('division_risk_id')->constrained('division_risks');
             $table->text('notes')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
         
         // เพิ่ม log เพื่อบันทึกการสร้างตารางสำเร็จ

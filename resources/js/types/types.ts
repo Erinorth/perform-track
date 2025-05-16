@@ -102,4 +102,15 @@ export interface OrganizationalRisk {
     created_at: string;
     updated_at: string;
   }
+
+  export interface RiskAssessmentAttachment {
+    id: number;
+    file_name: string;
+    file_path: string;
+    file_type: string;
+    file_size: number;
+    url: string;
+    created_at: string;
+    updated_at: string;
+  }
   

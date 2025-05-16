@@ -1,186 +1,415 @@
 <?php
+/**
+ * ไฟล์: app\Http\Controllers\RiskAssessmentController.php
+ * คำอธิบาย: Controller สำหรับจัดการการประเมินความเสี่ยงในระบบประเมินความเสี่ยง
+ * เทคโนโลยี: Laravel 12, Inertia.js, Vue 3
+ * ทำหน้าที่: จัดการข้อมูลการประเมินความเสี่ยงและเอกสารแนบที่เกี่ยวข้อง
+ * ความสัมพันธ์: เชื่อมโยงกับ RiskAssessment Model และส่งข้อมูลไปยัง Vue ผ่าน Inertia
+ */
 
 namespace App\Http\Controllers;
 
-use App\Models\RiskAssessment;
-use App\Models\DivisionRisk;
-use App\Models\LikelihoodCriterion;
-use App\Models\ImpactCriterion;
-use App\Http\Requests\StoreRiskAssessmentRequest;
-use App\Http\Requests\UpdateRiskAssessmentRequest;
-use Illuminate\Support\Facades\Log;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
+// นำเข้า Models และ Requests ที่เกี่ยวข้อง
+use App\Models\RiskAssessment;  // โมเดลสำหรับจัดการข้อมูลการประเมินความเสี่ยง
+use App\Models\RiskAssessmentAttachment;  // โมเดลสำหรับจัดการข้อมูลเอกสารแนบ
+use App\Models\DivisionRisk;  // โมเดลสำหรับจัดการข้อมูลความเสี่ยงระดับฝ่าย
+use App\Http\Requests\StoreRiskAssessmentRequest;  // Form Request สำหรับตรวจสอบข้อมูลการเพิ่ม
+use App\Http\Requests\UpdateRiskAssessmentRequest;  // Form Request สำหรับตรวจสอบข้อมูลการแก้ไข
+use Illuminate\Http\Request;  // สำหรับจัดการคำขอจาก HTTP
+use Illuminate\Support\Facades\Log;  // สำหรับบันทึก log การทำงาน
+use Inertia\Inertia;  // เชื่อมต่อกับ Vue frontend
+use Illuminate\Support\Facades\Auth;  // จัดการข้อมูลผู้ใช้ที่ล็อกอิน
+use Illuminate\Support\Facades\Storage;  // จัดการไฟล์ในระบบ
+use Illuminate\Support\Facades\DB;
 
 class RiskAssessmentController extends Controller
 {
     /**
      * แสดงรายการการประเมินความเสี่ยงทั้งหมด
+     * ดึงข้อมูลพร้อมความสัมพันธ์และเรียงลำดับตามวันที่ประเมิน
+     * 
+     * @return \Inertia\Response หน้า Vue พร้อมข้อมูลการประเมินความเสี่ยงทั้งหมด
      */
     public function index()
     {
-        // ดึงข้อมูลการประเมินความเสี่ยงพร้อมความสัมพันธ์กับแผนกและองค์กร
-        $riskAssessments = RiskAssessment::with(['divisionRisk', 'divisionRisk.organizationalRisk'])
-            ->orderBy('assessment_date', 'desc')
-            ->paginate(10);
-        
-        Log::info('Risk assessment page accessed', ['user_id' => Auth::id()]);
-        
-        // ส่งข้อมูลไปยัง Vue ผ่าน Inertia
-        return Inertia::render('risk_assessment/Index', [
-            'riskAssessments' => $riskAssessments
+        // ดึงข้อมูลการประเมินความเสี่ยงทั้งหมด พร้อมโหลดความสัมพันธ์
+        $assessments = RiskAssessment::with([
+            'riskAssessmentAttachment',
+            'divisionRisk'
+            ])
+            ->orderBy('assessment_date', 'desc')  // เรียงตามวันที่ประเมิน จากใหม่ไปเก่า
+            ->get();  // ดึงข้อมูลทั้งหมด
+
+        $divisionRisks = DivisionRisk::orderBy('risk_name')->get();
+
+        // บันทึก log การเข้าถึงหน้ารายการการประเมินความเสี่ยง เพื่อติดตามการใช้งาน
+        Log::info('เข้าถึงรายการการประเมินความเสี่ยง', [
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+
+        // ส่งข้อมูลไปยังหน้า Vue ผ่าน Inertia
+        return Inertia::render('risk_assessment/RiskAssessment', [
+            'assessments' => $assessments,  // ส่งข้อมูลการประเมินความเสี่ยงไปยัง Vue component
+            'divisionRisks' => $divisionRisks
         ]);
     }
 
     /**
-     * แสดงฟอร์มสำหรับสร้างการประเมินความเสี่ยงใหม่
-     */
-    public function create()
-    {
-        // ดึงข้อมูลความเสี่ยงระดับส่วนงานและองค์กร
-        $divisionRisks = DivisionRisk::with('organizationalRisk')->get();
-        
-        // ดึงข้อมูลเกณฑ์โอกาสและผลกระทบสำหรับแต่ละความเสี่ยง
-        $likelihoodCriteria = LikelihoodCriterion::all()->groupBy('division_risk_id');
-        $impactCriteria = ImpactCriterion::all()->groupBy('division_risk_id');
-        
-        return Inertia::render('risk_assessment/Create', [
-            'divisionRisks' => $divisionRisks,
-            'likelihoodCriteria' => $likelihoodCriteria,
-            'impactCriteria' => $impactCriteria
-        ]);
-    }
-
-    /**
-     * บันทึกการประเมินความเสี่ยงใหม่
+     * บันทึกข้อมูลการประเมินความเสี่ยงใหม่ลงฐานข้อมูล
+     * 
+     * @param \App\Http\Requests\StoreRiskAssessmentRequest $request คำขอที่ผ่านการตรวจสอบแล้ว
+     * @return \Illuminate\Http\RedirectResponse Redirect กลับพร้อมข้อความแจ้งผล
      */
     public function store(StoreRiskAssessmentRequest $request)
     {
+        // เริ่ม transaction เพื่อให้มั่นใจว่าข้อมูลถูกบันทึกครบทุกส่วนหรือไม่ถูกบันทึกเลย
+        DB::beginTransaction();
+        
         try {
-            // สร้างการประเมินความเสี่ยงใหม่
-            $riskAssessment = RiskAssessment::create($request->validated());
+            // สร้างข้อมูลการประเมินความเสี่ยงใหม่โดยใช้ข้อมูลที่ผ่านการตรวจสอบแล้ว
+            $assessment = RiskAssessment::create($request->validated());
             
-            // บันทึก log
-            Log::info('Risk assessment created', [
-                'id' => $riskAssessment->id, 
-                'user_id' => Auth::id(),
-                'division_risk_id' => $request->division_risk_id
+            // จัดการเอกสารแนบที่ส่งมาพร้อมคำขอ
+            $this->handleAttachments($request, $assessment);
+            
+            // บันทึกล็อกสำหรับการติดตามและตรวจสอบ
+            Log::info('สร้างการประเมินความเสี่ยงใหม่', [
+                'id' => $assessment->id,
+                'assessment_date' => $assessment->assessment_date,
+                'user' => auth()->check() ? auth()->user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
             ]);
             
-            return redirect()->route('risk-assessments.index')
-                ->with('message', 'สร้างการประเมินความเสี่ยงสำเร็จ');
+            // ยืนยันการทำรายการ
+            DB::commit();
+            
+            // ดึงข้อมูลการประเมินความเสี่ยงทั้งหมดมาใหม่หลังจากบันทึกข้อมูล
+            $assessments = RiskAssessment::with(['divisionRisk'])
+                ->orderBy('assessment_date', 'desc')
+                ->get();
+                
+            // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จและข้อมูลล่าสุด
+            return redirect()->back()
+                ->with('success', 'เพิ่มการประเมินความเสี่ยงเรียบร้อยแล้ว')
+                ->with('assessments', $assessments);
+                
         } catch (\Exception $e) {
-            Log::error('Failed to create risk assessment', [
+            // ยกเลิกการทำรายการทั้งหมดหากเกิดข้อผิดพลาด
+            DB::rollBack();
+            
+            Log::error('เกิดข้อผิดพลาดในการสร้างการประเมินความเสี่ยง', [
                 'error' => $e->getMessage(),
-                'user_id' => Auth::id()
+                'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->back()
-                ->withInput()
-                ->with('error', 'เกิดข้อผิดพลาดในการสร้างการประเมินความเสี่ยง');
+                ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
         }
     }
 
     /**
-     * แสดงรายละเอียดของการประเมินความเสี่ยง
-     */
-    public function show(RiskAssessment $riskAssessment)
-    {
-        // โหลดข้อมูลที่เกี่ยวข้อง
-        $riskAssessment->load([
-            'divisionRisk', 
-            'divisionRisk.organizationalRisk',
-            'divisionRisk.likelihoodCriteria',
-            'divisionRisk.impactCriteria'
-        ]);
-        
-        return Inertia::render('risk_assessment/Show', [
-            'riskAssessment' => $riskAssessment
-        ]);
-    }
-
-    /**
-     * แสดงฟอร์มสำหรับแก้ไขการประเมินความเสี่ยง
-     */
-    public function edit(RiskAssessment $riskAssessment)
-    {
-        // โหลดความสัมพันธ์ที่จำเป็น
-        $riskAssessment->load(['divisionRisk', 'divisionRisk.organizationalRisk']);
-        
-        // ดึงข้อมูลที่จำเป็นสำหรับฟอร์มแก้ไข
-        $divisionRisks = DivisionRisk::with('organizationalRisk')->get();
-        $likelihoodCriteria = LikelihoodCriterion::all()->groupBy('division_risk_id');
-        $impactCriteria = ImpactCriterion::all()->groupBy('division_risk_id');
-        
-        return Inertia::render('risk_assessment/Edit', [
-            'riskAssessment' => $riskAssessment,
-            'divisionRisks' => $divisionRisks,
-            'likelihoodCriteria' => $likelihoodCriteria,
-            'impactCriteria' => $impactCriteria
-        ]);
-    }
-
-    /**
-     * อัพเดทการประเมินความเสี่ยงที่มีอยู่
+     * อัปเดตข้อมูลการประเมินความเสี่ยงที่มีอยู่
+     * 
+     * @param \App\Http\Requests\UpdateRiskAssessmentRequest $request คำขออัปเดตที่ผ่านการตรวจสอบแล้ว
+     * @param \App\Models\RiskAssessment $riskAssessment ข้อมูลการประเมินความเสี่ยงที่ต้องการอัปเดต
+     * @return \Illuminate\Http\RedirectResponse Redirect กลับพร้อมข้อความแจ้งผล
      */
     public function update(UpdateRiskAssessmentRequest $request, RiskAssessment $riskAssessment)
     {
+        // เริ่ม transaction
+        DB::beginTransaction();
+        
         try {
-            // อัพเดทข้อมูล
-            $riskAssessment->update($request->validated());
-            
-            // บันทึก log
-            Log::info('Risk assessment updated', [
-                'id' => $riskAssessment->id, 
-                'user_id' => Auth::id(),
-                'changes' => $riskAssessment->getChanges()
+            // อัปเดตข้อมูลพื้นฐาน
+            $riskAssessment->update([
+                'assessment_date' => $request->assessment_date,
+                'likelihood_level' => $request->likelihood_level,
+                'impact_level' => $request->impact_level,
+                'risk_score' => $request->risk_score,
+                'division_risk_id' => $request->division_risk_id,
+                'notes' => $request->notes,
             ]);
             
-            return redirect()->route('risk-assessments.index')
-                ->with('message', 'อัพเดทการประเมินความเสี่ยงสำเร็จ');
+            // จัดการไฟล์แนบและไฟล์ที่ต้องการลบ
+            $this->handleAttachments($request, $riskAssessment);
+            $this->handleAttachmentsToDelete($request, $riskAssessment);
+            
+            // ยืนยันการทำรายการ
+            DB::commit();
+                
+            // ดึงข้อมูลที่อัปเดตเรียบร้อยแล้วพร้อมเอกสารแนบและความสัมพันธ์
+            $updatedAssessment = RiskAssessment::with([
+                'riskAssessmentAttachment',
+                'divisionRisk'
+            ])->find($riskAssessment->id);
+            
+            return redirect()->back()->with([
+                'message' => 'อัปเดตข้อมูลการประเมินความเสี่ยงเรียบร้อยแล้ว',
+                'updatedAssessment' => $updatedAssessment  // ส่งข้อมูลที่อัปเดตแล้วกลับไป
+            ]);
         } catch (\Exception $e) {
-            Log::error('Failed to update risk assessment', [
-                'id' => $riskAssessment->id,
-                'error' => $e->getMessage(),
-                'user_id' => Auth::id()
+            // ยกเลิกการทำรายการทั้งหมดหากเกิดข้อผิดพลาด
+            DB::rollBack();
+            
+            Log::error('การอัปเดตการประเมินความเสี่ยงล้มเหลว: ' . $e->getMessage(), [
+                'assessment_id' => $riskAssessment->id,
+                'user' => auth()->user()->name ?? 'ไม่ระบุ',
+                'trace' => $e->getTraceAsString()
             ]);
             
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'เกิดข้อผิดพลาดในการอัพเดทการประเมินความเสี่ยง');
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล: ' . $e->getMessage());
         }
     }
 
     /**
-     * ลบการประเมินความเสี่ยง
+     * ลบข้อมูลการประเมินความเสี่ยง (Soft Delete)
+     * 
+     * @param \App\Models\RiskAssessment $riskAssessment ข้อมูลการประเมินความเสี่ยงที่ต้องการลบ
+     * @return \Illuminate\Http\RedirectResponse Redirect กลับพร้อมข้อความแจ้งผล
      */
     public function destroy(RiskAssessment $riskAssessment)
     {
-        try {
-            $id = $riskAssessment->id;
-            $divisionRiskId = $riskAssessment->division_risk_id;
-            
-            // ลบข้อมูล
-            $riskAssessment->delete();
-            
-            // บันทึก log
-            Log::info('Risk assessment deleted', [
-                'id' => $id, 
-                'division_risk_id' => $divisionRiskId,
-                'user_id' => Auth::id()
-            ]);
-            
-            return redirect()->route('risk-assessments.index')
-                ->with('message', 'ลบการประเมินความเสี่ยงสำเร็จ');
-        } catch (\Exception $e) {
-            Log::error('Failed to delete risk assessment', [
-                'id' => $riskAssessment->id,
-                'error' => $e->getMessage(),
-                'user_id' => Auth::id()
-            ]);
-            
-            return redirect()->back()
-                ->with('error', 'เกิดข้อผิดพลาดในการลบการประเมินความเสี่ยง');
-        }
+        // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบและบันทึก log
+        $oldData = $riskAssessment->toArray();
+        
+        // ดำเนินการลบข้อมูล (Soft Delete)
+        $riskAssessment->delete();
+        
+        // บันทึก log สำหรับการตรวจสอบ
+        Log::info('ลบการประเมินความเสี่ยง', [
+            'id' => $oldData['id'],
+            'assessment_date' => $oldData['assessment_date'],
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+        
+        // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
+        return redirect()->back()->with('success', 'ลบการประเมินความเสี่ยงเรียบร้อยแล้ว');
     }
+
+    /**
+     * ลบข้อมูลการประเมินความเสี่ยงหลายรายการพร้อมกัน (Bulk Delete)
+     * 
+     * @param \Illuminate\Http\Request $request คำขอพร้อมรายการ ID ที่ต้องการลบ
+     * @return \Illuminate\Http\Response ผลลัพธ์การดำเนินการพร้อมข้อความแจ้งผล
+     */
+    public function bulkDestroy(Request $request)
+    {
+        // ตรวจสอบความถูกต้องของข้อมูล ID ที่ส่งมา
+        $validated = $request->validate([
+            'ids' => 'required|array',  // ต้องเป็น array ไม่เป็นค่าว่าง
+            'ids.*' => 'integer|exists:risk_assessments,id'  // แต่ละ ID ต้องเป็นตัวเลขและมีอยู่ในฐานข้อมูล
+        ]);
+        
+        // ดึง IDs ที่ต้องการลบจากข้อมูลที่ตรวจสอบแล้ว
+        $ids = $validated['ids'];
+        
+        // ลบข้อมูลตามรายการที่สามารถลบได้
+        $deletedCount = RiskAssessment::whereIn('id', $ids)->delete();
+        
+        // บันทึก log สำหรับการตรวจสอบ
+        Log::info('ลบการประเมินความเสี่ยงหลายรายการ', [
+            'deleted_count' => $deletedCount,
+            'requested_ids' => $validated['ids'],
+            'actual_deleted_ids' => $ids,
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+        
+        // สร้างข้อความแจ้งผลลัพธ์
+        $successMessage = 'ลบการประเมินความเสี่ยงจำนวน ' . $deletedCount . ' รายการเรียบร้อยแล้ว';
+
+            // ดึงข้อมูลความเสี่ยงที่อัปเดตล่าสุดเพื่อส่งกลับไป
+    $updatedAssessments = RiskAssessment::with(['riskAssessmentAttachment', 'divisionRisk'])
+        ->orderBy('assessment_date', 'desc')
+        ->get();
+
+    // กลับไปยังหน้าเดิมพร้อมข้อมูลล่าสุด
+    return redirect()->back()
+        ->with('success', $successMessage)
+        ->with('assessments', $updatedAssessments);
+  }
+
+  /**
+   * จัดการไฟล์แนบสำหรับการประเมินความเสี่ยง
+   * 
+   * @param \Illuminate\Http\Request $request คำขอพร้อมไฟล์แนบ
+   * @param \App\Models\RiskAssessment $riskAssessment ข้อมูลการประเมินความเสี่ยงที่ต้องการแนบไฟล์
+   * @return void
+   */
+  protected function handleAttachments(Request $request, RiskAssessment $riskAssessment)
+  {
+      // ตรวจสอบว่ามีไฟล์แนบหรือไม่
+      if ($request->hasFile('attachments')) {
+          foreach ($request->file('attachments') as $file) {
+              // ตรวจสอบไฟล์และตั้งชื่อไฟล์
+              $filename = uniqid() . '_' . $file->getClientOriginalName();
+              
+              // กำหนดพาธสำหรับเก็บไฟล์
+              $path = $file->storeAs(
+                  'risk_assessments/'.$riskAssessment->id, 
+                  $filename, 
+                  'public'
+              );
+              
+              // สร้างข้อมูลเอกสารแนบในฐานข้อมูล
+              RiskAssessmentAttachment::create([
+                  'risk_assessment_id' => $riskAssessment->id,
+                  'file_name' => $file->getClientOriginalName(),
+                  'file_path' => $path,
+                  'file_type' => $file->getMimeType(),
+                  'file_size' => $file->getSize(),
+              ]);
+              
+              // บันทึกล็อกการอัพโหลดไฟล์
+              Log::info('อัพโหลดไฟล์แนบสำหรับการประเมินความเสี่ยง', [
+                  'risk_assessment_id' => $riskAssessment->id, 
+                  'file_name' => $file->getClientOriginalName(),
+                  'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+              ]);
+          }
+      }
+  }
+
+  /**
+   * จัดการลบเอกสารแนบที่ไม่ต้องการ
+   * 
+   * @param \Illuminate\Http\Request $request คำขอพร้อมรายการ ID ที่ต้องการลบ
+   * @param \App\Models\RiskAssessment $riskAssessment ข้อมูลการประเมินความเสี่ยง
+   * @return void
+   */
+  protected function handleAttachmentsToDelete(Request $request, RiskAssessment $riskAssessment)
+  {
+      // ตรวจสอบว่ามีรายการเอกสารแนบที่ต้องการลบหรือไม่
+      if ($request->has('attachments_to_delete') && is_array($request->attachments_to_delete)) {
+          foreach ($request->attachments_to_delete as $attachmentId) {
+              // ค้นหาเอกสารแนบจาก ID
+              $attachment = RiskAssessmentAttachment::find($attachmentId);
+              
+              if ($attachment && $attachment->risk_assessment_id === $riskAssessment->id) {
+                  // ลบไฟล์จากพื้นที่เก็บข้อมูล
+                  if (Storage::disk('public')->exists($attachment->file_path)) {
+                      Storage::disk('public')->delete($attachment->file_path);
+                  }
+                  
+                  // ลบข้อมูลจากฐานข้อมูล
+                  $attachment->delete();
+                  
+                  // บันทึกล็อกการลบไฟล์
+                  Log::info('ลบไฟล์แนบสำหรับการประเมินความเสี่ยง', [
+                      'attachment_id' => $attachmentId,
+                      'risk_assessment_id' => $riskAssessment->id,
+                      'file_name' => $attachment->file_name,
+                      'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                  ]);
+              }
+          }
+      }
+  }
+
+  /**
+   * ดาวน์โหลดเอกสารแนบของการประเมินความเสี่ยง
+   * 
+   * @param \App\Models\RiskAssessment $riskAssessment ข้อมูลการประเมินความเสี่ยง
+   * @param \App\Models\RiskAssessmentAttachment $attachment ข้อมูลเอกสารแนบ
+   * @return \Symfony\Component\HttpFoundation\StreamedResponse
+   */
+  public function downloadAttachment(RiskAssessment $riskAssessment, RiskAssessmentAttachment $attachment)
+  {
+      // ตรวจสอบว่าเอกสารแนบนี้เป็นของการประเมินความเสี่ยงที่ระบุหรือไม่
+      if ($attachment->risk_assessment_id !== $riskAssessment->id) {
+          abort(404, 'ไม่พบไฟล์ที่ต้องการ');
+      }
+      
+      // ตรวจสอบว่าไฟล์มีอยู่จริงหรือไม่
+      if (!Storage::disk('public')->exists($attachment->file_path)) {
+          abort(404, 'ไม่พบไฟล์ที่ต้องการ');
+      }
+
+      // บันทึกล็อกการดาวน์โหลดไฟล์
+      Log::info('ดาวน์โหลดไฟล์แนบสำหรับการประเมินความเสี่ยง', [
+          'attachment_id' => $attachment->id,
+          'risk_assessment_id' => $riskAssessment->id,
+          'file_name' => $attachment->file_name,
+          'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+      ]);
+      
+      // ส่งไฟล์ให้ผู้ใช้ดาวน์โหลด
+      return Storage::disk('public')->download(
+          $attachment->file_path, 
+          $attachment->file_name
+      );
+  }
+
+  /**
+   * แสดงเอกสารแนบในเบราว์เซอร์
+   * 
+   * @param \App\Models\RiskAssessment $riskAssessment ข้อมูลการประเมินความเสี่ยง
+   * @param \App\Models\RiskAssessmentAttachment $attachment ข้อมูลเอกสารแนบ
+   * @return \Illuminate\View\View|\Symfony\Component\HttpFoundation\StreamedResponse
+   */
+  public function viewAttachment(RiskAssessment $riskAssessment, RiskAssessmentAttachment $attachment)
+  {
+      // ตรวจสอบว่าเอกสารแนบนี้เป็นของการประเมินความเสี่ยงที่ระบุหรือไม่
+      if ($attachment->risk_assessment_id !== $riskAssessment->id) {
+          abort(404, 'ไม่พบไฟล์ที่ต้องการ');
+      }
+      
+      // ตรวจสอบว่าไฟล์มีอยู่จริงหรือไม่
+      if (!Storage::disk('public')->exists($attachment->file_path)) {
+          abort(404, 'ไม่พบไฟล์ที่ต้องการ');
+      }
+      
+      // URL สำหรับไฟล์
+      $url = Storage::disk('public')->url($attachment->file_path);
+      
+      // เตรียมข้อมูลสำหรับแสดงในเบราว์เซอร์
+      $attachmentData = [
+          'id' => $attachment->id,
+          'file_name' => $attachment->file_name,
+          'file_path' => $attachment->file_path,
+          'file_type' => $attachment->file_type,
+          'file_size' => $attachment->file_size,
+          'url' => $url,
+          'risk_assessment_id' => $riskAssessment->id
+      ];
+      
+      // บันทึกล็อกการดูไฟล์
+      Log::info('ดูไฟล์แนบสำหรับการประเมินความเสี่ยง', [
+          'attachment_id' => $attachment->id,
+          'risk_assessment_id' => $riskAssessment->id,
+          'file_name' => $attachment->file_name,
+          'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+      ]);
+      
+      // ส่งข้อมูลไปยังหน้า AttachmentViewer ด้วย Inertia
+      return Inertia::render('AttachmentViewer', [
+          'attachment' => $attachmentData
+      ]);
+  }
+
+  /**
+   * ดึงรายละเอียดของการประเมินความเสี่ยง (สำหรับ API)
+   * 
+   * @param \App\Models\RiskAssessment $riskAssessment ข้อมูลการประเมินความเสี่ยงที่ต้องการ
+   * @return \Illuminate\Http\JsonResponse
+   */
+  public function getDetails(RiskAssessment $riskAssessment)
+  {
+      // โหลดความสัมพันธ์
+      $riskAssessment->load(['divisionRisk', 'riskAssessmentAttachment']);
+      
+      // บันทึกล็อกการเข้าถึงข้อมูล
+      Log::info('เข้าถึงรายละเอียดการประเมินความเสี่ยง', [
+          'id' => $riskAssessment->id,
+          'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+      ]);
+      
+      // ส่งข้อมูลกลับในรูปแบบ JSON
+      return response()->json([
+          'data' => $riskAssessment,
+          'message' => 'ดึงข้อมูลสำเร็จ'
+      ]);
+  }
 }
