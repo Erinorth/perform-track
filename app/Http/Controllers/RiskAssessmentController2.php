@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 
-class RiskAssessmentController extends Controller
+class RiskAssessmentController2 extends Controller
 {
     /**
      * แสดงรายการการประเมินความเสี่ยงทั้งหมด
@@ -27,7 +27,7 @@ class RiskAssessmentController extends Controller
         Log::info('Risk assessment page accessed', ['user_id' => Auth::id()]);
         
         // ส่งข้อมูลไปยัง Vue ผ่าน Inertia
-        return Inertia::render('risk_assessment/RiskAssessments', [
+        return Inertia::render('risk_assessment/Index', [
             'riskAssessments' => $riskAssessments
         ]);
     }

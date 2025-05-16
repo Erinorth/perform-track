@@ -16,6 +16,7 @@
 use App\Http\Controllers\DivisionRiskController;
 use App\Http\Controllers\OrganizationalRiskController;
 use App\Http\Controllers\RiskAssessmentController;
+use App\Http\Controllers\RiskAssessmentController2;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -166,20 +167,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [RiskAssessmentController::class, 'index'])
             ->name('risk-assessments.index');
         
-        // แสดงหน้าสร้างการประเมินความเสี่ยงใหม่
-        Route::get('/create', [RiskAssessmentController::class, 'create'])
-            ->name('risk-assessments.create');
-
-        Route::get('/{riskAssessment}', [RiskAssessmentController::class, 'show'])
-            ->name('risk-assessments.show');
-        
         // บันทึกการประเมินความเสี่ยงใหม่
         Route::post('/', [RiskAssessmentController::class, 'store'])
             ->name('risk-assessments.store');
-        
-        // แสดงหน้าแก้ไขการประเมินความเสี่ยง
-        Route::get('/{riskAssessment}/edit', [RiskAssessmentController::class, 'edit'])
-            ->name('risk-assessments.edit');
+
+        // ลบการประเมินความเสี่ยงหลายรายการพร้อมกัน
+        Route::delete('/bulk-destroy', [RiskAssessmentController::class, 'bulkDestroy'])
+            ->name('risk-assessments.bulk-destroy');
         
         // อัปเดตข้อมูลการประเมินความเสี่ยง
         Route::put('/{riskAssessment}', [RiskAssessmentController::class, 'update'])
@@ -187,6 +181,51 @@ Route::middleware('auth')->group(function () {
         
         // ลบการประเมินความเสี่ยง
         Route::delete('/{riskAssessment}', [RiskAssessmentController::class, 'destroy'])
+            ->name('risk-assessments.destroy');
+
+        // เพิ่มเอกสารแนบสำหรับความเสี่ยงระดับฝ่าย
+        Route::post('/{riskAssessment}/attachments', [RiskAssessmentController::class, 'storeAttachment'])
+            ->name('risk-assessments.attachments.store');
+        
+        // ลบเอกสารแนบของความเสี่ยงระดับฝ่าย
+        Route::delete('/{riskAssessment}/attachments/{attachmentId}', [RiskAssessmentController::class, 'destroyAttachment'])
+            ->name('risk-assessments.attachments.destroy');
+
+        // ดาวน์โหลดเอกสารแนบของความเสี่ยงระดับฝ่าย
+        Route::get('/{riskAssessment}/attachments/{attachmentId}/download', [RiskAssessmentController::class, 'downloadAttachment'])
+            ->name('risk-assessments.attachments.download');
+
+        // แสดงเอกสารแนบของความเสี่ยงระดับฝ่ายในเบราว์เซอร์
+        Route::get('/{riskAssessment}/attachments/{attachmentId}/view', [RiskAssessmentController::class, 'viewAttachment'])
+            ->name('risk-assessments.attachments.view');
+    });
+
+    Route::prefix('risk-assessments2')->group(function () {
+        // แสดงรายการการประเมินความเสี่ยงทั้งหมด
+        Route::get('/', [RiskAssessmentController2::class, 'index'])
+            ->name('risk-assessments.index');
+        
+        // แสดงหน้าสร้างการประเมินความเสี่ยงใหม่
+        Route::get('/create', [RiskAssessmentController2::class, 'create'])
+            ->name('risk-assessments.create');
+
+        Route::get('/{riskAssessment}', [RiskAssessmentController2::class, 'show'])
+            ->name('risk-assessments.show');
+        
+        // บันทึกการประเมินความเสี่ยงใหม่
+        Route::post('/', [RiskAssessmentController2::class, 'store'])
+            ->name('risk-assessments.store');
+        
+        // แสดงหน้าแก้ไขการประเมินความเสี่ยง
+        Route::get('/{riskAssessment}/edit', [RiskAssessmentController2::class, 'edit'])
+            ->name('risk-assessments.edit');
+        
+        // อัปเดตข้อมูลการประเมินความเสี่ยง
+        Route::put('/{riskAssessment}', [RiskAssessmentController2::class, 'update'])
+            ->name('risk-assessments.update');
+        
+        // ลบการประเมินความเสี่ยง
+        Route::delete('/{riskAssessment}', [RiskAssessmentController2::class, 'destroy'])
             ->name('risk-assessments.destroy');
     });
 

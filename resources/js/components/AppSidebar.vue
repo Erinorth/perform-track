@@ -40,6 +40,11 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้าประเมินความเสี่ยง
     },
     {
+        title: 'Risk Assessment2',
+        href: '/risk-assessments2',
+        icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้าประเมินความเสี่ยง
+    },
+    {
         title: 'Reports',
         href: '/reports',
         icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้ารายงาน

@@ -43,6 +43,7 @@ export interface OrganizationalRisk {
     notes: string | null             // บันทึกเพิ่มเติม (อาจเป็น null)
     created_at: string               // วันเวลาที่สร้าง (timestamp)
     updated_at: string               // วันเวลาที่แก้ไขล่าสุด (timestamp)
+    attachments?: RiskAssessmentAttachment[];
     division_risk?: DivisionRisk // ความสัมพันธ์แบบ many-to-one กับความเสี่ยงระดับฝ่าย
   }
 
