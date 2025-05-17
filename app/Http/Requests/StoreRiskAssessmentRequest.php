@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Auth;
 
 class StoreRiskAssessmentRequest extends FormRequest
 {
@@ -12,7 +12,7 @@ class StoreRiskAssessmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return Gate::allows('create', RiskAssessment::class);
+        return Auth::check(); // ตรวจสอบว่าผู้ใช้ล็อกอินแล้วหรือไม่
     }
 
     /**

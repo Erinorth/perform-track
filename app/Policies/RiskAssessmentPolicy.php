@@ -11,62 +11,78 @@ class RiskAssessmentPolicy
     use HandlesAuthorization;
 
     /**
-     * กำหนดสิทธิ์การดูรายการประเมินความเสี่ยงทั้งหมด
+     * กำหนดว่าผู้ใช้สามารถดูรายการการประเมินความเสี่ยงทั้งหมดได้หรือไม่
      */
     public function viewAny(User $user): bool
     {
-        return true; // ทุกคนที่เข้าสู่ระบบสามารถดูรายการได้
+        return true; // ผู้ใช้ที่ล็อกอินทุกคนสามารถดูรายการได้
     }
 
     /**
-     * กำหนดสิทธิ์การดูรายละเอียดการประเมินความเสี่ยง
+     * กำหนดว่าผู้ใช้สามารถดูรายละเอียดการประเมินความเสี่ยงได้หรือไม่
      */
     public function view(User $user, RiskAssessment $riskAssessment): bool
     {
-        return true; // ทุกคนที่เข้าสู่ระบบสามารถดูรายละเอียดได้
+        return true; // ผู้ใช้ที่ล็อกอินทุกคนสามารถดูรายละเอียดได้
     }
 
     /**
-     * กำหนดสิทธิ์การสร้างการประเมินความเสี่ยงใหม่
+     * กำหนดว่าผู้ใช้สามารถสร้างการประเมินความเสี่ยงใหม่ได้หรือไม่
      */
     public function create(User $user): bool
     {
-        // ตรวจสอบว่าผู้ใช้มีสิทธิ์ในการสร้างการประเมินความเสี่ยงหรือไม่
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
         return $user->hasPermission('create_risk_assessment');
     }
 
     /**
-     * กำหนดสิทธิ์การอัพเดทการประเมินความเสี่ยง
+     * กำหนดว่าผู้ใช้สามารถแก้ไขการประเมินความเสี่ยงได้หรือไม่
      */
     public function update(User $user, RiskAssessment $riskAssessment): bool
     {
-        // ตรวจสอบว่าเป็นผู้สร้างหรือมีสิทธิ์แก้ไขหรือไม่
-        return $user->id === $riskAssessment->user_id || 
-               $user->hasPermission('update_risk_assessment');
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        return $user->hasPermission('update_risk_assessment');
     }
 
     /**
-     * กำหนดสิทธิ์การลบการประเมินความเสี่ยง
+     * กำหนดว่าผู้ใช้สามารถลบการประเมินความเสี่ยงได้หรือไม่
      */
     public function delete(User $user, RiskAssessment $riskAssessment): bool
     {
-        // ตรวจสอบว่าผู้ใช้มีสิทธิ์ในการลบหรือไม่
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        if (!$user->hasPermission('delete_risk_assessment')) {
+            return false;
+        }
+
+        // สามารถลบได้เสมอ เนื่องจากการประเมินความเสี่ยงไม่มีความสัมพันธ์กับข้อมูลอื่น
+        // ที่จะถูกกระทบเมื่อลบ (นอกจากเอกสารแนบที่จะลบอัตโนมัติผ่าน cascadeOnDelete)
+        return true;
+    }
+
+    /**
+     * กำหนดว่าผู้ใช้สามารถลบการประเมินความเสี่ยงหลายรายการพร้อมกันได้หรือไม่
+     */
+    public function bulkDelete(User $user): bool
+    {
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
         return $user->hasPermission('delete_risk_assessment');
     }
 
     /**
-     * กำหนดสิทธิ์การกู้คืนการประเมินความเสี่ยงที่ถูกลบ
+     * กำหนดว่าผู้ใช้สามารถอัปโหลดไฟล์แนบได้หรือไม่
      */
-    public function restore(User $user, RiskAssessment $riskAssessment): bool
+    public function uploadAttachment(User $user, RiskAssessment $riskAssessment): bool
     {
-        return $user->hasPermission('restore_risk_assessment');
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        return $user->hasPermission('update_risk_assessment');
     }
 
     /**
-     * กำหนดสิทธิ์การลบถาวร
+     * กำหนดว่าผู้ใช้สามารถลบไฟล์แนบได้หรือไม่
      */
-    public function forceDelete(User $user, RiskAssessment $riskAssessment): bool
+    public function deleteAttachment(User $user, RiskAssessment $riskAssessment): bool
     {
-        return $user->hasPermission('force_delete_risk_assessment');
+        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
+        return $user->hasPermission('update_risk_assessment');
     }
 }

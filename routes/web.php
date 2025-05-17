@@ -203,30 +203,30 @@ Route::middleware('auth')->group(function () {
     Route::prefix('risk-assessments2')->group(function () {
         // แสดงรายการการประเมินความเสี่ยงทั้งหมด
         Route::get('/', [RiskAssessmentController2::class, 'index'])
-            ->name('risk-assessments.index');
+            ->name('risk-assessments2.index');
         
         // แสดงหน้าสร้างการประเมินความเสี่ยงใหม่
         Route::get('/create', [RiskAssessmentController2::class, 'create'])
-            ->name('risk-assessments.create');
+            ->name('risk-assessments2.create');
 
         Route::get('/{riskAssessment}', [RiskAssessmentController2::class, 'show'])
-            ->name('risk-assessments.show');
+            ->name('risk-assessments2.show');
         
         // บันทึกการประเมินความเสี่ยงใหม่
         Route::post('/', [RiskAssessmentController2::class, 'store'])
-            ->name('risk-assessments.store');
+            ->name('risk-assessments2.store');
         
         // แสดงหน้าแก้ไขการประเมินความเสี่ยง
         Route::get('/{riskAssessment}/edit', [RiskAssessmentController2::class, 'edit'])
-            ->name('risk-assessments.edit');
+            ->name('risk-assessments2.edit');
         
         // อัปเดตข้อมูลการประเมินความเสี่ยง
         Route::put('/{riskAssessment}', [RiskAssessmentController2::class, 'update'])
-            ->name('risk-assessments.update');
+            ->name('risk-assessments2.update');
         
         // ลบการประเมินความเสี่ยง
         Route::delete('/{riskAssessment}', [RiskAssessmentController2::class, 'destroy'])
-            ->name('risk-assessments.destroy');
+            ->name('risk-assessments2.destroy');
     });
 
     /**
