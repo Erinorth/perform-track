@@ -171,30 +171,40 @@ function getDefaultLevelName(level: number): string {
 watch(() => props.show, (newVal) => {
   if (newVal && props.assessment) {
     // โหลดข้อมูลสำหรับการแก้ไข
+    console.log('กำลังโหลดข้อมูล assessment สำหรับแก้ไข:', props.assessment);
+    
+    // แสดงข้อมูลเกี่ยวกับเอกสารแนบที่มีอยู่
+    console.log('ข้อมูลเอกสารแนบที่มากับ assessment:', {
+    hasAttachments: !!props.assessment.attachments,
+    // แก้ไขโดยใช้การตรวจสอบ Optional Chaining และใช้ attachments แทน
+    attachmentsCount: props.assessment.attachments?.length || 0,
+    // ใช้ Object.hasOwn เพื่อตรวจสอบ property ที่อาจมีอยู่จริงในข้อมูล runtime
+    hasExtraAttachmentFields: Object.hasOwn(props.assessment, 'attachment') || 
+                              Object.hasOwn(props.assessment, 'risk_assessment_attachments'),
+    keys: Object.keys(props.assessment)
+  });
     
     // แปลงรูปแบบวันที่ให้เป็น YYYY-MM-DD เสมอ
-    const dateObj = new Date(props.assessment.assessment_date)
-    const formattedDate = dateObj.toISOString().split('T')[0]
-    
-    // บันทึกข้อมูลเพื่อตรวจสอบการแปลงวันที่
-    console.log('วันที่ที่ได้รับ:', props.assessment.assessment_date)
-    console.log('วันที่หลังแปลงรูปแบบ:', formattedDate)
+    const dateObj = new Date(props.assessment.assessment_date);
+    const formattedDate = dateObj.toISOString().split('T')[0];
     
     // กำหนดค่าให้ฟอร์ม
-    form.assessment_date = formattedDate
-    form.likelihood_level = props.assessment.likelihood_level
-    form.impact_level = props.assessment.impact_level
-    form.risk_score = props.assessment.risk_score
-    form.division_risk_id = props.assessment.division_risk_id
-    form.notes = props.assessment.notes ?? ''
-    loadAttachments(props.assessment)
+    form.assessment_date = formattedDate;
+    form.likelihood_level = props.assessment.likelihood_level;
+    form.impact_level = props.assessment.impact_level;
+    form.risk_score = props.assessment.risk_score;
+    form.division_risk_id = props.assessment.division_risk_id;
+    form.notes = props.assessment.notes ?? '';
+    
+    // โหลดเอกสารแนบ
+    loadAttachments(props.assessment);
   } else if (newVal) {
     // รีเซ็ตฟอร์มสำหรับการเพิ่มใหม่
-    form.reset()
-    form.assessment_date = new Date().toISOString().split('T')[0]
-    loadAttachments()
+    form.reset();
+    form.assessment_date = new Date().toISOString().split('T')[0];
+    loadAttachments();
   }
-})
+});
 
 // อัปเดตคะแนนความเสี่ยงอัตโนมัติเมื่อมีการเปลี่ยนค่า likelihood หรือ impact
 watch([() => form.likelihood_level, () => form.impact_level], () => {
@@ -609,7 +619,7 @@ const handleSubmit = async () => {
             
             <!-- แสดงเอกสารแนบที่มีอยู่แล้ว (กรณีแก้ไข) -->
             <div v-if="existingAttachments.length > 0" class="mb-3">
-              <p class="text-sm font-medium text-gray-700 mb-2">เอกสารแนบปัจจุบัน:</p>
+              <p class="text-sm font-medium text-gray-700 mb-2">เอกสารแนบปัจจุบัน ({{ existingAttachments.length }}):</p>
               <ul class="space-y-2">
                 <li 
                   v-for="attachment in existingAttachments" 
@@ -639,6 +649,12 @@ const handleSubmit = async () => {
                   </Button>
                 </li>
               </ul>
+            </div>
+            <div v-else-if="isEditing" class="text-sm text-gray-500 bg-gray-50 p-3 rounded-md mb-3">
+              <div class="flex items-center gap-1">
+                <InfoIcon class="h-4 w-4" />
+                <span>ไม่มีเอกสารแนบสำหรับการประเมินนี้</span>
+              </div>
             </div>
             
             <!-- แสดงไฟล์ที่เพิ่งอัปโหลด (ยังไม่ได้บันทึก) -->

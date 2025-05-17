@@ -43,7 +43,7 @@ class RiskAssessment extends Model
      * 
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
-    public function riskAssessmentAttachment(): HasMany
+    public function attachment(): HasMany
     {
         return $this->hasMany(RiskAssessmentAttachment::class);
     }

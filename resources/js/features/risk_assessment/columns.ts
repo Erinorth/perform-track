@@ -103,20 +103,26 @@ export const columns: ColumnDef<RiskAssessment>[] = [
         title: 'ระดับโอกาสเกิด'
       })
     ),
-    // แก้ไขส่วนแสดงผลเพื่อแสดงข้อความระดับโอกาสจากฐานข้อมูล
+    // แก้ไขจุดที่มีการเข้าถึง divisionRisk.likelihoodCriteria
     cell: ({ row }) => {
       const level = row.getValue("likelihood_level");
       const divisionRisk = row.original.division_risk;
       let levelName = '';
       
-      // ตรวจสอบว่ามีข้อมูลเกณฑ์ในฐานข้อมูลหรือไม่
-      if (divisionRisk?.likelihoodCriteria?.length > 0) {
-        const criteria = divisionRisk.likelihoodCriteria.find(c => c.level === level);
+      // เพิ่มการตรวจสอบที่สมบูรณ์มากขึ้นเพื่อหลีกเลี่ยง undefined errors
+      if (divisionRisk && 
+          (divisionRisk.likelihoodCriteria || divisionRisk.likelihood_criteria) && 
+          ((divisionRisk.likelihoodCriteria || []).length > 0 || 
+          (divisionRisk.likelihood_criteria || []).length > 0)) {
+        
+        // ใช้ตัวแปรที่แน่ใจว่ามีข้อมูล
+        const criteriaList = divisionRisk.likelihoodCriteria || divisionRisk.likelihood_criteria || [];
+        const criteria = criteriaList.find(c => c.level === level);
         if (criteria) {
           levelName = criteria.name;
         }
       }
-      
+     
       // ถ้าไม่พบข้อมูลในฐานข้อมูล ใช้ค่าเริ่มต้น
       if (!levelName) {
         switch (level) {
@@ -140,15 +146,22 @@ export const columns: ColumnDef<RiskAssessment>[] = [
         title: 'ระดับผลกระทบ'
       })
     ),
-    // แก้ไขส่วนแสดงผลเพื่อแสดงข้อความระดับผลกระทบจากฐานข้อมูล
+
+    // แก้ไขจุดที่มีการเข้าถึง divisionRisk.impactCriteria
     cell: ({ row }) => {
       const level = row.getValue("impact_level");
       const divisionRisk = row.original.division_risk;
       let levelName = '';
       
-      // ตรวจสอบว่ามีข้อมูลเกณฑ์ในฐานข้อมูลหรือไม่
-      if (divisionRisk?.impactCriteria?.length > 0) {
-        const criteria = divisionRisk.impactCriteria.find(c => c.level === level);
+      // เพิ่มการตรวจสอบที่สมบูรณ์มากขึ้นเพื่อหลีกเลี่ยง undefined errors
+      if (divisionRisk && 
+          (divisionRisk.impactCriteria || divisionRisk.impact_criteria) && 
+          ((divisionRisk.impactCriteria || []).length > 0 || 
+          (divisionRisk.impact_criteria || []).length > 0)) {
+        
+        // ใช้ตัวแปรที่แน่ใจว่ามีข้อมูล
+        const criteriaList = divisionRisk.impactCriteria || divisionRisk.impact_criteria || [];
+        const criteria = criteriaList.find(c => c.level === level);
         if (criteria) {
           levelName = criteria.name;
         }
@@ -249,15 +262,24 @@ export const columns: ColumnDef<RiskAssessment>[] = [
   {
     id: "actions",
     enableHiding: false,
+    
+    // แก้ไขการใช้ DataTableDropDown ที่ต้องการ property risk_name
     cell: ({ row, table }) => {
       const assessment = row.original;
       const meta = table.options.meta as TableMeta<RiskAssessment>
       
-      // ใช้ Generic DataTableDropDown component โดยส่งข้อมูลผ่าน data prop
+      // สร้าง object ที่มี risk_name เพื่อให้ตรงกับ prop ที่ DataTableDropDown ต้องการ
+      const dropdownData = {
+        id: assessment.id,
+        risk_name: assessment.division_risk?.risk_name || 'ไม่มีชื่อความเสี่ยง'
+        // เพิ่ม properties อื่นๆ จาก assessment ที่จำเป็น
+      };
+      
+      // ใช้ dropdownData แทน assessment
       return h('div', { class: 'relative' }, [
         h(DataTableDropDown, {
-          data: assessment, // ส่งข้อมูล assessment ผ่าน data prop
-          menuLabel: 'ตัวเลือกการประเมินความเสี่ยง', // custom label สำหรับเมนู
+          data: dropdownData, 
+          menuLabel: 'ตัวเลือกการประเมินความเสี่ยง',
           onExpand: () => {
             console.log('ขยายแถวข้อมูล', assessment.id)
             row.toggleExpanded()
@@ -272,6 +294,6 @@ export const columns: ColumnDef<RiskAssessment>[] = [
           },
         }),
       ]);
-    },
+    }
   },
 ]

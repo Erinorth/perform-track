@@ -79,18 +79,42 @@ export function useRiskAssessmentData(initialAssessments: RiskAssessment[] = [],
   const loadAttachments = (assessment?: RiskAssessment) => {
     resetAttachmentState();
     
-    if (assessment?.attachments && assessment.attachments.length > 0) {
-      existingAttachments.value = [...assessment.attachments];
-      console.log('📄 โหลดข้อมูลเอกสารแนบสำเร็จ', {
-        count: existingAttachments.value.length,
-        assessment_id: assessment.id,
-        assessment_date: assessment.assessment_date
-      });
+    // แก้ไขตรงนี้: เพิ่มการตรวจสอบทั้งชื่อ attachments และ attachment
+    if (assessment) {
+      console.log('ข้อมูล assessment ที่ได้รับ:', assessment);
+      
+      // ตรวจสอบว่ามีข้อมูลเอกสารแนบในรูปแบบใด
+      let attachmentData = null;
+      
+      // ตรวจสอบตามลำดับความเป็นไปได้
+      if (assessment.attachments && assessment.attachments.length > 0) {
+        attachmentData = assessment.attachments;
+        console.log('พบข้อมูลเอกสารแนบใน attachments:', attachmentData.length, 'ไฟล์');
+      }
+      
+      // ถ้ามีข้อมูลเอกสารแนบ
+      if (attachmentData && attachmentData.length > 0) {
+        existingAttachments.value = [...attachmentData];
+        
+        console.log('📄 โหลดข้อมูลเอกสารแนบสำเร็จ', {
+          count: existingAttachments.value.length,
+          assessment_id: assessment.id,
+          assessment_date: assessment.assessment_date
+        });
+      } else {
+        console.log('ไม่พบข้อมูลเอกสารแนบสำหรับการประเมินนี้', {
+          assessment_id: assessment.id,
+          assessment_date: assessment.assessment_date,
+          keys: Object.keys(assessment),
+        });
+        existingAttachments.value = [];
+      }
     } else {
+      console.log('ไม่มีข้อมูล assessment ที่ส่งมาในฟังก์ชัน loadAttachments');
       existingAttachments.value = [];
     }
   };
-  
+
   // ============ FORM SUBMISSION FUNCTIONS ============
   /**
    * ฟังก์ชันเพื่อส่งข้อมูลแบบฟอร์มไปยัง backend

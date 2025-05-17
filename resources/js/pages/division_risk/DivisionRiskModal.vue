@@ -20,14 +20,28 @@ import { SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, Trash2Icon, HelpCir
 import type { DivisionRisk, OrganizationalRisk, CriteriaItem } from '@/types/types'
 import { useDivisionRiskData } from '@/composables/useDivisionRiskData'
 
+interface FormCriteriaItem {
+  level: number;
+  name: string;
+  description: string | null;
+  // id, division_risk_id, created_at, updated_at เป็น optional
+  // จะถูกกำหนดโดย backend
+  id?: number;
+  division_risk_id?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // กำหนด Types สำหรับฟอร์ม
 type RiskFormData = {
   risk_name: string;
   description: string;
   organizational_risk_id?: number | null;
   attachments: File[] | null;
-  likelihood_criteria: CriteriaItem[];
-  impact_criteria: CriteriaItem[];
+  // เปลี่ยนจาก CriteriaItem[] เป็น Record<string, any>[]
+  // เพื่อให้สอดคล้องกับ FormDataConvertible
+  likelihood_criteria: Record<string, any>[];
+  impact_criteria: Record<string, any>[];
 }
 
 // กำหนด props และ events
@@ -72,20 +86,22 @@ const form = useForm<RiskFormData>({
   description: props.risk?.description ?? '',
   organizational_risk_id: props.risk?.organizational_risk_id ?? null,
   attachments: null,
+  
   // เพิ่มค่าเริ่มต้นสำหรับเกณฑ์โอกาสเกิด 4 ระดับ
   likelihood_criteria: [
     { level: 1, name: 'น้อยมาก', description: 'โอกาสเกิดน้อยกว่า 25%' },
     { level: 2, name: 'น้อย', description: 'โอกาสเกิด 25-50%' },
     { level: 3, name: 'ปานกลาง', description: 'โอกาสเกิด 51-75%' },
     { level: 4, name: 'สูง', description: 'โอกาสเกิดมากกว่า 75%' }
-  ],
+  ] as Record<string, any>[],
+  
   // เพิ่มค่าเริ่มต้นสำหรับเกณฑ์ผลกระทบ 4 ระดับ
   impact_criteria: [
     { level: 1, name: 'น้อยมาก', description: 'ผลกระทบต่อฝ่ายเล็กน้อย' },
     { level: 2, name: 'น้อย', description: 'ผลกระทบต่อฝ่ายพอสมควร' },
     { level: 3, name: 'ปานกลาง', description: 'ผลกระทบต่อฝ่ายค่อนข้างมาก' },
     { level: 4, name: 'สูง', description: 'ผลกระทบต่อฝ่ายอย่างรุนแรง' }
-  ],
+  ] as Record<string, any>[],
 })
 
 // Watchers
@@ -100,10 +116,11 @@ watch(() => props.show, (newVal) => {
     
     // โหลดข้อมูลเกณฑ์การประเมิน (ถ้ามี)
     if (props.risk.likelihood_criteria && props.risk.likelihood_criteria.length > 0) {
-      form.likelihood_criteria = props.risk.likelihood_criteria;
+      // ใช้ type assertion เพื่อช่วยให้ TypeScript เข้าใจ type
+      form.likelihood_criteria = [...props.risk.likelihood_criteria] as Record<string, any>[]
     }
     if (props.risk.impact_criteria && props.risk.impact_criteria.length > 0) {
-      form.impact_criteria = props.risk.impact_criteria;
+      form.impact_criteria = [...props.risk.impact_criteria] as Record<string, any>[]
     }
   } else if (newVal) {
     form.reset()
@@ -178,24 +195,26 @@ const handleSubmit = async () => {
     // แสดง toast ทันทีที่กดบันทึก
     toast.loading('กำลังบันทึกข้อมูล', {
       id: 'saving-risk',
-      duration: 60000 // ตั้งเวลานานพอที่จะรอการประมวลผลเสร็จ
+      duration: 60000
     })
     
     console.log('กำลังส่งข้อมูล, mode:', isEditing.value ? 'แก้ไข' : 'เพิ่ม', 'id:', props.risk?.id)
     
+    // แปลงข้อมูลเกณฑ์การประเมินเป็น plain objects ผ่าน JSON
+    const formData = {
+      risk_name: form.risk_name,
+      description: form.description,
+      organizational_risk_id: form.organizational_risk_id,
+      likelihood_criteria: JSON.parse(JSON.stringify(form.likelihood_criteria)),
+      impact_criteria: JSON.parse(JSON.stringify(form.impact_criteria))
+    }
+    
     await submitForm(
-      { 
-        risk_name: form.risk_name,
-        description: form.description,
-        organizational_risk_id: form.organizational_risk_id,
-        likelihood_criteria: form.likelihood_criteria,
-        impact_criteria: form.impact_criteria
-      }, 
+      formData,
       isEditing.value ? props.risk?.id : undefined,
       closeModal
     )
     
-    // เปลี่ยน toast เป็นแจ้งเตือนสำเร็จ
     toast.success('บันทึกข้อมูลเรียบร้อย', {
       id: 'saving-risk'
     })
@@ -204,7 +223,6 @@ const handleSubmit = async () => {
   } catch (error) {
     console.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล:', error)
     
-    // เปลี่ยน toast เป็นแจ้งเตือนข้อผิดพลาด
     toast.error('ไม่สามารถบันทึกข้อมูลได้', {
       id: 'saving-risk',
       description: 'กรุณาลองใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบ'

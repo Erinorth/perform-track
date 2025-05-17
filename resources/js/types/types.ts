@@ -40,28 +40,30 @@ export interface OrganizationalRisk {
   
   // อินเตอร์เฟซสำหรับการประเมินความเสี่ยง
   export interface RiskAssessment {
-    id: number                       // รหัสการประเมินความเสี่ยง (Primary Key)
-    assessment_date: string          // วันที่ประเมิน (date)
-    likelihood_level: number         // ระดับโอกาสเกิด (1-4)
-    impact_level: number             // ระดับผลกระทบ (1-4)
-    risk_score: number               // คะแนนความเสี่ยง (likelihood_level * impact_level)
-    division_risk_id: number       // รหัสความเสี่ยงระดับฝ่ายที่เกี่ยวข้อง (Foreign Key)
-    notes: string | null             // บันทึกเพิ่มเติม (อาจเป็น null)
-    created_at: string               // วันเวลาที่สร้าง (timestamp)
-    updated_at: string               // วันเวลาที่แก้ไขล่าสุด (timestamp)
+    id: number;
+    assessment_date: string;
+    likelihood_level: number;
+    impact_level: number;
+    risk_score: number;
+    division_risk_id: number;
+    notes?: string;
+    created_at: string;
+    updated_at: string;
     attachments?: RiskAssessmentAttachment[];
-    division_risk?: DivisionRisk // ความสัมพันธ์แบบ many-to-one กับความเสี่ยงระดับฝ่าย
+    // ความสัมพันธ์อื่นๆ
+    divisionRisk?: DivisionRisk;
+    division_risk?: DivisionRisk;
   }
 
   // อินเตอร์เฟซทั่วไปสำหรับเกณฑ์ประเมินความเสี่ยง (ใช้ร่วมกันระหว่างเกณฑ์โอกาสเกิดและเกณฑ์ผลกระทบ)
   export interface CriteriaItem {
-    id: number;                       // รหัสเกณฑ์ (Primary Key)
+    id?: number;                       // รหัสเกณฑ์ (Primary Key)
     level: number;                    // ระดับเกณฑ์ (1-4)
     name: string;                     // ชื่อระดับ
     description: string;              // รายละเอียดเกณฑ์
-    division_risk_id: number;         // รหัสความเสี่ยงระดับฝ่ายที่เกี่ยวข้อง (Foreign Key)
-    created_at: string;               // วันเวลาที่สร้าง (timestamp)
-    updated_at: string;               // วันเวลาที่แก้ไขล่าสุด (timestamp)
+    division_risk_id?: number;         // รหัสความเสี่ยงระดับฝ่ายที่เกี่ยวข้อง (Foreign Key)
+    created_at?: string;               // วันเวลาที่สร้าง (timestamp)
+    updated_at?: string;               // วันเวลาที่แก้ไขล่าสุด (timestamp)
   }
   
   // อินเตอร์เฟซสำหรับเกณฑ์ผลกระทบ
