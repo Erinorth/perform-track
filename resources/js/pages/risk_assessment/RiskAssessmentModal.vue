@@ -577,7 +577,7 @@ const handleSubmit = async () => {
             </p>
           </div>
 
-          <!-- ส่วนเอกสารแนบ -->
+          <!-- ส่วนของเอกสารแนบ -->
           <div class="grid gap-2">
             <Label class="flex items-center gap-1">
               เอกสารแนบ
@@ -597,80 +597,91 @@ const handleSubmit = async () => {
               แนบไฟล์เอกสารที่เกี่ยวข้องกับการประเมินความเสี่ยง เช่น รายงาน หลักฐาน หรือเอกสารอ้างอิงอื่นๆ
             </div>
             
-            <!-- ปุ่มอัปโหลดไฟล์ -->
-            <div class="flex flex-col gap-2">
-              <div
-                class="border border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary"
-                @click="$refs.fileInput.click()"
-              >
-                <UploadIcon class="h-6 w-6 text-gray-400" />
-                <div class="text-sm text-center">
-                  <span class="font-medium text-primary">อัปโหลดไฟล์</span>
-                  <p class="text-gray-500 text-xs mt-1">
-                    รองรับ PDF, Word, Excel และรูปภาพ (สูงสุด 10MB)
-                  </p>
-                </div>
-              </div>
-              <input
-                ref="fileInput"
-                type="file"
-                multiple
-                class="hidden"
-                @change="handleFileUpload"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-              />
-            </div>
-
-            <!-- แสดงรายการไฟล์ที่เลือก -->
-            <div v-if="selectedFiles.length > 0" class="mt-2">
-              <div class="text-sm font-medium mb-2">ไฟล์ที่เลือก ({{ selectedFiles.length }} ไฟล์)</div>
+            <!-- แสดงเอกสารแนบที่มีอยู่แล้ว (กรณีแก้ไข) -->
+            <div v-if="existingAttachments.length > 0" class="mb-3">
+              <p class="text-sm font-medium text-gray-700 mb-2">เอกสารแนบปัจจุบัน:</p>
               <ul class="space-y-2">
-                <li
-                  v-for="(file, index) in selectedFiles"
-                  :key="`new-${index}`"
-                  class="flex justify-between items-center p-2 bg-gray-50 rounded-md"
+                <li 
+                  v-for="attachment in existingAttachments" 
+                  :key="attachment.id" 
+                  class="flex flex-wrap items-center justify-between p-2 bg-gray-50 rounded-md text-sm border border-gray-200"
                 >
-                  <div class="flex items-center gap-2 overflow-hidden">
-                    <component :is="getFileIcon(file.name)" class="h-4 w-4 text-gray-500" />
-                    <span class="text-sm truncate">{{ file.name }}</span>
-                    <span class="text-xs text-gray-500">({{ formatFileSize(file.size) }})</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    class="h-6 w-6 hover:bg-gray-200"
-                    @click="removeSelectedFile(index)"
+                  <!-- ส่วนแสดงข้อมูลไฟล์ - สามารถคลิกเพื่อเปิดดู -->
+                  <div 
+                    class="flex items-center gap-2 flex-1 min-w-0 overflow-hidden" 
+                    @click="openAttachment(attachment.url)" 
+                    style="cursor: pointer"
                   >
-                    <XCircleIcon class="h-4 w-4 text-gray-500" />
-                  </Button>
-                </li>
-              </ul>
-            </div>
-
-            <!-- แสดงรายการไฟล์ที่มีอยู่แล้ว -->
-            <div v-if="existingAttachments.length > 0" class="mt-2">
-              <div class="text-sm font-medium mb-2">เอกสารแนบที่มีอยู่ ({{ existingAttachments.length }} ไฟล์)</div>
-              <ul class="space-y-2">
-                <li
-                  v-for="attachment in existingAttachments"
-                  :key="`existing-${attachment.id}`"
-                  class="flex justify-between items-center p-2 bg-gray-50 rounded-md"
-                >
-                  <div class="flex items-center gap-2 overflow-hidden cursor-pointer" @click="openAttachment(attachment.url)">
-                    <component :is="getFileIcon(attachment.file_name)" class="h-4 w-4 text-gray-500" />
-                    <span class="text-sm truncate">{{ attachment.file_name }}</span>
-                    <span class="text-xs text-gray-500">({{ formatFileSize(attachment.file_size) }})</span>
+                    <component :is="getFileIcon(attachment.file_name)" class="h-4 w-4 flex-shrink-0" />
+                    <span class="truncate max-w-[200px] sm:max-w-[300px]">{{ attachment.file_name }}</span>
+                    <span class="text-xs text-gray-500 flex-shrink-0">{{ formatFileSize(attachment.file_size || 0) }}</span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    class="h-6 w-6 hover:bg-gray-200"
+                  
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
                     @click="markAttachmentForDeletion(attachment.id)"
+                    class="text-red-500 hover:text-red-700 hover:bg-red-50 ml-1 flex-shrink-0"
+                    aria-label="ลบเอกสาร"
                   >
-                    <Trash2Icon class="h-4 w-4 text-gray-500" />
+                    <Trash2Icon class="h-4 w-4" />
                   </Button>
                 </li>
               </ul>
+            </div>
+            
+            <!-- แสดงไฟล์ที่เพิ่งอัปโหลด (ยังไม่ได้บันทึก) -->
+            <div v-if="selectedFiles.length > 0" class="mb-3">
+              <p class="text-sm font-medium text-gray-700 mb-2">ไฟล์ที่เลือกไว้:</p>
+              <ul class="space-y-2">
+                <li 
+                  v-for="(file, index) in selectedFiles" 
+                  :key="index"
+                  class="flex items-center justify-between p-2 bg-gray-50 rounded-md text-sm border border-gray-200"
+                >
+                  <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                    <component :is="getFileIcon(file.name)" class="h-4 w-4 flex-shrink-0" />
+                    <span class="truncate">{{ file.name }}</span>
+                    <span class="text-xs text-gray-500 flex-shrink-0">{{ formatFileSize(file.size) }}</span>
+                  </div>
+                  
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    @click="removeSelectedFile(index)"
+                    class="text-red-500 hover:text-red-700 hover:bg-red-50 ml-1 flex-shrink-0"
+                  >
+                    <XCircleIcon class="h-4 w-4" />
+                  </Button>
+                </li>
+              </ul>
+            </div>
+
+            <!-- ปุ่มและคำแนะนำการอัปโหลดไฟล์ -->
+            <div class="flex flex-col">
+              <div class="flex flex-wrap items-center gap-2">
+                <label for="file-upload" class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                  <UploadIcon class="h-4 w-4" />
+                  <span>เลือกไฟล์แนบ</span>
+                </label>
+                
+                <input 
+                  id="file-upload" 
+                  type="file" 
+                  multiple
+                  class="hidden" 
+                  @change="handleFileUpload"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                />
+                
+                <p class="text-xs text-gray-500">รองรับไฟล์ประเภท PDF, Word, Excel, รูปภาพ (ขนาดไม่เกิน 10MB)</p>
+              </div>
+              
+              <p v-if="form.errors.attachments" class="text-sm text-red-500 mt-1">
+                {{ form.errors.attachments }}
+              </p>
             </div>
           </div>
         </div>
