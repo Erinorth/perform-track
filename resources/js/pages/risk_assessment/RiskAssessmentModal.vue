@@ -171,7 +171,17 @@ function getDefaultLevelName(level: number): string {
 watch(() => props.show, (newVal) => {
   if (newVal && props.assessment) {
     // โหลดข้อมูลสำหรับการแก้ไข
-    form.assessment_date = props.assessment.assessment_date
+    
+    // แปลงรูปแบบวันที่ให้เป็น YYYY-MM-DD เสมอ
+    const dateObj = new Date(props.assessment.assessment_date)
+    const formattedDate = dateObj.toISOString().split('T')[0]
+    
+    // บันทึกข้อมูลเพื่อตรวจสอบการแปลงวันที่
+    console.log('วันที่ที่ได้รับ:', props.assessment.assessment_date)
+    console.log('วันที่หลังแปลงรูปแบบ:', formattedDate)
+    
+    // กำหนดค่าให้ฟอร์ม
+    form.assessment_date = formattedDate
     form.likelihood_level = props.assessment.likelihood_level
     form.impact_level = props.assessment.impact_level
     form.risk_score = props.assessment.risk_score
