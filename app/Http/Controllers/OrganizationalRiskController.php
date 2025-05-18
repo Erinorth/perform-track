@@ -31,7 +31,7 @@ class OrganizationalRiskController extends Controller
     public function index()
     {
         // ดึงข้อมูลความเสี่ยงระดับองค์กรทั้งหมด พร้อมโหลดความสัมพันธ์
-        $risks = OrganizationalRisk::with(['divisionRisks', 'attachment'])
+        $risks = OrganizationalRisk::with(['divisionRisks', 'attachments'])
             ->orderBy('risk_name')  // เรียงตามชื่อความเสี่ยง
             ->get();  // ดึงข้อมูลทั้งหมด
 
@@ -115,7 +115,7 @@ class OrganizationalRiskController extends Controller
             }
             
             // ดึงข้อมูลที่อัปเดตเรียบร้อยแล้วพร้อมเอกสารแนบ
-            $updatedRisk = OrganizationalRisk::with('attachment')->find($organizationalRisk->id);
+            $updatedRisk = OrganizationalRisk::with('attachments')->find($organizationalRisk->id);
             
             return redirect()->back()->with([
                 'message' => 'อัปเดตข้อมูลความเสี่ยงเรียบร้อยแล้ว',
@@ -351,7 +351,7 @@ class OrganizationalRiskController extends Controller
         } catch (\Exception $e) {
             // บันทึกล็อกกรณีเกิดข้อผิดพลาด
             Log::error('เกิดข้อผิดพลาดในการอัปโหลดเอกสารแนบ', [
-                'risk_id' => $organizationalRisk->id,
+                'risk_id' => $risk->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'user' => Auth::check() ? Auth::user()->name : null,
@@ -375,7 +375,7 @@ class OrganizationalRiskController extends Controller
     {
         try {
             // ค้นหาเอกสารแนบตาม ID ที่เชื่อมโยงกับความเสี่ยงนี้
-            $attachment = $organizationalRisk->attachment()->findOrFail($attachmentId);
+            $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
             
             // ลบไฟล์จาก storage
             Storage::disk('public')->delete($attachment->file_path);
@@ -428,7 +428,7 @@ class OrganizationalRiskController extends Controller
             foreach ($request->attachments_to_delete as $attachmentId) {
                 try {
                     // ค้นหาเอกสารแนบที่ต้องการลบ
-                    $attachment = $organizationalRisk->attachment()->findOrFail($attachmentId);
+                    $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
                     
                     // ลบไฟล์จาก storage
                     Storage::disk('public')->delete($attachment->file_path);
@@ -469,7 +469,7 @@ class OrganizationalRiskController extends Controller
     {
         try {
             // ค้นหาเอกสารแนบตาม ID ที่เชื่อมโยงกับความเสี่ยงนี้
-            $attachment = $organizationalRisk->attachment()->findOrFail($attachmentId);
+            $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
             
             // ตรวจสอบว่าไฟล์มีอยู่จริงในระบบ
             if (!Storage::disk('public')->exists($attachment->file_path)) {

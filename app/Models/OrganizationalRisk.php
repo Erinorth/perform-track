@@ -14,7 +14,7 @@ class OrganizationalRisk extends Model
     protected $fillable = ['risk_name', 'description'];
 
     // เพิ่มความสัมพันธ์กับเอกสารแนบ
-    public function attachment()
+    public function attachments()
     {
         return $this->hasMany(OrganizationalRiskAttachment::class);
     }

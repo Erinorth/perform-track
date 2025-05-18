@@ -34,7 +34,7 @@ class RiskAssessmentController extends Controller
     {
         // ดึงข้อมูลการประเมินความเสี่ยงทั้งหมด พร้อมโหลดความสัมพันธ์
         $assessments = RiskAssessment::with([
-            'attachment',
+            'attachments',
             'divisionRisk',
             'divisionRisk.impactCriteria', // เพิ่มการดึงข้อมูลเกณฑ์ผลกระทบ
             'divisionRisk.likelihoodCriteria' // เพิ่มการดึงข้อมูลเกณฑ์โอกาส
@@ -147,7 +147,7 @@ class RiskAssessmentController extends Controller
                 
             // ดึงข้อมูลที่อัปเดตเรียบร้อยแล้วพร้อมเอกสารแนบและความสัมพันธ์
             $updatedAssessment = RiskAssessment::with([
-                'attachment',
+                'attachments',
                 'divisionRisk'
             ])->find($riskAssessment->id);
             
@@ -228,7 +228,7 @@ class RiskAssessmentController extends Controller
         $successMessage = 'ลบการประเมินความเสี่ยงจำนวน ' . $deletedCount . ' รายการเรียบร้อยแล้ว';
 
             // ดึงข้อมูลความเสี่ยงที่อัปเดตล่าสุดเพื่อส่งกลับไป
-    $updatedAssessments = RiskAssessment::with(['attachment', 'divisionRisk'])
+    $updatedAssessments = RiskAssessment::with(['attachments', 'divisionRisk'])
         ->orderBy('assessment_date', 'desc')
         ->get();
 
@@ -356,26 +356,35 @@ class RiskAssessmentController extends Controller
    * @param \App\Models\RiskAssessmentAttachment $attachment ข้อมูลเอกสารแนบ
    * @return \Illuminate\View\View|\Symfony\Component\HttpFoundation\StreamedResponse
    */
-  public function viewAttachment(RiskAssessment $riskAssessment, RiskAssessmentAttachment $attachment)
+  public function viewAttachment(RiskAssessment $riskAssessment, $attachmentId)
   {
       $attachment = RiskAssessmentAttachment::where('id', $attachmentId)
             ->where('risk_assessment_id', $riskAssessment->id)
             ->firstOrFail();
         
-        $path = 'public/' . $attachment->file_path;
+        $path = $attachment->file_path;
         
-        Log::info('ตรวจสอบไฟล์', [
+        Log::info('ตรวจสอบไฟล์เอกสารแนบ', [
+            'attachment_id' => $attachmentId,
+            'risk_assessment_id' => $riskAssessment->id,
             'file_path' => $attachment->file_path,
-            'full_path' => $path,
-            'exists' => Storage::exists($path),
-            'real_path' => Storage::path($path)
+            'file_name' => $attachment->file_name,
+            'exists_in_storage' => Storage::disk('public')->exists($path),
+            'real_path' => Storage::disk('public')->path($path),
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
         ]);
         
-        if (!Storage::exists($path)) {
+        // ตรวจสอบว่าไฟล์มีอยู่จริงหรือไม่โดยใช้ disk public โดยตรง
+        if (!Storage::disk('public')->exists($path)) {
+            Log::error('ไม่พบไฟล์เอกสารแนบ', [
+                'path' => $path,
+                'full_path' => Storage::disk('public')->path($path)
+            ]);
             return response()->json(['error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'], 404);
         }
         
-        return response()->file(Storage::path($path));
+        // ส่งไฟล์กลับไปแสดงในเบราว์เซอร์
+        return response()->file(Storage::disk('public')->path($path));
   }
 
   /**
@@ -387,7 +396,7 @@ class RiskAssessmentController extends Controller
   public function getDetails(RiskAssessment $riskAssessment)
   {
       // โหลดความสัมพันธ์
-      $riskAssessment->load(['divisionRisk', 'attachment']);
+      $riskAssessment->load(['divisionRisk', 'attachments']);
       
       // บันทึกล็อกการเข้าถึงข้อมูล
       Log::info('เข้าถึงรายละเอียดการประเมินความเสี่ยง', [

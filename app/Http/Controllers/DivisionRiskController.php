@@ -36,7 +36,7 @@ class DivisionRiskController extends Controller
     {
         // ดึงข้อมูลความเสี่ยงระดับฝ่ายทั้งหมด พร้อมโหลดความสัมพันธ์
         $risks = DivisionRisk::with(['riskAssessments',
-            'attachment',
+            'attachments',
             'organizationalRisk',
             'likelihoodCriteria',
             'impactCriteria'  
@@ -159,7 +159,7 @@ class DivisionRiskController extends Controller
                 
             // ดึงข้อมูลที่อัปเดตเรียบร้อยแล้วพร้อมเอกสารแนบและเกณฑ์
             $updatedRisk = DivisionRisk::with([
-                'attachment', 
+                'attachments', 
                 'likelihoodCriteria', 
                 'impactCriteria'
             ])->find($divisionRisk->id);
@@ -372,7 +372,7 @@ class DivisionRiskController extends Controller
         $path = $file->store($storagePath, 'public');
         
         // สร้างเอกสารแนบในฐานข้อมูล
-        $attachment = $risk->attachment()->create([
+        $attachment = $risk->attachments()->create([
             'file_name' => $file->getClientOriginalName(),
             'file_path' => $path,
             'file_type' => $file->getClientMimeType(),
@@ -483,7 +483,7 @@ class DivisionRiskController extends Controller
     {
         try {
             // ค้นหาเอกสารแนบตาม ID ที่เชื่อมโยงกับความเสี่ยงนี้
-            $attachment = $divisionRisk->attachment()->findOrFail($attachmentId);
+            $attachment = $divisionRisk->attachments()->findOrFail($attachmentId);
             
             // ลบไฟล์จาก storage
             Storage::disk('public')->delete($attachment->file_path);
@@ -536,7 +536,7 @@ class DivisionRiskController extends Controller
             foreach ($request->attachments_to_delete as $attachmentId) {
                 try {
                     // ค้นหาเอกสารแนบที่ต้องการลบ
-                    $attachment = $divisionRisk->attachment()->findOrFail($attachmentId);
+                    $attachment = $divisionRisk->attachments()->findOrFail($attachmentId);
                     
                     // ลบไฟล์จาก storage
                     Storage::disk('public')->delete($attachment->file_path);
@@ -577,7 +577,7 @@ class DivisionRiskController extends Controller
     {
         try {
             // ค้นหาเอกสารแนบตาม ID ที่เชื่อมโยงกับความเสี่ยงนี้
-            $attachment = $divisionRisk->attachment()->findOrFail($attachmentId);
+            $attachment = $divisionRisk->attachments()->findOrFail($attachmentId);
             
             // ตรวจสอบว่าไฟล์มีอยู่จริงในระบบ
             if (!Storage::disk('public')->exists($attachment->file_path)) {

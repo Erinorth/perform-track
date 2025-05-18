@@ -24,7 +24,7 @@ class DivisionRisk extends Model
      * 
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
-    public function attachment(): HasMany
+    public function attachments(): HasMany
     {
         return $this->hasMany(DivisionRiskAttachment::class);
     }
