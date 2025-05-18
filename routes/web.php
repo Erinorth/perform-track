@@ -13,6 +13,7 @@
  */
 
 // นำเข้า Controllers ที่เกี่ยวข้องและคลาสพื้นฐานที่จำเป็น
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DivisionRiskController;
 use App\Http\Controllers\OrganizationalRiskController;
 use App\Http\Controllers\RiskAssessmentController;
@@ -42,9 +43,8 @@ Route::get('/', function () {
  * แสดงหน้าแดชบอร์ดที่รวมข้อมูลและกราฟสรุปภาพรวมความเสี่ยงทั้งหมด
  * ต้องผ่านการตรวจสอบการเข้าสู่ระบบและการยืนยันบัญชีแล้ว
  */
-Route::get('dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])->name('dashboard');
 
 /**
  * กลุ่มเส้นทางที่ต้องผ่านการรับรองตัวตน
