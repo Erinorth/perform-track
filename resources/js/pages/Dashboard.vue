@@ -29,6 +29,12 @@ interface TrendData {
   low: number
 }
 
+// กำหนด interface สำหรับตัวเลือก
+interface Option {
+  value: string | number;
+  label: string;
+}
+
 // กำหนด interface สำหรับ props ที่รับจาก Laravel
 interface Props {
   // แก้ไขให้ทุก property เป็น optional (?) เพื่อรองรับกรณีไม่มีข้อมูล
@@ -44,6 +50,7 @@ interface Props {
     risks: any[]
   }>
   recentIncidents?: number
+  riskTypeOptions?: Option[] // เพิ่มตัวเลือกประเภทความเสี่ยง
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -58,11 +65,21 @@ const breadcrumbs: BreadcrumbItem[] = [
 const props = withDefaults(defineProps<Props>(), {
   trendData: () => [],
   heatmapData: () => [],
-  recentIncidents: 0
+  recentIncidents: 0,
+  riskTypeOptions: () => [] // กำหนดค่าเริ่มต้นเป็น array ว่าง
 })
 
 // log การเข้าใช้งาน dashboard
 console.log('Dashboard loaded', props)
+
+// ฟังก์ชันสำหรับจัดการ filter จาก RiskTrendChart
+const handleFilter = (filterParams: { timeRange: string, riskType: string | number }) => {
+  console.log('Filter changed:', filterParams);
+  
+  // ในกรณีจริง เราอาจจะใช้ Inertia.get หรือ useRouter().get เพื่อโหลดหน้าใหม่พร้อม query parameters
+  // หรืออาจจะใช้ fetch เพื่อดึงข้อมูลใหม่โดยไม่รีโหลดหน้า
+  toast.info(`กำลังกรองข้อมูล: ${filterParams.timeRange}, ประเภทความเสี่ยง: ${filterParams.riskType}`);
+}
 
 // ฟังก์ชันสำหรับแสดง toast เมื่อคลิกที่กราฟ/ข้อมูล
 const showRiskSummary = () => {
@@ -142,7 +159,11 @@ const showRiskSummary = () => {
             <!-- Trend Chart (หากไม่มีข้อมูลจะแสดงข้อความ) -->
             <div class="bg-white dark:bg-gray-900 shadow rounded-lg p-4">
               <div v-if="props.trendData && props.trendData.length > 0">
-                <RiskTrendChart :data="props.trendData" />
+                <RiskTrendChart 
+                  :data="props.trendData"
+                  :risk-type-options="props.riskTypeOptions"
+                  @filter="handleFilter"
+                />
               </div>
               <div v-else class="flex flex-col items-center justify-center h-64 text-gray-500">
                 <div class="text-center p-4">

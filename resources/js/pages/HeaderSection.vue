@@ -9,7 +9,7 @@ defineProps<{
 <template>
   <div class="flex flex-col space-y-2">
     <h1 class="text-2xl font-bold tracking-tight">{{ title }}</h1>
-    <p v-if="description" class="text-muted-foreground">{{ description }}</p>
+    <p v-if="description" class="text-muted-foreground dark:text-gray-300">{{ description }}</p>
   </div>
 </template>
 

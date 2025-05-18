@@ -12,6 +12,12 @@ const chartSupported = ref(false)
 const chart = ref<ApexCharts | null>(null)
 const isLoading = ref(false)
 
+// กำหนด interface สำหรับตัวเลือก
+interface Option {
+  value: string | number;
+  label: string;
+}
+
 // กำหนด props สำหรับรับข้อมูลจากภายนอก
 const props = defineProps<{
   data: Array<{
@@ -20,7 +26,8 @@ const props = defineProps<{
     medium: number
     low: number
     [key: string]: any
-  }>
+  }>,
+  riskTypeOptions?: Option[]
 }>()
 
 // สร้าง event emitter
@@ -38,22 +45,17 @@ const timeRangeOptions = [
   { value: 'year', label: '1 ปีล่าสุด' }
 ]
 
-const riskTypeOptions = [
-  { value: 'all', label: 'ทั้งหมด' },
-  { value: 'operational', label: 'ความเสี่ยงด้านปฏิบัติการ' },
-  { value: 'financial', label: 'ความเสี่ยงด้านการเงิน' },
-  { value: 'strategic', label: 'ความเสี่ยงด้านกลยุทธ์' },
-  { value: 'compliance', label: 'ความเสี่ยงด้านการปฏิบัติตามกฎระเบียบ' }
-]
-
-// ข้อมูลตัวอย่างสำหรับแสดงถ้าไม่มี ApexCharts
-const dummyChartData = ref([
-  { date: '1 พ.ค. 2568', percentage: 80, color: 'bg-red-500' },
-  { date: '8 พ.ค. 2568', percentage: 70, color: 'bg-red-500' },
-  { date: '15 พ.ค. 2568', percentage: 65, color: 'bg-yellow-400' },
-  { date: '22 พ.ค. 2568', percentage: 50, color: 'bg-yellow-400' },
-  { date: '1 พ.ค. 2568', percentage: 30, color: 'bg-green-400' }
-])
+// ตรวจสอบและใช้ข้อมูลประเภทความเสี่ยงที่ได้รับจาก backend
+const riskTypeOptionsList = computed(() => {
+  if (props.riskTypeOptions && props.riskTypeOptions.length > 0) {
+    return props.riskTypeOptions;
+  }
+  
+  // ถ้าไม่มีข้อมูลประเภทความเสี่ยงจาก backend ให้ใช้ค่าเริ่มต้น
+  return [
+    { value: 'all', label: 'ทั้งหมด' }
+  ];
+});
 
 // คำนวณจำนวนสูงสุดสำหรับกราฟเพื่อให้แสดงผลอย่างเหมาะสม
 const maxValue = computed(() => {
@@ -298,27 +300,6 @@ watch(() => props.data, (newData) => {
       
       <!-- container สำหรับกราฟ -->
       <div id="risk-trend-chart" v-show="props.data && props.data.length > 0"></div>
-      
-      <!-- แสดงถ้าไม่มี ApexCharts -->
-      <div v-if="!chartSupported && props.data && props.data.length > 0" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-        <div class="p-4 text-center w-full max-w-md">
-          <div class="grid grid-cols-1 gap-3">
-            <div v-for="(item, index) in dummyChartData" :key="index" class="flex items-center">
-              <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-full overflow-hidden">
-                <div 
-                  class="h-full rounded-full transition-all duration-500" 
-                  :class="item.color"
-                  :style="{ width: `${item.percentage}%` }"
-                ></div>
-              </div>
-              <span class="text-sm ml-3 w-24">{{ item.date }}</span>
-            </div>
-          </div>
-          <p class="mt-4 text-sm bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 p-2 rounded-md">
-            หมายเหตุ: กรุณาเพิ่ม ApexCharts เพื่อแสดงกราฟแบบ interactive
-          </p>
-        </div>
-      </div>
     </div>
     
     <!-- คำอธิบายสี -->
@@ -358,7 +339,7 @@ watch(() => props.data, (newData) => {
           class="w-full h-10 px-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-blue-500 dark:focus:border-blue-600 transition-all"
           @change="updateChart"
         >
-          <option v-for="option in riskTypeOptions" :key="option.value" :value="option.value">
+          <option v-for="option in riskTypeOptionsList" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
         </select>
@@ -374,10 +355,9 @@ watch(() => props.data, (newData) => {
     * กลาง (4-8): สีเหลือง
     * ต่ำ (1-3): สีเขียว
   - คุณสมบัติที่สำคัญ:
-    1. ใช้ข้อมูลจริงจากฐานข้อมูลผ่าน props
-    2. มีการตรวจสอบความพร้อมของข้อมูลก่อนแสดงผล
-    3. คำนวณค่าสูงสุดของกราฟแบบไดนามิก
-    4. เพิ่มสถานะการโหลดและการแสดงกรณีไม่มีข้อมูล
-    5. แสดงผลแบบ responsive รองรับทุกขนาดหน้าจอ
-    6. สามารถกรองข้อมูลตามช่วงเวลาและประเภทความเสี่ยง
+    1. ใช้ข้อมูลจริงจาก API และรับ props.riskTypeOptions จาก controller
+    2. ไม่ใช้ dummyChartData อีกต่อไป
+    3. รับตัวเลือกประเภทความเสี่ยงจาก organizational_risks.risk_name
+    4. แสดงผลเฉพาะกราฟหรือข้อความแจ้งเตือนเมื่อไม่มีข้อมูล
+    5. รองรับการกรองข้อมูลตามช่วงเวลาและประเภทความเสี่ยง
 -->
