@@ -73,6 +73,9 @@ import ExpandedRow from './ExpandedRow.vue'
 // นำเข้า toast notifications
 import { toast } from 'vue-sonner'
 
+// เพิ่มฟังก์ชันสำหรับจัดการวันที่
+import { formatDate, getHalfYearPeriod } from '@/lib/utils'
+
 // ==================== กำหนด Props ====================
 // กำหนด props ที่ต้องการรับจาก parent component
 const props = defineProps<{
@@ -195,7 +198,15 @@ const selectedRowIds = computed(() => {
 const clearAllFilters = () => {
   // ล้าง search query
   searchQuery.value = ''
+  
+  // ล้างตัวกรองคอลัมน์
+  table.getAllColumns().forEach(column => {
+    if (column.getCanFilter()) {
+      column.setFilterValue(undefined)
+    }
+  })
 }
+
 
 // ฟังก์ชันสำหรับลบข้อมูลที่เลือกทั้งหมด
 const handleBulkDelete = async () => {
@@ -235,6 +246,129 @@ const handleBulkDelete = async () => {
 const clearRowSelection = () => {
   rowSelection.value = {}
 }
+
+// เพิ่ม state สำหรับเก็บข้อมูลตัวกรอง
+const assessmentPeriods = ref<{ value: string; label: string; count?: number }[]>([])
+const likelihoodLevels = ref<{ value: string; label: string; count?: number }[]>([])
+const impactLevels = ref<{ value: string; label: string; count?: number }[]>([])
+const riskScoreLevels = ref<{ value: string; label: string; count?: number }[]>([])
+
+// ฟังก์ชันสำหรับสร้างตัวกรองจากข้อมูล
+const generateFilters = () => {
+  // สร้างตัวกรองสำหรับงวดการประเมิน (ครึ่งปี)
+  const periodsMap = new Map<string, number>()
+  props.data.forEach(item => {
+    if (item.assessment_date) {
+      const date = new Date(item.assessment_date)
+      const period = getHalfYearPeriod(date)
+      const key = period.value
+      periodsMap.set(key, (periodsMap.get(key) || 0) + 1)
+    }
+  })
+  assessmentPeriods.value = Array.from(periodsMap.entries())
+    .map(([value, count]) => {
+      const [year, half] = value.split('-')
+      return {
+        value,
+        label: `${year} - ${half === '1' ? 'ครึ่งปีแรก' : 'ครึ่งปีหลัง'}`,
+        count
+      }
+    })
+    .sort((a, b) => b.value.localeCompare(a.value)) // เรียงจากปีล่าสุด
+
+  // สร้างตัวกรองสำหรับระดับโอกาสเกิด
+  const likelihoodMap = new Map<string, number>()
+  props.data.forEach(item => {
+    if (item.likelihood_level) {
+      const key = item.likelihood_level.toString()
+      likelihoodMap.set(key, (likelihoodMap.get(key) || 0) + 1)
+    }
+  })
+  likelihoodLevels.value = Array.from(likelihoodMap.entries())
+    .map(([value, count]) => ({
+      value,
+      label: `ระดับ ${value}`,
+      count
+    }))
+    .sort((a, b) => parseInt(a.value) - parseInt(b.value))
+
+  // สร้างตัวกรองสำหรับระดับผลกระทบ
+  const impactMap = new Map<string, number>()
+  props.data.forEach(item => {
+    if (item.impact_level) {
+      const key = item.impact_level.toString()
+      impactMap.set(key, (impactMap.get(key) || 0) + 1)
+    }
+  })
+  impactLevels.value = Array.from(impactMap.entries())
+    .map(([value, count]) => ({
+      value,
+      label: `ระดับ ${value}`,
+      count
+    }))
+    .sort((a, b) => parseInt(a.value) - parseInt(b.value))
+
+  // สร้างตัวกรองสำหรับคะแนนความเสี่ยง
+  const scoreMap = new Map<string, number>()
+  props.data.forEach(item => {
+    if (item.risk_score) {
+      const score = item.risk_score
+      let level = ''
+      
+      // แบ่งระดับความเสี่ยงตามคะแนน
+      if (score >= 9 && score <= 16) {
+        level = 'high'
+      } else if (score >= 4 && score <= 8) {
+        level = 'medium'
+      } else if (score >= 1 && score <= 3) {
+        level = 'low'
+      }
+      
+      if (level) {
+        scoreMap.set(level, (scoreMap.get(level) || 0) + 1)
+      }
+    }
+  })
+  
+  riskScoreLevels.value = [
+    { value: 'high', label: 'สูง (9-16)', count: scoreMap.get('high') || 0 },
+    { value: 'medium', label: 'กลาง (4-8)', count: scoreMap.get('medium') || 0 },
+    { value: 'low', label: 'ต่ำ (1-3)', count: scoreMap.get('low') || 0 }
+  ]
+}
+
+// เรียกใช้ฟังก์ชันสร้างตัวกรองเมื่อข้อมูลเปลี่ยนแปลง
+watch(() => props.data, () => {
+  generateFilters()
+}, { immediate: true, deep: true })
+
+// เพิ่มฟังก์ชันสำหรับกรองตามงวดการประเมิน
+const filterByPeriod = (row: any, id: string, filterValues: string[]) => {
+  if (!filterValues?.length) return true
+  
+  const date = new Date(row.getValue(id))
+  const period = getHalfYearPeriod(date).value
+  
+  return filterValues.includes(period)
+}
+
+// เพิ่มฟังก์ชันสำหรับกรองตามระดับความเสี่ยง
+const filterByRiskScore = (row: any, id: string, filterValues: string[]) => {
+  if (!filterValues?.length) return true
+  
+  const score = row.getValue(id)
+  let level = ''
+  
+  if (score >= 9 && score <= 16) {
+    level = 'high'
+  } else if (score >= 4 && score <= 8) {
+    level = 'medium'
+  } else if (score >= 1 && score <= 3) {
+    level = 'low'
+  }
+  
+  return filterValues.includes(level)
+}
 </script>
 
 <template>
@@ -257,6 +391,45 @@ const clearRowSelection = () => {
     >
       ล้าง
     </Button>
+
+    <!-- เพิ่มส่วนของ TagFilter -->
+    <div class="flex flex-wrap items-center gap-2 mt-2 w-full">
+      <!-- กรองตามงวดการประเมิน -->
+      <TagFilter
+        v-if="assessmentPeriods.length > 0"
+        title="งวดการประเมิน"
+        column="assessment_date"
+        :options="assessmentPeriods"
+        :table="table"
+      />
+      
+      <!-- กรองตามระดับโอกาสเกิด -->
+      <TagFilter
+        v-if="likelihoodLevels.length > 0"
+        title="โอกาสเกิด"
+        column="likelihood_level"
+        :options="likelihoodLevels"
+        :table="table"
+      />
+      
+      <!-- กรองตามระดับผลกระทบ -->
+      <TagFilter
+        v-if="impactLevels.length > 0"
+        title="ผลกระทบ"
+        column="impact_level"
+        :options="impactLevels"
+        :table="table"
+      />
+      
+      <!-- กรองตามระดับความเสี่ยง -->
+      <TagFilter
+        v-if="riskScoreLevels.length > 0"
+        title="ระดับความเสี่ยง"
+        column="risk_score"
+        :options="riskScoreLevels"
+        :table="table"
+      />
+    </div>
 
     <!-- กลุ่มด้านขวา: จัดให้ปุ่ม View และปุ่มตัวเลือกอยู่ด้วยกัน -->
     <div class="flex items-center gap-2 ml-auto">

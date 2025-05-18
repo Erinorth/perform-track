@@ -9,6 +9,7 @@ import type { RiskAssessment } from '@/types/types'
 import { Checkbox } from '@/components/ui/checkbox'
 // นำเข้า icon จาก lucide-vue-next (ถ้าต้องการใช้)
 import { FileText } from 'lucide-vue-next'
+import { filterByPeriod, filterByRiskScore } from "@/lib/utils"
 
 // ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล
 declare module '@tanstack/vue-table' {
@@ -93,7 +94,8 @@ export const columns: ColumnDef<RiskAssessment>[] = [
         month: 'short',
         day: 'numeric'
       })
-    }
+    },
+    filterFn: filterByPeriod,
   },
   {
     accessorKey: "likelihood_level", // ระดับโอกาสเกิด
@@ -200,7 +202,8 @@ export const columns: ColumnDef<RiskAssessment>[] = [
           risk.color
         ]
       }, `${risk.text} (${score})`)
-    }
+    },
+    filterFn: filterByRiskScore
   },
   {
     accessorKey: "notes", // บันทึกเพิ่มเติม

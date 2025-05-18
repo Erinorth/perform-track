@@ -59,3 +59,73 @@ export function getYears(startYear: number, endYear: number): number[] {
   }
   return years;
 }
+
+// ไฟล์: resources/js/lib/utils.ts
+
+/**
+ * ฟอร์แมตวันที่เป็นรูปแบบ dd/mm/yyyy
+ * @param date วันที่ที่ต้องการฟอร์แมต
+ * @returns วันที่ในรูปแบบ dd/mm/yyyy
+ */
+export function formatDate(date: Date | string): string {
+  if (!date) return '';
+  
+  const d = typeof date === 'string' ? new Date(date) : date;
+  
+  // ตรวจสอบว่าวันที่ถูกต้องหรือไม่
+  if (isNaN(d.getTime())) return '';
+  
+  return d.toLocaleDateString('th-TH', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+/**
+ * รับวันที่และส่งคืนงวดครึ่งปี (เช่น "2025-1" สำหรับครึ่งปีแรกของ 2025)
+ * @param date วันที่ที่ต้องการหางวด
+ * @returns ออบเจ็กต์ที่มี value และ label ของงวด
+ */
+export function getHalfYearPeriod(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const half = month <= 6 ? 1 : 2;
+  
+  return {
+    value: `${year}-${half}`,
+    label: `${year} - ${half === 1 ? 'ครึ่งปีแรก' : 'ครึ่งปีหลัง'}`
+  };
+}
+
+/**
+ * ฟังก์ชันกรองตามงวดการประเมิน
+ */
+export function filterByPeriod(row: any, columnId: string, filterValues: string[]) {
+  if (!filterValues?.length) return true
+  
+  const date = new Date(row.getValue(columnId))
+  const period = getHalfYearPeriod(date).value
+  
+  return filterValues.includes(period)
+}
+
+/**
+ * ฟังก์ชันกรองตามระดับความเสี่ยง
+ */
+export function filterByRiskScore(row: any, columnId: string, filterValues: string[]) {
+  if (!filterValues?.length) return true
+  
+  const score = row.getValue(columnId)
+  let level = ''
+  
+  if (score >= 9 && score <= 16) {
+    level = 'high'
+  } else if (score >= 4 && score <= 8) {
+    level = 'medium'
+  } else if (score >= 1 && score <= 3) {
+    level = 'low'
+  }
+  
+  return filterValues.includes(level)
+}
