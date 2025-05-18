@@ -194,7 +194,7 @@ const selectedRowIds = computed(() => {
 })
 
 // ==================== Methods ====================
-// ฟังก์ชันล้างตัวกรองทั้งหมด
+// ฟังก์ชันล้างตัวกรองทั้งหมด// ฟังก์ชันล้างตัวกรองทั้งหมด
 const clearAllFilters = () => {
   // ล้าง search query
   searchQuery.value = ''
@@ -205,8 +205,12 @@ const clearAllFilters = () => {
       column.setFilterValue(undefined)
     }
   })
+  
+  // แสดง toast แจ้งเตือน
+  toast.success('ล้างตัวกรองทั้งหมดแล้ว', {
+    duration: 2000
+  })
 }
-
 
 // ฟังก์ชันสำหรับลบข้อมูลที่เลือกทั้งหมด
 const handleBulkDelete = async () => {
@@ -369,6 +373,12 @@ const filterByRiskScore = (row: any, id: string, filterValues: string[]) => {
   
   return filterValues.includes(level)
 }
+
+// คำนวณว่ามีตัวกรองที่ใช้งานอยู่หรือไม่
+const hasActiveTagFilters = computed(() => {
+  // ตรวจสอบว่ามีการใช้ column filters หรือไม่
+  return table.getState().columnFilters.length > 0
+})
 </script>
 
 <template>
@@ -383,13 +393,13 @@ const filterByRiskScore = (row: any, id: string, filterValues: string[]) => {
 
     <!-- ปุ่มล้างตัวกรอง -->
     <Button
-      v-if="searchQuery"
+      v-if="searchQuery || hasActiveTagFilters"
       variant="ghost"
       class="ml-2"
       @click="clearAllFilters"
       size="sm"
     >
-      ล้าง
+      ล้างตัวกรอง
     </Button>
 
     <!-- เพิ่มส่วนของ TagFilter -->
