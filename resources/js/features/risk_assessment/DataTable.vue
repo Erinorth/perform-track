@@ -158,15 +158,18 @@ const table = useVueTable({
     get globalFilter() { return searchQuery.value }
   },
   
-  // กำหนดฟังก์ชันสำหรับกรองข้อมูลจากการค้นหา (ค้นหาใน assessment_date และ notes)
+  // กำหนดฟังก์ชันสำหรับกรองข้อมูลจากการค้นหา (ค้นหาเฉพาะ division_risk.risk_name และ notes)
   globalFilterFn: (row, columnId, filterValue) => {
     const searchValue = String(filterValue).toLowerCase();
-    const assessmentDate = row.original.assessment_date?.toLowerCase() || '';
-    const notes = row.original.notes?.toLowerCase() || '';
-    const riskScore = String(row.original.risk_score || '');
     
-    // คืนค่า true ถ้าพบคำค้นหาใน assessment_date, notes หรือ risk_score
-    return assessmentDate.includes(searchValue) || notes.includes(searchValue) || riskScore.includes(searchValue);
+    // ดึงชื่อความเสี่ยงระดับฝ่าย (ตรวจสอบว่ามี division_risk และ risk_name หรือไม่)
+    const riskName = row.original.division_risk?.risk_name?.toLowerCase() || '';
+    
+    // ดึงบันทึก (notes)
+    const notes = row.original.notes?.toLowerCase() || '';
+    
+    // คืนค่า true ถ้าพบคำค้นหาในชื่อความเสี่ยงระดับฝ่ายหรือบันทึก
+    return riskName.includes(searchValue) || notes.includes(searchValue);
   },
   
   // ส่ง meta ไปใช้ใน table เพื่อเรียกใช้ callback functions
@@ -240,7 +243,7 @@ const clearRowSelection = () => {
     <!-- ช่องค้นหา -->
     <Input
       class="max-w-xs sm:max-w-sm"
-      placeholder="ค้นหาจากวันที่ประเมิน, คะแนนความเสี่ยง หรือบันทึก..."
+      placeholder="ค้นหาจากชื่อความเสี่ยงระดับฝ่าย หรือบันทึก..."
       v-model="searchQuery"
     />
 
