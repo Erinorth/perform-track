@@ -19,16 +19,16 @@ import { type BreadcrumbItem } from '@/types';
 import type { OrganizationalRisk } from '@/types/types';
 
 // ==================== นำเข้า Components ====================
-import DataTable from '@/features/organizational_risk/DataTable.vue';
+import DataTable from './data-table/DataTable.vue';
 import OrganizationalRiskModal from './OrganizationalRiskModal.vue';
-import HeaderSection from '@/features/organizational_risk/HeaderSection.vue';
+import HeaderSection from './data-table/HeaderSection.vue';
 // นำเข้า component สำหรับแสดง alert dialog ยืนยันการทำงานต่างๆ เช่น การลบข้อมูล
 import AlertConfirmDialog from '@/components/AlertConfirmDialog.vue';
 // นำเข้า composable สำหรับจัดการสถานะและการทำงานของ confirm dialog
 import { useConfirm } from '@/composables/useConfirm';
 
 // ==================== นำเข้า Composables และ Utilities ====================
-import { columns } from '@/features/organizational_risk/columns';
+import { columns } from './data-table/columns';
 import { useOrganizationalRiskActions } from '@/composables/useOrganizationalRiskActions';
 
 // ==================== กำหนด Breadcrumbs ====================
