@@ -63,6 +63,25 @@ class RiskAssessmentController extends Controller
     }
 
     /**
+     * แสดงฟอร์มสำหรับสร้างการประเมินความเสี่ยงใหม่
+     */
+    public function create()
+    {
+        // ดึงข้อมูลความเสี่ยงระดับส่วนงานและองค์กร
+        $divisionRisks = DivisionRisk::with('organizationalRisk')->get();
+        
+        // ดึงข้อมูลเกณฑ์โอกาสและผลกระทบสำหรับแต่ละความเสี่ยง
+        $likelihoodCriteria = LikelihoodCriterion::all()->groupBy('division_risk_id');
+        $impactCriteria = ImpactCriterion::all()->groupBy('division_risk_id');
+        
+        return Inertia::render('risk_assessment/Create', [
+            'divisionRisks' => $divisionRisks,
+            'likelihoodCriteria' => $likelihoodCriteria,
+            'impactCriteria' => $impactCriteria
+        ]);
+    }
+
+    /**
      * บันทึกข้อมูลการประเมินความเสี่ยงใหม่ลงฐานข้อมูล
      * 
      * @param \App\Http\Requests\StoreRiskAssessmentRequest $request คำขอที่ผ่านการตรวจสอบแล้ว
@@ -113,6 +132,45 @@ class RiskAssessmentController extends Controller
             return redirect()->back()
                 ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * แสดงรายละเอียดของการประเมินความเสี่ยง
+     */
+    public function show(RiskAssessment $riskAssessment)
+    {
+        // โหลดข้อมูลที่เกี่ยวข้อง
+        $riskAssessment->load([
+            'divisionRisk', 
+            'divisionRisk.organizationalRisk',
+            'divisionRisk.likelihoodCriteria',
+            'divisionRisk.impactCriteria'
+        ]);
+        
+        return Inertia::render('risk_assessment/Show', [
+            'riskAssessment' => $riskAssessment
+        ]);
+    }
+
+    /**
+     * แสดงฟอร์มสำหรับแก้ไขการประเมินความเสี่ยง
+     */
+    public function edit(RiskAssessment $riskAssessment)
+    {
+        // โหลดความสัมพันธ์ที่จำเป็น
+        $riskAssessment->load(['divisionRisk', 'divisionRisk.organizationalRisk']);
+        
+        // ดึงข้อมูลที่จำเป็นสำหรับฟอร์มแก้ไข
+        $divisionRisks = DivisionRisk::with('organizationalRisk')->get();
+        $likelihoodCriteria = LikelihoodCriterion::all()->groupBy('division_risk_id');
+        $impactCriteria = ImpactCriterion::all()->groupBy('division_risk_id');
+        
+        return Inertia::render('risk_assessment/Edit', [
+            'riskAssessment' => $riskAssessment,
+            'divisionRisks' => $divisionRisks,
+            'likelihoodCriteria' => $likelihoodCriteria,
+            'impactCriteria' => $impactCriteria
+        ]);
     }
 
     /**

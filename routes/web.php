@@ -95,24 +95,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/{attachmentId}/download', [RiskAssessmentController::class, 'downloadAttachment'])->name('download');
         Route::get('/{attachmentId}/view', [RiskAssessmentController::class, 'viewAttachment'])->name('view');
     });
-
-    /**
-     * จัดการการประเมินความเสี่ยงแบบที่ 2 - ใช้ resource routes
-     */
-    Route::resource('risk-assessments2', RiskAssessmentController2::class);
-
-    /**
-     * จัดการรายงาน - ใช้ resource routes
-     */
-    Route::resource('reports', ReportController::class)->only(['index', 'show']);
-    
-    // เส้นทางพิเศษสำหรับรายงานเฉพาะ
-    Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('/executive-summary', [ReportController::class, 'executiveSummary'])->name('executive-summary');
-        Route::get('/trend-analysis', [ReportController::class, 'trendAnalysis'])->name('trend-analysis');
-        Route::get('/comparison', [ReportController::class, 'comparison'])->name('comparison');
-        Route::get('/export/{type}', [ReportController::class, 'export'])->name('export');
-    });
 });
 
 /**
