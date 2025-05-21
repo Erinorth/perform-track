@@ -101,7 +101,7 @@ class OrganizationalRiskController extends Controller
         ]);
 
         // ส่งข้อมูลไปยังหน้า Vue
-        return Inertia::render('organizational_risk/Show', [
+        return Inertia::render('organizational_risk/OrganizationalRiskShow', [
             'risk' => $risk
         ]);
     }
