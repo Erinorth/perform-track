@@ -107,6 +107,32 @@ class OrganizationalRiskController extends Controller
     }
 
     /**
+     * แสดงฟอร์มแก้ไขข้อมูลความเสี่ยงระดับองค์กร
+     * 
+     * @param \App\Models\OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการแก้ไข
+     * @return \Inertia\Response หน้า Vue สำหรับแก้ไขข้อมูลความเสี่ยง
+     */
+    public function edit(OrganizationalRisk $organizationalRisk)
+    {
+        // โหลดข้อมูลความเสี่ยงพร้อมความสัมพันธ์ที่จำเป็น
+        $risk = OrganizationalRisk::with(['attachments', 'divisionRisks'])
+            ->findOrFail($organizationalRisk->id);
+
+        // บันทึก log การเข้าถึงหน้าฟอร์มแก้ไข
+        \Log::info('เข้าถึงฟอร์มแก้ไขความเสี่ยงระดับองค์กร', [
+            'risk_id' => $risk->id,
+            'risk_name' => $risk->risk_name,
+            'user' => \Auth::check() ? \Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+
+        // ส่งข้อมูลไปยัง Inertia Page
+        return \Inertia\Inertia::render('organizational_risk/OrganizationalRiskEdit', [
+            'risk' => $risk
+        ]);
+    }
+
+    /**
      * อัปเดตข้อมูลความเสี่ยงระดับองค์กรที่มีอยู่
      * 
      * @param \App\Http\Requests\UpdateOrganizationalRiskRequest $request คำขออัปเดตที่ผ่านการตรวจสอบแล้ว
