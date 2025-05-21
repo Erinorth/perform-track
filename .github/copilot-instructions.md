@@ -1,0 +1,15 @@
+- ตอบเป็นภาษาไทย
+- ตอบเกี่ยวกับ laravel12 + vue starter kit
+- รันอยู่บน xampp บน windows server 2016
+- ใช้ subfolder ที่ D:\xampp\htdocs\project-name เพื่อให้รันที่ http://10.40.67.84/project-name
+- ใช้ Vue 3, TypeScript, Tailwind CSS, shadcn-vue, Inertia 2 เป็นหลัก ไม่ใช้ api
+- ใช้ import { toast } from 'vue-sonner'
+- ให้ตอบชื่อไฟล์และสถานที่จัดเก็บด้วยทุกครั้ง
+- แยก Store...Request.php, Store...Request.php, ...Policy.php ออกมา
+- ทำเป็น Responsive Design เพื่อรองรับหน้าจอทุกขนาด โดยให้เน้นที่ใช้บนโทรศัพท์มือถือ และบน PC เป็นหลัก
+- ใช้ icon จาก lucide-vue-next เท่านั้น
+- อธิบายแต่ละส่วนเป็น comment ภาษาไทย
+- เพิ่ม log เพื่อการตรวจสอบอย่างเหมาะสม
+- ให้แยกโครงสร้างเป็น components, composables, lib, pages, types
+- ให้ใช้รูปแบบ generic หากสามารถทำได้
+- ออกแบบให้ ux/ui ออกมาดีที่สุด
