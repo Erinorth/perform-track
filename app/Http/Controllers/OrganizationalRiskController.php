@@ -81,6 +81,32 @@ class OrganizationalRiskController extends Controller
     }
 
     /**
+     * แสดงรายละเอียดเต็มของความเสี่ยงระดับองค์กร
+     * 
+     * @param \App\Models\OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการแสดง
+     * @return \Inertia\Response หน้า Vue พร้อมข้อมูลความเสี่ยงและความสัมพันธ์
+     */
+    public function show(OrganizationalRisk $organizationalRisk)
+    {
+        // โหลดข้อมูลความเสี่ยงพร้อมความสัมพันธ์
+        $risk = OrganizationalRisk::with(['divisionRisks', 'attachments'])
+            ->findOrFail($organizationalRisk->id);
+        
+        // บันทึก log การเข้าถึงรายละเอียดความเสี่ยง
+        Log::info('เข้าถึงรายละเอียดความเสี่ยงระดับองค์กร', [
+            'risk_id' => $risk->id,
+            'risk_name' => $risk->risk_name,
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+
+        // ส่งข้อมูลไปยังหน้า Vue
+        return Inertia::render('organizational_risk/Show', [
+            'risk' => $risk
+        ]);
+    }
+
+    /**
      * อัปเดตข้อมูลความเสี่ยงระดับองค์กรที่มีอยู่
      * 
      * @param \App\Http\Requests\UpdateOrganizationalRiskRequest $request คำขออัปเดตที่ผ่านการตรวจสอบแล้ว

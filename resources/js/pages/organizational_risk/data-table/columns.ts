@@ -5,6 +5,7 @@
 */
 
 import { h } from 'vue'
+import { router } from '@inertiajs/vue3' // เพิ่มการนำเข้า router จาก inertiajs
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
 import { DataTableColumnHeader, DataTableDropDown } from '@/components/ui/data-table'
 import type { OrganizationalRisk } from '@/types/types'
@@ -148,6 +149,20 @@ export const columns: ColumnDef<OrganizationalRisk>[] = [
         h(DataTableDropDown, {
           data: organization_risk, // ส่งข้อมูล organization_risk ผ่าน data prop
           menuLabel: 'ตัวเลือกความเสี่ยงองค์กร', // custom label สำหรับเมนู
+          onExpand: () => {
+            // เปลี่ยนจาก row.toggleExpanded() เป็น router.visit()
+            // บันทึกการทำงาน (ถ้าต้องการ)
+            console.log('กำลังเปิดรายละเอียดความเสี่ยง ID:', organization_risk.id);
+            
+            // นำทางไปยังหน้า show โดยใช้ ID ของความเสี่ยง
+            router.visit(`/organizational-risks/${organization_risk.id}`, {
+              data: { 
+                previousPage: window.location.href,
+                source: 'data-table'
+              },
+              preserveState: true
+            });
+          },
           onEdit: () => {
             //logTableAction('edit', 'organizational_risk', organization_risk.id)
             meta?.onEdit?.(organization_risk)
