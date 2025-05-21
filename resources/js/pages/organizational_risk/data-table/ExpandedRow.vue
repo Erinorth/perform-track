@@ -235,12 +235,32 @@ onMounted(() => {
                         class="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" 
                       />
                       <div class="min-w-0 overflow-hidden">
-                        <p class="font-medium truncate" @click="viewAttachmentFullScreen(attachment)">{{ attachment.file_name }}</p>
+                        <p class="font-medium truncate">{{ attachment.file_name }}</p>
                         <p class="text-xs text-muted-foreground mt-1">
                           {{ formatFileSize(attachment.file_size) }} • 
                           อัปโหลดเมื่อ {{ new Date(attachment.created_at).toLocaleDateString('th-TH') }}
                         </p>
                       </div>
+                    </div>
+                    <!-- ปุ่ม ดู/ดาวน์โหลด -->
+                    <div class="flex items-center gap-2 mt-2 sm:mt-0">
+                      <button
+                        v-if="attachment.file_type && attachment.file_type.includes('pdf')"
+                        @click="viewAttachmentFullScreen(attachment)"
+                        class="inline-flex items-center justify-center rounded-md p-1 text-primary hover:bg-primary/10 transition"
+                        title="ดูไฟล์"
+                        type="button"
+                      >
+                        <Eye class="h-4 w-4" />
+                      </button>
+                      <button
+                        @click="downloadAttachment(attachment)"
+                        class="inline-flex items-center justify-center rounded-md p-1 text-primary hover:bg-primary/10 transition"
+                        title="ดาวน์โหลด"
+                        type="button"
+                      >
+                        <Download class="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 </li>
