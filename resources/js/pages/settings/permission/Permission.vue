@@ -4,10 +4,10 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { Head } from '@inertiajs/vue3';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { type BreadcrumbItem } from '@/types';
-import { columns } from '@/features/permission/components/data-table/columns';
-import DataTable from '@/features/permission/components/data-table/DataTable.vue';
-import { usePermissionData } from '@/features/permission/composables/usePermissionData';
-import type { UserPermission } from '@/features/permission/types/permission';
+import { columns } from '@/pages/settings/permission/data-table/data-table/columns';
+import DataTable from '@/pages/settings/permission/data-table/data-table/DataTable.vue';
+import { usePermissionData } from '@/pages/settings/permission/data-table/composables/usePermissionData';
+import type { UserPermission } from '@/pages/settings/permission/data-table/types/permission';
 
 // รับค่า props จาก Inertia
 const props = defineProps<{

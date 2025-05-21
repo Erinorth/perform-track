@@ -2,7 +2,7 @@ import { h } from 'vue'
 import { ColumnDef } from '@tanstack/vue-table'
 import { Checkbox } from '@/components/ui/checkbox'
 import DataTableColumnHeader from './DataTableColumnHeader.vue'
-import type { UserPermission } from '@/features/permission/types/permission';
+import type { UserPermission } from '@/pages/settings/permission/data-table/types/permission';
 
 export const columns: ColumnDef<UserPermission>[] = [
   {

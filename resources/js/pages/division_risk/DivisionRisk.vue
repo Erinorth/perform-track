@@ -19,16 +19,16 @@ import { type BreadcrumbItem } from '@/types';
 import type { DivisionRisk } from '@/types/types';
 
 // ==================== นำเข้า Components ====================
-import DataTable from '@/features/division_risk/DataTable.vue';
+import DataTable from '@/pages/division_risk/data-table/DataTable.vue';
 import DivisionRiskModal from './DivisionRiskModal.vue';
-import HeaderSection from '@/features/division_risk/HeaderSection.vue';
+import HeaderSection from '@/pages/division_risk/data-table/HeaderSection.vue';
 // นำเข้า component สำหรับแสดง dialog ยืนยันการทำงานต่างๆ เช่น การลบข้อมูล
 import AlertConfirmDialog from '@/components/AlertConfirmDialog.vue';
 // นำเข้า composable สำหรับจัดการสถานะและการทำงานของ confirm dialog
 import { useConfirm } from '@/composables/useConfirm';
 
 // ==================== นำเข้า Composables และ Utilities ====================
-import { columns } from '@/features/division_risk/columns';
+import { columns } from '@/pages/division_risk/data-table/columns';
 import { useDivisionRiskActions } from '@/composables/useDivisionRiskActions';
 
 // ==================== กำหนด Breadcrumbs ====================

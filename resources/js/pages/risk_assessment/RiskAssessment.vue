@@ -19,16 +19,16 @@ import { type BreadcrumbItem } from '@/types';
 import type { RiskAssessment } from '@/types/types';
 
 // ==================== นำเข้า Components ====================
-import DataTable from '@/features/risk_assessment/DataTable.vue';
+import DataTable from '@/pages/risk_assessment/data-table/DataTable.vue';
 import RiskAssessmentModal from './RiskAssessmentModal.vue';
-import HeaderSection from '@/features/risk_assessment/HeaderSection.vue';
+import HeaderSection from '@/pages/risk_assessment/data-table/HeaderSection.vue';
 // นำเข้า component สำหรับแสดง dialog ยืนยันการทำงานต่างๆ เช่น การลบข้อมูล
 import AlertConfirmDialog from '@/components/AlertConfirmDialog.vue';
 // นำเข้า composable สำหรับจัดการสถานะและการทำงานของ confirm dialog
 import { useConfirm } from '@/composables/useConfirm';
 
 // ==================== นำเข้า Composables และ Utilities ====================
-import { columns } from '@/features/risk_assessment/columns';
+import { columns } from '@/pages/risk_assessment/data-table/columns';
 import { useRiskAssessmentActions } from '@/composables/useRiskAssessmentActions';
 
 import { onMounted } from 'vue'
