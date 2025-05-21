@@ -219,6 +219,8 @@ const deleteRisk = async () => {
         });
         // log สำเร็จ
         console.log('Show: ลบความเสี่ยงสำเร็จ', props.risk.id);
+        // กลับไปหน้า index หลังลบสำเร็จ
+        router.visit(route('organizational-risks.index'));
       },
       onError: (err) => {
         toast.error('เกิดข้อผิดพลาด', {

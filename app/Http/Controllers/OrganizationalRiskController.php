@@ -127,7 +127,7 @@ class OrganizationalRiskController extends Controller
         ]);
 
         // ส่งข้อมูลไปยัง Inertia Page
-        return \Inertia\Inertia::render('organizational_risk/OrganizationalRiskEdit', [
+        return Inertia::render('organizational_risk/OrganizationalRiskEdit', [
             'risk' => $risk
         ]);
     }
@@ -301,30 +301,29 @@ class OrganizationalRiskController extends Controller
     /**
      * ประมวลผลไฟล์เอกสารแนบเดี่ยว
      * 
-     * เมธอดพื้นฐานสำหรับการจัดการไฟล์เดียว ใช้ร่วมกันระหว่างเมธอดอื่นๆ
-     * เพื่อลดความซ้ำซ้อนของโค้ด
-     * 
      * @param \Illuminate\Http\UploadedFile $file ไฟล์ที่อัปโหลด
      * @param \App\Models\OrganizationalRisk $risk ความเสี่ยงที่เชื่อมโยงกับไฟล์
-     * @param string $storagePath พาธสำหรับจัดเก็บไฟล์ (ค่าเริ่มต้น: attachments/organizational-risks)
+     * @param string $storagePath พาธสำหรับจัดเก็บไฟล์ (ค่าเริ่มต้น: organizational_risk_attachments/{risk_id})
      * @return array ข้อมูลเอกสารแนบที่บันทึกแล้ว
      */
-    private function processAttachmentFile($file, $risk, $storagePath = 'attachments/organizational-risks')
+    private function processAttachmentFile($file, $risk, $storagePath = null)
     {
+        // กำหนด path หลักสำหรับไฟล์แนบ
+        $storagePath = $storagePath ?? ('organizational_risk/' . $risk->id);
+
         // เก็บไฟล์ในพื้นที่จัดเก็บสาธารณะ
         $path = $file->store($storagePath, 'public');
         
         // สร้างเอกสารแนบในฐานข้อมูล
-        $attachment = $risk->attachment()->create([
+        $attachment = $risk->attachments()->create([
             'file_name' => $file->getClientOriginalName(),
-            'file_path' => $path,
+            'file_path' => $storagePath . '/' . basename($path),
             'file_type' => $file->getClientMimeType(),
             'file_size' => $file->getSize()
         ]);
         
         return $attachment->toArray();
     }
-
 
     /**
      * จัดการเอกสารแนบหลายไฟล์สำหรับความเสี่ยงองค์กร
@@ -336,12 +335,14 @@ class OrganizationalRiskController extends Controller
      */
     private function handleAttachments($request, $risk)
     {
+        // กำหนด path หลักสำหรับไฟล์แนบ
+        $filePath = 'organizational_risk/' . $risk->id;
+
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
                 $fileName = time() . '_' . $file->getClientOriginalName();
-                $filePath = 'risk_attachments/' . $risk->id;
-                
-                $path = $file->storeAs('public/' . $filePath, $fileName);
+                // เก็บไฟล์ใน storage/app/public/organizational_risk/{risk_id}
+                $path = $file->storeAs($filePath, $fileName, 'public');
                 
                 if ($path) {
                     OrganizationalRiskAttachment::create([
@@ -383,7 +384,7 @@ class OrganizationalRiskController extends Controller
             $attachment = $this->processAttachmentFile(
                 $file,
                 $risk,
-                'organizational_risk_attachments'
+                'organizational_risk/' . $risk->id
             );
             
             // บันทึก log สำหรับติดตาม
@@ -426,13 +427,8 @@ class OrganizationalRiskController extends Controller
     public function destroyAttachment(OrganizationalRisk $organizationalRisk, $attachmentId)
     {
         try {
-            // ค้นหาเอกสารแนบตาม ID ที่เชื่อมโยงกับความเสี่ยงนี้
             $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
-            
-            // ลบไฟล์จาก storage
             Storage::disk('public')->delete($attachment->file_path);
-            
-            // ลบข้อมูลจากฐานข้อมูล
             $attachment->delete();
             
             // บันทึกล็อกสำหรับการตรวจสอบ
@@ -474,20 +470,12 @@ class OrganizationalRiskController extends Controller
      */
     private function handleAttachmentsToDelete($request, $organizationalRisk)
     {
-        // ตรวจสอบว่ามีรายการเอกสารแนบที่ต้องการลบหรือไม่
         if ($request->has('attachments_to_delete') && is_array($request->attachments_to_delete)) {
-            // วนลูปลบเอกสารแนบทีละรายการ
             foreach ($request->attachments_to_delete as $attachmentId) {
                 try {
-                    // ค้นหาเอกสารแนบที่ต้องการลบ
                     $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
-                    
-                    // ลบไฟล์จาก storage
                     Storage::disk('public')->delete($attachment->file_path);
-                    
-                    // ลบข้อมูลจากฐานข้อมูล
                     $attachment->delete();
-                    
                     // บันทึกล็อกสำหรับการตรวจสอบ
                     Log::info('ลบเอกสารแนบสำหรับความเสี่ยงองค์กรขณะอัปเดต', [
                         'risk_id' => $organizationalRisk->id,
@@ -520,10 +508,7 @@ class OrganizationalRiskController extends Controller
     public function downloadAttachment(OrganizationalRisk $organizationalRisk, $attachmentId)
     {
         try {
-            // ค้นหาเอกสารแนบตาม ID ที่เชื่อมโยงกับความเสี่ยงนี้
             $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
-            
-            // ตรวจสอบว่าไฟล์มีอยู่จริงในระบบ
             if (!Storage::disk('public')->exists($attachment->file_path)) {
                 Log::error('ไม่พบไฟล์เอกสารแนบในระบบ', [
                     'risk_id' => $organizationalRisk->id,
@@ -531,13 +516,10 @@ class OrganizationalRiskController extends Controller
                     'file_path' => $attachment->file_path,
                     'user' => Auth::check() ? Auth::user()->name : null
                 ]);
-                
                 return response()->json([
                     'error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'
                 ], 404);
             }
-            
-            // บันทึกล็อกการดาวน์โหลด
             Log::info('ดาวน์โหลดเอกสารแนบ', [
                 'risk_id' => $organizationalRisk->id,
                 'attachment_id' => $attachmentId,
@@ -545,8 +527,6 @@ class OrganizationalRiskController extends Controller
                 'user' => Auth::check() ? Auth::user()->name : null,
                 'timestamp' => now()->format('Y-m-d H:i:s')
             ]);
-            
-            // ส่งไฟล์กลับไปยังผู้ใช้เพื่อดาวน์โหลด
             return Storage::disk('public')->download(
                 $attachment->file_path, 
                 $attachment->file_name
@@ -574,23 +554,25 @@ class OrganizationalRiskController extends Controller
      */
     public function viewAttachment(OrganizationalRisk $organizationalRisk, $attachmentId)
     {
+        // ค้นหาเอกสารแนบที่ต้องการดู
         $attachment = OrganizationalRiskAttachment::where('id', $attachmentId)
             ->where('organizational_risk_id', $organizationalRisk->id)
             ->firstOrFail();
-        
-        $path = 'public/' . $attachment->file_path;
-        
+
+        // ใช้ path ตรงจากฟิลด์ file_path (ไม่ต้องเติม public/)
+        $path = $attachment->file_path;
+
         Log::info('ตรวจสอบไฟล์', [
             'file_path' => $attachment->file_path,
-            'full_path' => $path,
-            'exists' => Storage::exists($path),
-            'real_path' => Storage::path($path)
+            'exists' => Storage::disk('public')->exists($path),
+            'real_path' => Storage::disk('public')->path($path)
         ]);
-        
-        if (!Storage::exists($path)) {
+
+        if (!Storage::disk('public')->exists($path)) {
             return response()->json(['error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'], 404);
         }
-        
-        return response()->file(Storage::path($path));
+
+        // ส่งไฟล์กลับไปแสดงในเบราว์เซอร์ (inline)
+        return response()->file(Storage::disk('public')->path($path));
     }
 }
