@@ -5,10 +5,13 @@
 */
 
 import { h } from 'vue'
+import { router } from '@inertiajs/vue3' // เพิ่มการนำเข้า router จาก inertiajs
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
 import { DataTableColumnHeader, DataTableDropDown } from '@/components/ui/data-table'
 import type { DivisionRisk } from '@/types/types'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
+import { ChevronDown } from 'lucide-vue-next'
 
 // ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล
 declare module '@tanstack/vue-table' {
@@ -53,6 +56,29 @@ export const columns: ColumnDef<DivisionRisk>[] = [
         title: 'Risk Name'
       })
     ),
+    // เพิ่มปุ่มสามเหลี่ยมย่อ/ขยายพร้อมกับชื่อความเสี่ยง
+    cell: ({ row }) => {
+      const risk_name = row.getValue("risk_name") as string
+      
+      return h('div', { class: 'flex items-center gap-2' }, [
+        // ปุ่มสามเหลี่ยมสำหรับย่อ/ขยาย
+        h(Button, {
+          variant: 'ghost',
+          size: 'icon',
+          class: 'p-0 h-8 w-8',
+          onClick: (e: Event) => {
+            e.stopPropagation() // ป้องกันการ bubble ของ event
+            // บันทึกการทำงานของปุ่ม (ถ้าต้องการ)
+            // logTableAction('expand', 'organizational_risk', row.original.id)
+            row.toggleExpanded() // สลับสถานะย่อ/ขยาย
+          }
+        }, () => h(ChevronDown, {
+          class: `h-4 w-4 transition-transform ${row.getIsExpanded() ? 'rotate-180' : ''}`,
+        })),
+        // ชื่อความเสี่ยง
+        h('span', {}, risk_name)
+      ])
+    },
   },
   {
     accessorKey: "description", // รายละเอียดความเสี่ยง
@@ -123,8 +149,16 @@ export const columns: ColumnDef<DivisionRisk>[] = [
           data: division_risk, // ส่งข้อมูล division_risk ผ่าน data prop
           menuLabel: 'ตัวเลือกความเสี่ยงฝ่าย', // custom label สำหรับเมนู
           onExpand: () => {
-            //logTableAction('expand', 'division_risk', division_risk.id)
-            row.toggleExpanded()
+            console.log('กำลังเปิดรายละเอียดความเสี่ยง ID:', division_risk.id);
+            
+            // นำทางไปยังหน้า show โดยใช้ ID ของความเสี่ยง
+            router.visit(`/division-risks/${division_risk.id}`, {
+              data: { 
+                previousPage: window.location.href,
+                source: 'data-table'
+              },
+              preserveState: true
+            });
           },
           onEdit: () => {
             //logTableAction('edit', 'division_risk', division_risk.id)

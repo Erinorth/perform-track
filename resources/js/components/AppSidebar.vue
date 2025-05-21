@@ -13,7 +13,12 @@ import { type NavItem } from '@/types';
 // นำเข้า Link จาก Inertia.js สำหรับการนำทางโดยไม่ต้องโหลดหน้าใหม่
 import { Link } from '@inertiajs/vue3';
 // นำเข้าไอคอนจาก lucide-vue-next สำหรับประกอบรายการเมนู
-import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { 
+    LayoutGrid, 
+    CircleAlert, 
+    List,
+    Info
+} from 'lucide-vue-next';
 // นำเข้า AppLogo สำหรับแสดงโลโก้ของแอปพลิเคชัน
 import AppLogo from './AppLogo.vue';
 
@@ -22,32 +27,22 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: '/dashboard',
-        icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้า Dashboard
+        icon: LayoutGrid, // ไอคอนตารางเลย์เอาท์เหมาะสมสำหรับหน้า Dashboard
     },
     {
         title: 'Organizational Risk',
         href: '/organizational-risks',
-        icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้าความเสี่ยงระดับองค์กร
+        icon: CircleAlert, // ไอคอนเตือนแบบวงกลมเหมาะกับความเสี่ยงระดับองค์กร
     },
     {
         title: 'Division Risk',
         href: '/division-risks',
-        icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้าความเสี่ยงระดับแผนก
+        icon: Info, // ไอคอนข้อมูลเหมาะสำหรับความเสี่ยงระดับแผนก
     },
     {
         title: 'Risk Assessment',
         href: '/risk-assessments',
-        icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้าประเมินความเสี่ยง
-    },
-    {
-        title: 'Risk Assessment2',
-        href: '/risk-assessments2',
-        icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้าประเมินความเสี่ยง
-    },
-    {
-        title: 'Reports',
-        href: '/reports',
-        icon: LayoutGrid, // ใช้ไอคอน LayoutGrid สำหรับหน้ารายงาน
+        icon: List, // ไอคอนรายการเหมาะสำหรับการประเมินความเสี่ยง
     },
 ];
 
