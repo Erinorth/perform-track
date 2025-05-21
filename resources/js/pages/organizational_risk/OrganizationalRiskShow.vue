@@ -27,6 +27,8 @@ import { router } from '@inertiajs/vue3';
 // ==================== นำเข้า Components ====================
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AlertConfirmDialog from '@/components/AlertConfirmDialog.vue';
+import { useConfirm } from '@/composables/useConfirm';
 
 // ==================== นำเข้า Utilities ====================
 import { toast } from 'vue-sonner';
@@ -36,7 +38,8 @@ import {
   ClipboardList, AlertTriangle, Network, 
   CalendarDays, Users, Paperclip, Download, 
   FileText, FileImage, FileSpreadsheet, Eye,
-  ArrowLeft, Pencil
+  ArrowLeft, Pencil,
+  Trash
 } from 'lucide-vue-next';
 
 // ==================== กำหนด Props ====================
@@ -185,6 +188,61 @@ onMounted(() => {
     console.log('Show: โหลดข้อมูลรายละเอียดสำหรับความเสี่ยง:', props.risk.risk_name);
   }, 300);
 });
+
+// ==================== ฟังก์ชันลบความเสี่ยงระดับองค์กร (อยู่ในหน้านี้) ====================
+const isDeleting = ref(false);
+
+// ฟังก์ชันแสดง dialog ยืนยันการลบ
+const confirmDelete = () => {
+  openConfirm({
+    title: 'ยืนยันการลบความเสี่ยง',
+    message: `คุณต้องการลบ "${props.risk.risk_name}" หรือไม่? การลบนี้ไม่สามารถย้อนกลับได้`,
+    confirmText: 'ลบ',
+    cancelText: 'ยกเลิก',
+    onConfirm: async () => {
+      await deleteRisk();
+    }
+  });
+};
+
+// ฟังก์ชันลบความเสี่ยง
+const deleteRisk = async () => {
+  isDeleting.value = true;
+  // log สำหรับตรวจสอบ
+  console.log('Show: เริ่มลบความเสี่ยง', props.risk.id);
+  try {
+    await router.delete(route('organizational-risks.destroy', props.risk.id), {
+      onSuccess: () => {
+        toast.success('ลบความเสี่ยงระดับองค์กรเรียบร้อยแล้ว', {
+          description: 'ข้อมูลถูกลบเรียบร้อย',
+          duration: 3000
+        });
+        // log สำเร็จ
+        console.log('Show: ลบความเสี่ยงสำเร็จ', props.risk.id);
+      },
+      onError: (err) => {
+        toast.error('เกิดข้อผิดพลาด', {
+          description: 'ไม่สามารถลบข้อมูลได้',
+          duration: 4000
+        });
+        console.error('Show: ลบความเสี่ยงล้มเหลว', err);
+      },
+      onFinish: () => {
+        isDeleting.value = false;
+      }
+    });
+  } catch (e) {
+    isDeleting.value = false;
+    toast.error('เกิดข้อผิดพลาด', {
+      description: 'ไม่สามารถลบข้อมูลได้',
+      duration: 4000
+    });
+    console.error('Show: ลบความเสี่ยงล้มเหลว', e);
+  }
+};
+
+// เพิ่ม openConfirm จาก useConfirm
+const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm } = useConfirm();
 </script>
 
 <template>
@@ -220,6 +278,15 @@ onMounted(() => {
           >
             <Pencil class="mr-1 h-4 w-4" />
             แก้ไข
+          </Button>
+          <Button 
+            size="sm"
+            :disabled="isDeleting"
+            variant="destructive"
+            @click="confirmDelete"
+          >
+            <Trash class="mr-1 h-4 w-4" />
+            ลบ
           </Button>
         </div>
       </div>
@@ -363,6 +430,18 @@ onMounted(() => {
           </Card>
         </div>
       </div>
+
+      <AlertConfirmDialog
+        v-model:show="isOpen"
+        :title="options?.title || ''"
+        :message="options?.message || ''"
+        :confirm-text="options?.confirmText"
+        :cancel-text="options?.cancelText"
+        :processing="isProcessing"
+        @confirm="handleConfirm"
+        @cancel="handleCancel"
+      />
+
     </div>
   </AppLayout>
 </template>

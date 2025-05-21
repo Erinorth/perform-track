@@ -63,6 +63,11 @@ export function useConfirm() {
     }
     isOpen.value = false;
   };
+
+  const openConfirm = (opts: ConfirmOptions) => {
+    options.value = opts;
+    isOpen.value = true;
+  };
   
   return {
     isOpen,             // ไม่ใช้ readonly
@@ -71,6 +76,7 @@ export function useConfirm() {
     setIsOpen,          // เพิ่มฟังก์ชันควบคุมสถานะ
     confirm,
     handleConfirm,
-    handleCancel
+    handleCancel,
+    openConfirm         // ฟังก์ชันสำหรับเปิด confirm dialog
   };
 }
