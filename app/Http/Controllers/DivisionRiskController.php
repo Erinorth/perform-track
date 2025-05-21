@@ -158,6 +158,44 @@ class DivisionRiskController extends Controller
     }
 
     /**
+     * แสดงฟอร์มสำหรับแก้ไขความเสี่ยงระดับหน่วยงาน
+     * ดึงข้อมูลความเสี่ยงที่ต้องการแก้ไขและข้อมูลความเสี่ยงระดับองค์กรเพื่อให้เลือก
+     *
+     * @param \App\Models\DivisionRisk $divisionRisk ข้อมูลความเสี่ยงที่ต้องการแก้ไข
+     * @return \Inertia\Response หน้า Vue พร้อมข้อมูลที่จำเป็นสำหรับการแก้ไข
+     */
+    public function edit(DivisionRisk $divisionRisk)
+    {
+        // บันทึกข้อมูลการเข้าถึงฟอร์มแก้ไขความเสี่ยง
+        Log::info('เข้าถึงฟอร์มแก้ไขความเสี่ยงระดับหน่วยงาน', [
+            'division_risk_id' => $divisionRisk->id,
+            'risk_name' => $divisionRisk->risk_name,
+            'user_id' => auth()->id() ?? 'guest',
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+
+        // โหลดความสัมพันธ์ที่จำเป็นสำหรับการแก้ไข
+        $divisionRisk->load([
+            'organizationalRisk', 
+            'attachments', 
+            'likelihoodCriteria', 
+            'impactCriteria'
+        ]);
+
+        // ดึงข้อมูลความเสี่ยงระดับองค์กรทั้งหมดเพื่อให้ผู้ใช้เลือก
+        $organizationalRisks = OrganizationalRisk::orderBy('risk_name')->get();
+
+        // ส่งข้อมูลไปยังหน้า Vue พร้อมข้อมูลที่จำเป็นสำหรับการแก้ไข
+        return Inertia::render('division_risk/DivisionRiskEdit', [
+            'risk' => $divisionRisk,
+            'organizationalRisks' => $organizationalRisks,
+            'attachments' => $divisionRisk->attachments,
+            'likelihoodCriteria' => $divisionRisk->likelihoodCriteria,
+            'impactCriteria' => $divisionRisk->impactCriteria
+        ]);
+    }
+
+    /**
      * อัปเดตข้อมูลความเสี่ยงระดับฝ่ายที่มีอยู่
      * 
      * @param \App\Http\Requests\UpdateDivisionRiskRequest $request คำขออัปเดตที่ผ่านการตรวจสอบแล้ว
