@@ -56,7 +56,7 @@ const breadcrumbs: BreadcrumbItem[] = [
   },
   {
     title: props.risk.risk_name,
-    href: '#',
+    href: route('organizational-risks.show', props.risk.id),
   },
   {
     title: 'แก้ไข',
@@ -112,7 +112,7 @@ onMounted(() => {
  * กลับไปยังหน้ารายการความเสี่ยง
  */
 const goBack = () => {
-  router.get(route('organizational-risks.index'))
+  router.get(route('organizational-risks.show', props.risk.id))
 }
 
 /**
@@ -195,7 +195,7 @@ const handleSubmit = async () => {
     await submitForm(
       { risk_name: form.risk_name, description: form.description }, 
       props.risk?.id,
-      () => router.get(route('organizational-risks.index')) // callback เมื่อสำเร็จ
+      () => router.get(route('organizational-risks.show', props.risk.id)) // callback เมื่อสำเร็จ
     )
     
     // เปลี่ยน toast เป็นแจ้งเตือนสำเร็จ
