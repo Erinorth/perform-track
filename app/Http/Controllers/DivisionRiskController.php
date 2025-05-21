@@ -122,6 +122,42 @@ class DivisionRiskController extends Controller
     }
 
     /**
+     * แสดงรายละเอียดของความเสี่ยงฝ่ายที่เลือก
+     *
+     * @param  \App\Models\DivisionRisk  $divisionRisk
+     * @return \Inertia\Response
+     */
+    public function show(DivisionRisk $divisionRisk)
+    {
+        // บันทึกข้อมูลการเข้าดูรายละเอียดความเสี่ยง
+        Log::info('User viewing division risk details', [
+            'division_risk_id' => $divisionRisk->id,
+            'risk_name' => $divisionRisk->risk_name,
+            'user_id' => auth()->id() ?? 'guest'
+        ]);
+
+        // โหลดความสัมพันธ์ที่จำเป็นสำหรับการแสดงรายละเอียด
+        $divisionRisk->load([
+            'organizationalRisk', 
+            'likelihoodCriteria', 
+            'impactCriteria',
+            'attachments',
+            'riskAssessments' => function ($query) {
+                $query->orderBy('assessment_date', 'desc');
+            }
+        ]);
+
+        // ส่งข้อมูลไปยังหน้า Vue พร้อมแยก props เฉพาะสำหรับแต่ละส่วน
+        return Inertia::render('division_risk/DivisionRiskShow', [
+            'risk' => $divisionRisk,
+            'organizational_risk' => $divisionRisk->organizationalRisk,
+            'likelihood_criteria' => $divisionRisk->likelihoodCriteria,
+            'impact_criteria' => $divisionRisk->impactCriteria,
+            'assessments' => $divisionRisk->riskAssessments
+        ]);
+    }
+
+    /**
      * อัปเดตข้อมูลความเสี่ยงระดับฝ่ายที่มีอยู่
      * 
      * @param \App\Http\Requests\UpdateDivisionRiskRequest $request คำขออัปเดตที่ผ่านการตรวจสอบแล้ว
