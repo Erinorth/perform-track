@@ -3,10 +3,13 @@
 // เพิ่ม event สำหรับลบ (delete) ข้อมูลใน action และแสดงชื่อความเสี่ยงระดับฝ่าย
 
 import { h } from 'vue'
+import { router } from '@inertiajs/vue3' // เพิ่มการนำเข้า router จาก inertiajs
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
 import { DataTableColumnHeader, DataTableDropDown } from '@/components/ui/data-table'
 import type { RiskAssessment } from '@/types/types'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
+import { ChevronDown } from 'lucide-vue-next'
 // นำเข้า icon จาก lucide-vue-next (ถ้าต้องการใช้)
 import { FileText } from 'lucide-vue-next'
 import { filterByPeriod, filterByRiskScore } from "@/lib/utils"
@@ -72,9 +75,24 @@ export const columns: ColumnDef<RiskAssessment>[] = [
     cell: ({ row }) => {
       const divisionRisk = row.original.division_risk
       console.log('แสดงชื่อความเสี่ยงระดับฝ่าย:', divisionRisk?.risk_name || 'ไม่มีข้อมูล')
-      return h('div', { class: 'max-w-[200px] truncate font-medium' }, 
-        divisionRisk?.risk_name || '-'
-      )
+      
+      return h('div', { class: 'flex items-center gap-2' }, [
+        // ปุ่มสามเหลี่ยมสำหรับย่อ/ขยาย
+        h(Button, {
+          variant: 'ghost',
+          size: 'icon',
+          class: 'p-0 h-8 w-8',
+          onClick: (e: Event) => {
+            e.stopPropagation() // ป้องกันการ bubble ของ event
+            // logTableAction('expand', 'division_risk', row.original.id)
+            row.toggleExpanded() // สลับสถานะย่อ/ขยาย
+          }
+        }, () => h(ChevronDown, {
+          class: `h-4 w-4 transition-transform ${row.getIsExpanded() ? 'rotate-180' : ''}`,
+        })),
+        // ชื่อความเสี่ยงระดับฝ่าย
+        h('span', { class: 'truncate font-medium' }, divisionRisk?.risk_name || '-')
+      ])
     },
     enableSorting: true,
   },
@@ -285,7 +303,13 @@ export const columns: ColumnDef<RiskAssessment>[] = [
           menuLabel: 'ตัวเลือกการประเมินความเสี่ยง',
           onExpand: () => {
             console.log('ขยายแถวข้อมูล', assessment.id)
-            row.toggleExpanded()
+            router.visit(`/organizational-risks/${assessment.id}`, {
+              data: { 
+                previousPage: window.location.href,
+                source: 'data-table'
+              },
+              preserveState: true
+            });
           },
           onEdit: () => {
             console.log('แก้ไขข้อมูลความเสี่ยง:', assessment.id)
