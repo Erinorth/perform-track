@@ -11,6 +11,8 @@ namespace App\Http\Controllers;
 
 // นำเข้า Models และ Requests ที่เกี่ยวข้อง
 use App\Models\RiskAssessment;  // โมเดลสำหรับจัดการข้อมูลการประเมินความเสี่ยง
+use App\Models\LikelihoodCriterion;  // โมเดลสำหรับจัดการข้อมูลเกณฑ์โอกาส
+use App\Models\ImpactCriterion;  // โมเดลสำหรับจัดการข้อมูลเกณฑ์ผลกระทบ
 use App\Models\RiskAssessmentAttachment;  // โมเดลสำหรับจัดการข้อมูลเอกสารแนบ
 use App\Models\DivisionRisk;  // โมเดลสำหรับจัดการข้อมูลความเสี่ยงระดับฝ่าย
 use App\Http\Requests\StoreRiskAssessmentRequest;  // Form Request สำหรับตรวจสอบข้อมูลการเพิ่ม
@@ -165,7 +167,7 @@ class RiskAssessmentController extends Controller
         $likelihoodCriteria = LikelihoodCriterion::all()->groupBy('division_risk_id');
         $impactCriteria = ImpactCriterion::all()->groupBy('division_risk_id');
         
-        return Inertia::render('risk_assessment/Edit', [
+        return Inertia::render('risk_assessment/RiskAssessmentEdit', [
             'riskAssessment' => $riskAssessment,
             'divisionRisks' => $divisionRisks,
             'likelihoodCriteria' => $likelihoodCriteria,
