@@ -303,7 +303,7 @@ export const columns: ColumnDef<RiskAssessment>[] = [
           menuLabel: 'ตัวเลือกการประเมินความเสี่ยง',
           onExpand: () => {
             console.log('ขยายแถวข้อมูล', assessment.id)
-            router.visit(`/organizational-risks/${assessment.id}`, {
+            router.visit(`/risk-assessments/${assessment.id}`, {
               data: { 
                 previousPage: window.location.href,
                 source: 'data-table'
