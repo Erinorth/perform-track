@@ -1,5 +1,5 @@
 <!-- 
-  ไฟล์: resources/js/pages/organizational_risk/Show.vue
+  ไฟล์: resources/js/pages/organizational_risk/OrganizationalRiskShow.vue
   
   คำอธิบาย: หน้าแสดงรายละเอียดเต็มของความเสี่ยงระดับองค์กร
   ฟีเจอร์หลัก:

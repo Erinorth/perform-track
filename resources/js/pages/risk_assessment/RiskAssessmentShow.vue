@@ -42,7 +42,14 @@ import {
   XCircle,
   ClipboardList,
   Network,
-  Link,
+  Link,Paperclip,
+  Download,
+  Eye,
+  FileImage,
+  FileSpreadsheet,
+  User,
+  ArrowDown,
+  History
 } from 'lucide-vue-next'
 
 // ==================== กำหนด Props ====================
@@ -81,6 +88,15 @@ interface RiskAssessment {
   risk_score: number
   notes: string | null
   division_risk: DivisionRisk
+  attachments?: RiskAssessmentAttachment[]
+}
+
+interface RiskAssessmentAttachment {
+  id: number
+  filename: string
+  filepath: string
+  filetype: string | null
+  filesize: number | null
 }
 
 const props = defineProps<{
@@ -141,6 +157,16 @@ const formattedAssessmentDate = computed(() => {
         day: 'numeric'
       }) 
     : 'ไม่ระบุ'
+})
+
+// ตรวจสอบว่ามีเอกสารแนบหรือไม่
+const hasAttachments = computed(() => {
+  return props.riskAssessment.attachments && props.riskAssessment.attachments.length > 0
+})
+
+// คำนวณจำนวนเอกสารแนบ
+const attachmentsCount = computed(() => {
+  return hasAttachments.value ? props.riskAssessment.attachments?.length : 0
 })
 
 // ==================== Methods ====================
@@ -219,6 +245,68 @@ const deleteRiskAssessment = async () => {
     })
     console.error('ลบการประเมินความเสี่ยงล้มเหลว:', e)
   }
+}
+
+/**
+ * ฟังก์ชันเลือกไอคอนตามประเภทไฟล์
+ */
+const getFileIcon = (filetype: string | null) => {
+  if (!filetype) return FileText
+  
+  const type = filetype.toLowerCase()
+  
+  if (type.includes('pdf')) {
+    return FileText
+  } else if (type.includes('xls') || type.includes('csv') || type.includes('sheet')) {
+    return FileSpreadsheet
+  } else if (type.includes('image') || type.includes('jpg') || type.includes('png') || type.includes('jpeg')) {
+    return FileImage
+  } else {
+    return FileText // ไอคอนเริ่มต้น
+  }
+}
+
+/**
+ * ฟังก์ชันจัดรูปแบบขนาดไฟล์
+ */
+const formatFileSize = (bytes: number | null) => {
+  if (!bytes) return '0 Bytes'
+  
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+/**
+ * ฟังก์ชันดาวน์โหลดเอกสารแนบ
+ */
+const downloadAttachment = (attachment: any) => {
+  // แสดง toast แจ้งเตือนผู้ใช้
+  toast.info('กำลังดาวน์โหลดเอกสาร', {
+    description: `ไฟล์ ${attachment.filename} กำลังถูกดาวน์โหลด`,
+    duration: 3000
+  })
+  
+  // เพิ่ม log เพื่อการตรวจสอบ
+  console.log('ดาวน์โหลดเอกสารแนบ:', attachment)
+  
+  window.open(route('risk-assessments.attachments.download', attachment.id), '_blank')
+}
+
+/**
+ * ฟังก์ชันเปิดเอกสารแนบแบบเต็มหน้าจอ
+ */
+const viewAttachmentFullScreen = (attachment: any) => {
+  window.open(route('risk-assessments.attachments.view', attachment.id), '_blank')
+  
+  console.log('เปิดหน้าดูไฟล์แนบแบบเต็มจอ:', attachment)
+  
+  toast.info('กำลังเปิดไฟล์แนบ', {
+    description: `กำลังเปิดไฟล์ ${attachment.filename}`,
+    duration: 3000
+  })
 }
 
 // ==================== Lifecycle Hooks ====================
@@ -444,8 +532,66 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
             </Button>
           </div>
         </CardFooter>
-
       </Card>
+
+      <!-- คอลัมน์ขวา ส่วนล่าง: เอกสารแนบ (ถ้ามี) -->
+      <div class="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2">
+              <Paperclip class="h-5 w-5 text-purple-500" />
+              เอกสารแนบ
+              <span v-if="attachmentsCount" class="ml-auto inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10 dark:bg-purple-900/10 dark:text-purple-400 dark:ring-purple-400/30">
+                {{ attachmentsCount }} ไฟล์
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div v-if="hasAttachments" class="space-y-3">
+              <div v-for="attachment in riskAssessment.attachments" :key="attachment.id" 
+                class="flex items-center justify-between gap-4 rounded-lg border p-3 text-sm shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">
+                <!-- แสดงข้อมูลไฟล์ -->
+                <div class="flex flex-1 items-center gap-3 truncate">
+                  <!-- แสดงไอคอนตามประเภทไฟล์ -->
+                  <component :is="getFileIcon(attachment.filetype)" class="h-5 w-5 flex-shrink-0 text-gray-400" />
+                  
+                  <!-- ชื่อไฟล์และข้อมูลขนาด -->
+                  <div class="flex-1 truncate">
+                    <p class="truncate font-medium">{{ attachment.filename }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ formatFileSize(attachment.filesize) }}
+                    </p>
+                  </div>
+                </div>
+                
+                <!-- ปุ่มดำเนินการกับไฟล์ -->
+                <div class="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    @click="viewAttachmentFullScreen(attachment)" 
+                    v-if="attachment.filetype && attachment.filetype.includes('pdf')"
+                  >
+                    <Eye class="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    @click="downloadAttachment(attachment)"
+                  >
+                    <Download class="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-12">
+              <Paperclip class="mx-auto h-12 w-12 text-gray-400" />
+              <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">ไม่มีเอกสารแนบ</h3>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">ยังไม่มีการอัพโหลดเอกสารแนบสำหรับความเสี่ยงนี้</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   </div>
 </div>
