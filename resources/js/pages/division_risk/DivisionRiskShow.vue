@@ -1,5 +1,5 @@
 <!-- 
-  ไฟล์: resources/js/pages/division_risk/Show.vue
+  ไฟล์: resources/js/pages/division_risk/DivisionRiskShow.vue
   
   คำอธิบาย: หน้าแสดงรายละเอียดเต็มของความเสี่ยงระดับฝ่าย
   ฟีเจอร์หลัก:

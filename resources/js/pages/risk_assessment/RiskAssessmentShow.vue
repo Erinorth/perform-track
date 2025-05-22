@@ -1,6 +1,8 @@
+<!-- resources\js\pages\risk_assessment\RiskAssessmentShow.vue -->
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import AppLayout from '@/layouts/AppLayout.vue'
 import { Head } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { 
   ArrowLeftIcon, 
@@ -27,7 +29,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import AppLayout from '@/layouts/AppLayout.vue'
 import RiskMatrix from '@/components/RiskMatrix.vue'
 
 // กำหนดโครงสร้างข้อมูล props

@@ -147,7 +147,7 @@ class RiskAssessmentController extends Controller
             'divisionRisk.impactCriteria'
         ]);
         
-        return Inertia::render('risk_assessment/Show', [
+        return Inertia::render('risk_assessment/RiskAssessmentShow', [
             'riskAssessment' => $riskAssessment
         ]);
     }
