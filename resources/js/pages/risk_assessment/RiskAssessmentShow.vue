@@ -6,6 +6,8 @@ import { Head } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
 
 // ==================== นำเข้า Types และ Interfaces ====================
+
+import type { LikelihoodCriteria, ImpactCriteria, DivisionRisk, RiskAssessment, RiskAssessmentAttachment } from '@/types/types';
 import type { BreadcrumbItem } from '@/types'
 
 // ==================== นำเข้า Vue Composition API ====================
@@ -53,52 +55,6 @@ import {
 } from 'lucide-vue-next'
 
 // ==================== กำหนด Props ====================
-// กำหนดโครงสร้างข้อมูล props
-interface LikelihoodCriteria {
-  id: number
-  level: number
-  name: string
-  description: string | null
-}
-
-interface ImpactCriteria {
-  id: number
-  level: number
-  name: string
-  description: string | null
-}
-
-interface DivisionRisk {
-  id: number
-  risk_name: string
-  description: string
-  organizational_risk: {
-    id: number
-    risk_name: string
-  }
-  likelihood_criteria: LikelihoodCriteria[]
-  impact_criteria: ImpactCriteria[]
-}
-
-interface RiskAssessment {
-  id: number
-  assessment_date: string
-  likelihood_level: number
-  impact_level: number
-  risk_score: number
-  notes: string | null
-  division_risk: DivisionRisk
-  attachments?: RiskAssessmentAttachment[]
-}
-
-interface RiskAssessmentAttachment {
-  id: number
-  filename: string
-  filepath: string
-  filetype: string | null
-  filesize: number | null
-}
-
 const props = defineProps<{
   riskAssessment: RiskAssessment
 }>()
@@ -110,7 +66,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     href: route('risk-assessments.index'),
   },
   {
-    title: props.riskAssessment.division_risk.risk_name,
+    title: props.riskAssessment.division_risk?.risk_name || `การประเมินความเสี่ยง #${props.riskAssessment.id}`,
     href: '#',
   },
 ]
@@ -137,13 +93,13 @@ const riskLevel = computed(() => {
 
 // หาเกณฑ์การประเมินที่สอดคล้องกับระดับที่เลือก
 const selectedLikelihoodCriteria = computed(() => {
-  return props.riskAssessment.division_risk.likelihood_criteria.find(
+  return props.riskAssessment.division_risk?.likelihood_criteria?.find(
     criteria => criteria.level === props.riskAssessment.likelihood_level
   )
 })
 
 const selectedImpactCriteria = computed(() => {
-  return props.riskAssessment.division_risk.impact_criteria.find(
+  return props.riskAssessment.division_risk?.impact_criteria?.find(
     criteria => criteria.level === props.riskAssessment.impact_level
   )
 })
@@ -176,6 +132,47 @@ const toggleRiskMatrix = () => {
   console.log('สลับการแสดงแผนภูมิความเสี่ยง:', showMatrix.value ? 'แสดง' : 'ซ่อน')
 }
 
+/**
+ * ฟังก์ชันดาวน์โหลดเอกสารแนบ
+ */
+const downloadAttachment = (attachment: any) => {
+  // แสดง toast แจ้งเตือนผู้ใช้
+  toast.info('กำลังดาวน์โหลดเอกสาร', {
+    description: `ไฟล์ ${attachment.file_name} กำลังถูกดาวน์โหลด`, // ใช้ file_name แทน filename
+    duration: 3000
+  })
+  
+  // เพิ่ม log เพื่อการตรวจสอบ
+  console.log('ดาวน์โหลดเอกสารแนบ:', attachment)
+  
+  // แก้ไขวิธีการส่งพารามิเตอร์เป็นแบบ Object
+  window.open(`/risk-assessments/${props.riskAssessment.id}/attachments/${attachment.id}/download`, '_blank');
+}
+
+// ==================== Lifecycle Hooks ====================
+onMounted(() => {
+  isLoading.value = true
+  
+  setTimeout(() => {
+    isLoading.value = false
+    console.log('โหลดข้อมูลรายละเอียดสำหรับการประเมินความเสี่ยง:', props.riskAssessment.id)
+  }, 300)
+})
+
+/**
+ * ฟังก์ชันเปิดเอกสารแนบแบบเต็มหน้าจอ
+ */
+const viewAttachmentFullScreen = (attachment: any) => {
+  // แก้ไขวิธีการส่งพารามิเตอร์เป็นแบบ Object ที่มี key ชื่อ attachmentId
+  window.open(`/risk-assessments/${props.riskAssessment.id}/attachments/${attachment.id}/view`, '_blank');
+  
+  console.log('เปิดหน้าดูไฟล์แนบแบบเต็มจอ:', attachment)
+  
+  toast.info('กำลังเปิดไฟล์แนบ', {
+    description: `กำลังเปิดไฟล์ ${attachment.file_name}`, // ใช้ file_name แทน filename
+    duration: 3000
+  })
+}
 // ฟังก์ชันนำทางไปยังหน้าแก้ไข
 const navigateToEdit = () => {
   router.visit(route('risk-assessments.edit', props.riskAssessment.id))
@@ -184,14 +181,14 @@ const navigateToEdit = () => {
 
 // ฟังก์ชันนำทางไปยังหน้าแสดงรายละเอียดความเสี่ยงระดับฝ่าย
 const navigateToDivisionRiskDetails = () => {
-  router.visit(route('division-risks.show', props.riskAssessment.division_risk.id))
-  console.log('นำทางไปยังหน้าแสดงรายละเอียดความเสี่ยงระดับฝ่าย:', props.riskAssessment.division_risk.id)
+  router.visit(route('division-risks.show', props.riskAssessment.division_risk?.id))
+  console.log('นำทางไปยังหน้าแสดงรายละเอียดความเสี่ยงระดับฝ่าย:', props.riskAssessment.division_risk?.id)
 }
 
 // ฟังก์ชันนำทางไปยังหน้าแสดงรายละเอียดความเสี่ยงระดับองค์กร
 const navigateToOrganizationalRiskDetails = () => {
-  router.visit(route('organizational-risks.show', props.riskAssessment.division_risk.organizational_risk.id))
-  console.log('นำทางไปยังหน้าแสดงรายละเอียดความเสี่ยงระดับองค์กร:', props.riskAssessment.division_risk.organizational_risk.id)
+  router.visit(route('organizational-risks.show', props.riskAssessment.division_risk?.organizational_risk?.id))
+  console.log('นำทางไปยังหน้าแสดงรายละเอียดความเสี่ยงระดับองค์กร:', props.riskAssessment.division_risk?.organizational_risk?.id)
 }
 
 // ฟังก์ชันแสดง dialog ยืนยันการลบ
@@ -279,46 +276,6 @@ const formatFileSize = (bytes: number | null) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-/**
- * ฟังก์ชันดาวน์โหลดเอกสารแนบ
- */
-const downloadAttachment = (attachment: any) => {
-  // แสดง toast แจ้งเตือนผู้ใช้
-  toast.info('กำลังดาวน์โหลดเอกสาร', {
-    description: `ไฟล์ ${attachment.filename} กำลังถูกดาวน์โหลด`,
-    duration: 3000
-  })
-  
-  // เพิ่ม log เพื่อการตรวจสอบ
-  console.log('ดาวน์โหลดเอกสารแนบ:', attachment)
-  
-  window.open(route('risk-assessments.attachments.download', attachment.id), '_blank')
-}
-
-/**
- * ฟังก์ชันเปิดเอกสารแนบแบบเต็มหน้าจอ
- */
-const viewAttachmentFullScreen = (attachment: any) => {
-  window.open(route('risk-assessments.attachments.view', attachment.id), '_blank')
-  
-  console.log('เปิดหน้าดูไฟล์แนบแบบเต็มจอ:', attachment)
-  
-  toast.info('กำลังเปิดไฟล์แนบ', {
-    description: `กำลังเปิดไฟล์ ${attachment.filename}`,
-    duration: 3000
-  })
-}
-
-// ==================== Lifecycle Hooks ====================
-onMounted(() => {
-  isLoading.value = true
-  
-  setTimeout(() => {
-    isLoading.value = false
-    console.log('โหลดข้อมูลรายละเอียดสำหรับการประเมินความเสี่ยง:', props.riskAssessment.id)
-  }, 300)
-})
-
 // เพิ่ม openConfirm จาก useConfirm
 const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm } = useConfirm()
 </script>
@@ -377,7 +334,7 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
             <CardHeader>
               <CardTitle class="flex items-center gap-2">
                 <ClipboardList class="h-5 w-5 text-blue-500" />
-                การประเมินความเสี่ยง "{{ riskAssessment.division_risk.risk_name }}"
+                การประเมินความเสี่ยง "{{ riskAssessment.division_risk?.risk_name }}"
               </CardTitle>
               <CardDescription class="text-sm text-muted-foreground flex items-center gap-1.5">
                 <CalendarDays class="h-4 w-4" />
@@ -485,20 +442,20 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
             <div>
               <div class="text-sm font-medium text-muted-foreground">ชื่อความเสี่ยง</div>
               <div class="mt-1 text-lg font-medium">
-                {{ riskAssessment.division_risk.risk_name }}
+                {{ riskAssessment.division_risk?.risk_name }}
               </div>
             </div>
             
             <!-- คำอธิบายความเสี่ยงระดับฝ่าย -->
-            <div v-if="riskAssessment.division_risk.description">
+            <div v-if="riskAssessment.division_risk?.description">
               <div class="text-sm font-medium text-muted-foreground">คำอธิบาย</div>
               <div class="mt-1 text-sm whitespace-pre-wrap">
-                {{ riskAssessment.division_risk.description }}
+                {{ riskAssessment.division_risk?.description }}
               </div>
             </div>
 
             <!-- ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง -->
-            <div v-if="riskAssessment.division_risk.organizational_risk">
+            <div v-if="riskAssessment.division_risk?.organizational_risk">
               <div class="text-sm font-medium text-muted-foreground">ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง</div>
               <div class="mt-1 text-sm">
                 {{ riskAssessment.division_risk.organizational_risk.risk_name }}
@@ -521,7 +478,7 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
             
             <!-- ปุ่มที่สอง: ดูความเสี่ยงระดับองค์กร -->
             <Button 
-              v-if="riskAssessment.division_risk.organizational_risk"
+              v-if="riskAssessment.division_risk?.organizational_risk"
               variant="outline" 
               size="sm"
               class="w-full h-8 text-xs overflow-hidden"
@@ -553,13 +510,13 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
                 <!-- แสดงข้อมูลไฟล์ -->
                 <div class="flex flex-1 items-center gap-3 truncate">
                   <!-- แสดงไอคอนตามประเภทไฟล์ -->
-                  <component :is="getFileIcon(attachment.filetype)" class="h-5 w-5 flex-shrink-0 text-gray-400" />
+                  <component :is="getFileIcon(attachment.file_type)" class="h-5 w-5 flex-shrink-0 text-gray-400" />
                   
                   <!-- ชื่อไฟล์และข้อมูลขนาด -->
                   <div class="flex-1 truncate">
-                    <p class="truncate font-medium">{{ attachment.filename }}</p>
+                    <p class="truncate font-medium">{{ attachment.file_name }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ formatFileSize(attachment.filesize) }}
+                      {{ formatFileSize(attachment.file_size) }}
                     </p>
                   </div>
                 </div>
@@ -570,7 +527,7 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
                     variant="ghost" 
                     size="icon" 
                     @click="viewAttachmentFullScreen(attachment)" 
-                    v-if="attachment.filetype && attachment.filetype.includes('pdf')"
+                    v-if="attachment.file_type && attachment.file_type.includes('pdf')"
                   >
                     <Eye class="h-4 w-4" />
                   </Button>

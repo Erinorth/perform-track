@@ -146,7 +146,8 @@ class RiskAssessmentController extends Controller
             'divisionRisk', 
             'divisionRisk.organizationalRisk',
             'divisionRisk.likelihoodCriteria',
-            'divisionRisk.impactCriteria'
+            'divisionRisk.impactCriteria',
+            'attachments'
         ]);
         
         return Inertia::render('risk_assessment/RiskAssessmentShow', [
@@ -382,32 +383,46 @@ class RiskAssessmentController extends Controller
    * @param \App\Models\RiskAssessmentAttachment $attachment ข้อมูลเอกสารแนบ
    * @return \Symfony\Component\HttpFoundation\StreamedResponse
    */
-  public function downloadAttachment(RiskAssessment $riskAssessment, RiskAssessmentAttachment $attachment)
-  {
-      // ตรวจสอบว่าเอกสารแนบนี้เป็นของการประเมินความเสี่ยงที่ระบุหรือไม่
-      if ($attachment->risk_assessment_id !== $riskAssessment->id) {
-          abort(404, 'ไม่พบไฟล์ที่ต้องการ');
-      }
-      
-      // ตรวจสอบว่าไฟล์มีอยู่จริงหรือไม่
-      if (!Storage::disk('public')->exists($attachment->file_path)) {
-          abort(404, 'ไม่พบไฟล์ที่ต้องการ');
-      }
-
-      // บันทึกล็อกการดาวน์โหลดไฟล์
-      Log::info('ดาวน์โหลดไฟล์แนบสำหรับการประเมินความเสี่ยง', [
-          'attachment_id' => $attachment->id,
-          'risk_assessment_id' => $riskAssessment->id,
-          'file_name' => $attachment->file_name,
-          'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-      ]);
-      
-      // ส่งไฟล์ให้ผู้ใช้ดาวน์โหลด
-      return Storage::disk('public')->download(
-          $attachment->file_path, 
-          $attachment->file_name
-      );
-  }
+  public function downloadAttachment(RiskAssessment $riskAssessment, $attachmentId)
+    {
+        try {
+            $attachment = $riskAssessment->attachments()->findOrFail($attachmentId);
+            if (!Storage::disk('public')->exists($attachment->file_path)) {
+                Log::error('ไม่พบไฟล์เอกสารแนบในระบบ', [
+                    'risk_assessment_id' => $riskAssessment->id,
+                    'attachment_id' => $attachmentId,
+                    'file_path' => $attachment->file_path,
+                    'user' => Auth::check() ? Auth::user()->name : null
+                ]);
+                return response()->json([
+                    'error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'
+                ], 404);
+            }
+            Log::info('ดาวน์โหลดเอกสารแนบการประเมินความเสี่ยง', [
+                'risk_assessment_id' => $riskAssessment->id,
+                'attachment_id' => $attachmentId,
+                'file_name' => $attachment->file_name,
+                'user' => Auth::check() ? Auth::user()->name : null,
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
+            return Storage::disk('public')->download(
+                $attachment->file_path, 
+                $attachment->file_name
+            );
+        } catch (\Exception $e) {
+            // บันทึกล็อกกรณีเกิดข้อผิดพลาด
+            Log::error('เกิดข้อผิดพลาดในการดาวน์โหลดเอกสารแนบการประเมินความเสี่ยง', [
+                'risk_assessment_id' => $riskAssessment->id,
+                'attachment_id' => $attachmentId,
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : null
+            ]);
+            
+            return response()->json([
+                'error' => 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสารแนบ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
   /**
    * แสดงเอกสารแนบในเบราว์เซอร์
@@ -445,29 +460,5 @@ class RiskAssessmentController extends Controller
         
         // ส่งไฟล์กลับไปแสดงในเบราว์เซอร์
         return response()->file(Storage::disk('public')->path($path));
-  }
-
-  /**
-   * ดึงรายละเอียดของการประเมินความเสี่ยง (สำหรับ API)
-   * 
-   * @param \App\Models\RiskAssessment $riskAssessment ข้อมูลการประเมินความเสี่ยงที่ต้องการ
-   * @return \Illuminate\Http\JsonResponse
-   */
-  public function getDetails(RiskAssessment $riskAssessment)
-  {
-      // โหลดความสัมพันธ์
-      $riskAssessment->load(['divisionRisk', 'attachments']);
-      
-      // บันทึกล็อกการเข้าถึงข้อมูล
-      Log::info('เข้าถึงรายละเอียดการประเมินความเสี่ยง', [
-          'id' => $riskAssessment->id,
-          'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-      ]);
-      
-      // ส่งข้อมูลกลับในรูปแบบ JSON
-      return response()->json([
-          'data' => $riskAssessment,
-          'message' => 'ดึงข้อมูลสำเร็จ'
-      ]);
   }
 }

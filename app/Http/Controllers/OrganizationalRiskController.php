@@ -545,6 +545,7 @@ class OrganizationalRiskController extends Controller
             ], 500);
         }
     }
+    
     /**
      * แสดงเอกสารแนบของความเสี่ยงองค์กรในเบราว์เซอร์
      * 
