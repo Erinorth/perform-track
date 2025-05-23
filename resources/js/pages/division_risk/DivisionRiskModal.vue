@@ -1,19 +1,15 @@
 <!-- 
   ไฟล์: resources/js/pages/division_risk/DivisionRiskModal.vue
-  วัตถุประสงค์: Modal component สำหรับเพิ่ม/แก้ไขข้อมูลความเสี่ยงระดับฝ่าย
-  ฟีเจอร์หลัก: 
-  - ฟอร์มกรอกข้อมูลความเสี่ยง
-  - เลือกความเสี่ยงระดับองค์กรที่เกี่ยวข้อง
-  - กำหนดเกณฑ์การประเมิน (Likelihood & Impact)
-  - อัปโหลดเอกสารแนบ
-  - Responsive design สำหรับทุกหน้าจอ
+  แก้ไข TypeScript type errors สำหรับ Radix Vue Combobox
+  - กำหนด generic type สำหรับ ComboboxRoot
+  - ปรับแต่ง type definition ให้ compatible
 -->
 
 <script setup lang="ts">
-// =================================================
-// การนำเข้าไลบรารีและ Types
-// =================================================
-import { computed, watch, ref } from 'vue'
+// ===============================
+// Imports
+// ===============================
+import { ref, computed, watch, nextTick } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { toast } from 'vue-sonner'
 
@@ -24,19 +20,25 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 
+// Combobox Radix Vue
+import {
+  ComboboxRoot, ComboboxAnchor, ComboboxInput, ComboboxTrigger, ComboboxContent,
+  ComboboxViewport, ComboboxEmpty, ComboboxItem, ComboboxItemIndicator
+} from 'radix-vue'
+
 // Icons
-import { 
-  SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, 
-  Trash2Icon, HelpCircleIcon, Loader2Icon 
+import {
+  SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon,
+  Trash2Icon, HelpCircleIcon, Loader2Icon, ChevronDownIcon, CheckIcon
 } from 'lucide-vue-next'
 
 // Types และ Composables
 import type { DivisionRisk, OrganizationalRisk } from '@/types/types'
 import { useDivisionRiskData } from '@/composables/useDivisionRiskData'
 
-// =================================================
-// Interface และ Type Definitions
-// =================================================
+// ===============================
+// Interface & Type Definitions
+// ===============================
 interface CriteriaItem {
   level: number;
   name: string;
@@ -52,9 +54,12 @@ type RiskFormData = {
   impact_criteria: Record<string, any>[];
 }
 
-// =================================================
-// Props และ Events
-// =================================================
+// Type สำหรับ Combobox - ให้รองรับ OrganizationalRisk และ undefined
+type ComboboxValue = OrganizationalRisk | undefined
+
+// ===============================
+// Props & Emits
+// ===============================
 const props = defineProps<{
   show: boolean;
   risk?: DivisionRisk;
@@ -67,50 +72,68 @@ const emit = defineEmits<{
   (e: 'saved'): void;
 }>()
 
-// =================================================
-// Reactive Variables
-// =================================================
-// สถานะการแสดงส่วนเกณฑ์การประเมิน
-const showCriteriaSection = ref<boolean>(false);
-// สถานะการแสดงข้อความช่วยเหลือ
+// ===============================
+// State & Reactive
+// ===============================
+const showCriteriaSection = ref<boolean>(false)
 const showHelp = ref<boolean>(false)
 
-// =================================================
+// ฟิลด์ combobox สำหรับความเสี่ยงระดับองค์กร - ปรับ type ให้ compatible
+const organizationalSearch = ref('')
+const selectedOrganizationalRisk = ref<ComboboxValue>(undefined)
+const isComboboxOpen = ref(false)
+
+// Ref สำหรับคำนวณขนาด dropdown
+const comboboxAnchorRef = ref<HTMLElement>()
+const dropdownWidth = ref('auto')
+
+// ฟิลด์ combobox: filter option ตาม search - แก้ไขให้แสดงทั้งหมดเมื่อไม่มี search term
+const filteredOrganizationalRisks = computed(() => {
+  if (!props.organizationalRisks) return []
+  
+  // ถ้าไม่มี search term หรือ search term ว่าง ให้แสดงทั้งหมด
+  if (!organizationalSearch.value || organizationalSearch.value.trim() === '') {
+    return props.organizationalRisks
+  }
+  
+  // กรองตาม search term
+  return props.organizationalRisks.filter(risk =>
+    risk.risk_name.toLowerCase().includes(organizationalSearch.value.toLowerCase())
+  )
+})
+
+// ===============================
 // Composable สำหรับจัดการข้อมูล
-// =================================================
-const { 
+// ===============================
+const {
   existingAttachments, selectedFiles, fileNames,
-  loadAttachments, submitForm, addSelectedFiles, removeSelectedFile, 
+  loadAttachments, submitForm, addSelectedFiles, removeSelectedFile,
   markAttachmentForDeletion, openAttachment, validateFiles,
-  getFileIcon, formatFileSize 
+  getFileIcon, formatFileSize
 } = useDivisionRiskData(props.initialRisks, props.show)
 
-// =================================================
+// ===============================
 // Computed Properties
-// =================================================
+// ===============================
 const isEditing = computed(() => !!props.risk?.id)
-const modalTitle = computed(() => 
+const modalTitle = computed(() =>
   isEditing.value ? 'แก้ไขความเสี่ยงระดับฝ่าย' : 'เพิ่มความเสี่ยงระดับฝ่าย'
 )
 
-// =================================================
+// ===============================
 // Form Setup
-// =================================================
+// ===============================
 const form = useForm<RiskFormData>({
   risk_name: '',
   description: '',
   organizational_risk_id: null,
   attachments: null,
-  
-  // เกณฑ์โอกาสเกิด 4 ระดับ (ค่าเริ่มต้น)
   likelihood_criteria: [
     { level: 1, name: 'น้อยมาก', description: 'โอกาสเกิดน้อยกว่า 25%' },
     { level: 2, name: 'น้อย', description: 'โอกาสเกิด 25-50%' },
     { level: 3, name: 'ปานกลาง', description: 'โอกาสเกิด 51-75%' },
     { level: 4, name: 'สูง', description: 'โอกาสเกิดมากกว่า 75%' }
   ] as Record<string, any>[],
-  
-  // เกณฑ์ผลกระทบ 4 ระดับ (ค่าเริ่มต้น)
   impact_criteria: [
     { level: 1, name: 'น้อยมาก', description: 'ผลกระทบต่อฝ่ายเล็กน้อย' },
     { level: 2, name: 'น้อย', description: 'ผลกระทบต่อฝ่ายพอสมควร' },
@@ -119,20 +142,21 @@ const form = useForm<RiskFormData>({
   ] as Record<string, any>[],
 })
 
-// =================================================
+// ===============================
 // Watchers
-// =================================================
-// เฝ้าดูการเปิด/ปิด Modal และโหลดข้อมูล
+// ===============================
 watch(() => props.show, (newVal) => {
   if (newVal && props.risk) {
     // โหลดข้อมูลสำหรับการแก้ไข
-    console.log('กำลังโหลดข้อมูลสำหรับแก้ไข:', props.risk.risk_name)
     form.risk_name = props.risk.risk_name
     form.description = props.risk.description
     form.organizational_risk_id = props.risk.organizational_risk_id
+    // sync combobox value - ปรับให้ไม่เป็น null
+    selectedOrganizationalRisk.value = (props.organizationalRisks || []).find(
+      r => r.id === props.risk?.organizational_risk_id
+    ) || undefined
+    organizationalSearch.value = selectedOrganizationalRisk.value?.risk_name || ''
     loadAttachments(props.risk)
-    
-    // โหลดเกณฑ์การประเมินที่มีอยู่ (ถ้ามี)
     if (props.risk.likelihood_criteria && props.risk.likelihood_criteria.length > 0) {
       form.likelihood_criteria = [...props.risk.likelihood_criteria] as Record<string, any>[]
     }
@@ -142,67 +166,53 @@ watch(() => props.show, (newVal) => {
   } else if (newVal) {
     // รีเซ็ตฟอร์มสำหรับการเพิ่มใหม่
     form.reset()
+    selectedOrganizationalRisk.value = undefined
+    organizationalSearch.value = ''
     loadAttachments()
+  }
+  
+  // คำนวณขนาด dropdown เมื่อเปิด modal
+  if (newVal) {
+    nextTick(() => {
+      updateDropdownWidth()
+    })
   }
 })
 
-// =================================================
+// ===============================
 // Methods / Functions
-// =================================================
-
-/**
- * ปิด Modal และรีเซ็ตสถานะ
- */
+// ===============================
 const closeModal = () => {
   emit('update:show', false)
 }
 
-/**
- * สลับการแสดง/ซ่อนส่วนเกณฑ์การประเมิน
- */
 const toggleCriteriaSection = () => {
   showCriteriaSection.value = !showCriteriaSection.value;
 }
-
-/**
- * สลับการแสดงข้อความช่วยเหลือ
- */
 const toggleHelp = () => {
   showHelp.value = !showHelp.value
 }
 
-/**
- * จัดการไฟล์ที่อัปโหลด
- */
 const handleFileUpload = (event: Event) => {
   const input = event.target as HTMLInputElement
   addSelectedFiles(input.files)
-  
   if (input.files && input.files.length > 0) {
     form.attachments = Array.from(input.files)
   }
-  input.value = '' // รีเซ็ต input หลังการเลือกไฟล์
+  input.value = ''
 }
 
-/**
- * ตรวจสอบความถูกต้องของฟอร์ม
- */
 const validateForm = (): boolean => {
   let isValid = true
   const errors: string[] = []
-  
-  // ตรวจสอบฟิลด์จำเป็น
   if (!form.risk_name.trim()) {
     errors.push('กรุณาระบุชื่อความเสี่ยง')
     isValid = false
   }
-  
   if (!form.description.trim()) {
     errors.push('กรุณาระบุรายละเอียดความเสี่ยง')
     isValid = false
   }
-  
-  // ตรวจสอบไฟล์แนบ
   if (selectedFiles.value.length > 0) {
     const fileValidation = validateFiles(selectedFiles.value)
     if (!fileValidation.valid) {
@@ -210,71 +220,114 @@ const validateForm = (): boolean => {
       errors.push(...fileValidation.errors)
     }
   }
-  
-  // แสดงข้อผิดพลาด (ถ้ามี)
   if (!isValid) {
     toast.warning('กรุณาตรวจสอบข้อมูล', {
       icon: InfoIcon,
       description: errors.join(', ')
     })
   }
-  
   return isValid
 }
 
-/**
- * ส่งข้อมูลไปยัง Backend
- */
 const handleSubmit = async () => {
   if (!validateForm()) return
-  
   try {
-    // แสดง Loading toast
     toast.loading('กำลังบันทึกข้อมูล', {
       id: 'saving-risk',
       duration: 60000
     })
-    
-    console.log('กำลังส่งข้อมูล, mode:', isEditing.value ? 'แก้ไข' : 'เพิ่ม', 'id:', props.risk?.id)
-    
+    // log
+    console.log('submit division risk', {
+      ...form,
+      organizational_risk_id: selectedOrganizationalRisk.value?.id || null
+    })
     // เตรียมข้อมูลสำหรับส่ง
     const formData = {
       risk_name: form.risk_name,
       description: form.description,
-      organizational_risk_id: form.organizational_risk_id,
+      organizational_risk_id: selectedOrganizationalRisk.value?.id || null,
       likelihood_criteria: JSON.parse(JSON.stringify(form.likelihood_criteria)),
       impact_criteria: JSON.parse(JSON.stringify(form.impact_criteria))
     }
-    
-    // ส่งข้อมูลผ่าน composable
     await submitForm(
       formData,
       isEditing.value ? props.risk?.id : undefined,
       closeModal
     )
-    
-    // แสดงข้อความสำเร็จ
-    toast.success('บันทึกข้อมูลเรียบร้อย', {
-      id: 'saving-risk'
-    })
-    
+    toast.success('บันทึกข้อมูลเรียบร้อย', { id: 'saving-risk' })
     emit('saved')
   } catch (error) {
     console.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล:', error)
-    
     toast.error('ไม่สามารถบันทึกข้อมูลได้', {
       id: 'saving-risk',
       description: 'กรุณาลองใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบ'
     })
   }
 }
+
+// ===============================
+// Combobox: เมื่อเลือก option
+// ===============================
+function handleSelectOrganizationalRisk(risk: OrganizationalRisk) {
+  console.log('เลือกความเสี่ยงระดับองค์กร:', risk)
+  selectedOrganizationalRisk.value = risk
+  organizationalSearch.value = risk.risk_name
+  form.organizational_risk_id = risk.id
+}
+
+// ===============================
+// Combobox: จัดการเมื่อเปิด/ปิด dropdown
+// ===============================
+function handleComboboxOpenChange(open: boolean) {
+  isComboboxOpen.value = open
+  console.log('combobox open state:', open)
+  
+  // เมื่อเปิด dropdown ให้รีเซ็ต search term เพื่อแสดงตัวเลือกทั้งหมด
+  if (open) {
+    organizationalSearch.value = ''
+    // คำนวณขนาด dropdown ใหม่
+    nextTick(() => {
+      updateDropdownWidth()
+    })
+  } else {
+    // เมื่อปิด dropdown ถ้ามีการเลือกแล้วให้แสดงชื่อที่เลือก
+    if (selectedOrganizationalRisk.value) {
+      organizationalSearch.value = selectedOrganizationalRisk.value.risk_name
+    }
+  }
+}
+
+// ===============================
+// Combobox: จัดการการล้างค่า
+// ===============================
+function clearOrganizationalRisk() {
+  console.log('ล้างการเลือกความเสี่ยงระดับองค์กร')
+  selectedOrganizationalRisk.value = undefined
+  organizationalSearch.value = ''
+  form.organizational_risk_id = null
+}
+
+// ===============================
+// คำนวณขนาด dropdown ให้เท่ากับ anchor
+// ===============================
+function updateDropdownWidth() {
+  if (comboboxAnchorRef.value) {
+    const anchorWidth = comboboxAnchorRef.value.offsetWidth
+    dropdownWidth.value = `${anchorWidth}px`
+    console.log('อัพเดทขนาด dropdown:', dropdownWidth.value)
+  }
+}
+
+// ===============================
+// Combobox: Display value function - แก้ไข type safety
+// ===============================
+const getDisplayValue = (value: ComboboxValue): string => {
+  return value?.risk_name || ''
+}
 </script>
 
 <template>
-  <Dialog 
-    :open="show" 
-    @update:open="(val) => emit('update:show', val)"
-  >
+  <Dialog :open="show" @update:open="(val) => emit('update:show', val)">
     <DialogContent class="sm:max-w-[550px] max-w-[95%] max-h-[85vh] overflow-y-auto">
       <!-- ==================== ส่วนหัวของ Modal ==================== -->
       <DialogHeader>
@@ -287,7 +340,6 @@ const handleSubmit = async () => {
       <!-- ==================== แบบฟอร์มหลัก ==================== -->
       <form @submit.prevent="handleSubmit" class="space-y-4 mt-4">
         <div class="grid gap-4 py-2">
-          
           <!-- ฟิลด์ชื่อความเสี่ยง -->
           <div class="grid gap-2">
             <Label for="risk_name" class="flex items-center gap-1">
@@ -302,13 +354,10 @@ const handleSubmit = async () => {
                 <HelpCircleIcon class="h-4 w-4" />
               </Button>
             </Label>
-            
-            <!-- ข้อความช่วยเหลือ -->
             <div v-if="showHelp" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
               ชื่อความเสี่ยงควรระบุให้ชัดเจนและกระชับ แสดงถึงผลกระทบที่อาจเกิดขึ้นกับฝ่าย
               <br />ตัวอย่าง: "ความล่าช้าในการส่งมอบงาน", "การเข้าถึงข้อมูลสำคัญโดยไม่ได้รับอนุญาต"
             </div>
-            
             <Input 
               id="risk_name" 
               v-model="form.risk_name" 
@@ -319,25 +368,70 @@ const handleSubmit = async () => {
             </p>
           </div>
 
-          <!-- ฟิลด์ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง -->
+          <!-- ฟิลด์ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง (Combobox) -->
           <div class="grid gap-2">
             <Label for="organizational_risk_id">
               ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง
             </Label>
-            <select
-              id="organizational_risk_id"
-              v-model="form.organizational_risk_id"
-              class="rounded-md border border-input bg-background px-3 py-2"
+            <!-- Combobox Radix Vue - แก้ไข type ให้ compatible -->
+            <ComboboxRoot
+              v-model="selectedOrganizationalRisk"
+              :display-value="getDisplayValue"
+              v-model:searchTerm="organizationalSearch"
+              @update:open="handleComboboxOpenChange"
+              class="w-full relative"
             >
-              <option :value="null">-- เลือกความเสี่ยงระดับองค์กร --</option>
-              <option
-                v-for="risk in props.organizationalRisks || []"
-                :key="risk.id"
-                :value="risk.id"
+              <ComboboxAnchor
+                ref="comboboxAnchorRef"
+                class="relative flex items-center justify-between rounded border border-input bg-background px-3 h-10 w-full"
               >
-                {{ risk.risk_name }}
-              </option>
-            </select>
+                <ComboboxInput
+                  id="organizational_risk_id"
+                  class="!bg-transparent outline-none flex-1 text-base h-full selection:bg-gray-100 placeholder:text-gray-400"
+                  :placeholder="selectedOrganizationalRisk ? selectedOrganizationalRisk.risk_name : 'ค้นหาหรือเลือกความเสี่ยงระดับองค์กร...'"
+                  autocomplete="off"
+                  aria-autocomplete="list"
+                />
+                <div class="flex items-center gap-1">
+                  <!-- ปุ่มล้างค่า -->
+                  <Button
+                    v-if="selectedOrganizationalRisk"
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    class="h-6 w-6 text-gray-400 hover:text-gray-600"
+                    @click.stop="clearOrganizationalRisk"
+                  >
+                    <XIcon class="h-3 w-3" />
+                  </Button>
+                  <ComboboxTrigger>
+                    <ChevronDownIcon class="h-4 w-4 text-gray-500" />
+                  </ComboboxTrigger>
+                </div>
+              </ComboboxAnchor>
+              <ComboboxContent 
+                class="absolute z-10 mt-2 bg-white overflow-hidden rounded shadow-lg border border-gray-200"
+                :style="{ width: dropdownWidth }"
+              >
+                <ComboboxViewport class="p-1 max-h-60 overflow-y-auto">
+                  <ComboboxEmpty class="text-gray-400 text-xs font-medium text-center py-2">
+                    ไม่พบรายการ
+                  </ComboboxEmpty>
+                  <template v-for="risk in filteredOrganizationalRisks" :key="risk.id">
+                    <ComboboxItem
+                      :value="risk"
+                      @select="handleSelectOrganizationalRisk(risk)"
+                      class="text-base leading-none text-gray-700 rounded flex items-center h-10 px-3 pr-8 relative select-none data-[highlighted]:bg-primary/10 data-[highlighted]:text-primary cursor-pointer"
+                    >
+                      <span class="truncate">{{ risk.risk_name }}</span>
+                      <ComboboxItemIndicator class="absolute right-2 inline-flex items-center">
+                        <CheckIcon class="h-4 w-4 text-primary" />
+                      </ComboboxItemIndicator>
+                    </ComboboxItem>
+                  </template>
+                </ComboboxViewport>
+              </ComboboxContent>
+            </ComboboxRoot>
             <p v-if="form.errors.organizational_risk_id" class="text-sm text-red-500">
               {{ form.errors.organizational_risk_id }}
             </p>
@@ -372,7 +466,6 @@ const handleSubmit = async () => {
                   <HelpCircleIcon class="h-4 w-4" />
                 </Button>
               </Label>
-              
               <Button 
                 type="button"
                 variant="outline"
@@ -383,10 +476,7 @@ const handleSubmit = async () => {
                 {{ showCriteriaSection ? 'ซ่อนรายละเอียด' : 'แสดงรายละเอียด' }}
               </Button>
             </div>
-            
-            <!-- รายละเอียดเกณฑ์การประเมิน -->
             <div v-if="showCriteriaSection" class="space-y-4 mt-2 animate-in fade-in-50 duration-300">
-              
               <!-- เกณฑ์โอกาสเกิด (Likelihood) -->
               <div class="border rounded-md p-4 bg-muted/30">
                 <h3 class="font-medium mb-2">เกณฑ์โอกาสเกิด (Likelihood)</h3>
@@ -415,7 +505,6 @@ const handleSubmit = async () => {
                   </div>
                 </div>
               </div>
-              
               <!-- เกณฑ์ผลกระทบ (Impact) -->
               <div class="border rounded-md p-4 bg-muted/30">
                 <h3 class="font-medium mb-2">เกณฑ์ผลกระทบ (Impact)</h3>
@@ -445,8 +534,6 @@ const handleSubmit = async () => {
                 </div>
               </div>
             </div>
-            
-            <!-- คำแนะนำ -->
             <div v-if="!showCriteriaSection" class="text-xs text-muted-foreground">
               คลิก "แสดงรายละเอียด" เพื่อกำหนดเกณฑ์การประเมินความเสี่ยงทั้ง 4 ระดับ
             </div>
@@ -455,8 +542,6 @@ const handleSubmit = async () => {
           <!-- ==================== ส่วนเอกสารแนบ ==================== -->
           <div class="grid gap-2">
             <Label>เอกสารแนบ</Label>
-            
-            <!-- เอกสารแนบที่มีอยู่แล้ว (กรณีแก้ไข) -->
             <div v-if="existingAttachments.length > 0" class="mb-3">
               <p class="text-sm font-medium text-gray-700 mb-2">เอกสารแนบปัจจุบัน:</p>
               <ul class="space-y-2">
@@ -465,7 +550,6 @@ const handleSubmit = async () => {
                   :key="attachment.id" 
                   class="flex flex-wrap items-center justify-between p-2 bg-gray-50 rounded-md text-sm border border-gray-200"
                 >
-                  <!-- แสดงข้อมูลไฟล์ (คลิกเพื่อเปิดดู) -->
                   <div 
                     class="flex items-center gap-2 flex-1 min-w-0 overflow-hidden cursor-pointer" 
                     @click="openAttachment(attachment.url)"
@@ -476,8 +560,6 @@ const handleSubmit = async () => {
                       {{ formatFileSize(attachment.file_size || 0) }}
                     </span>
                   </div>
-                  
-                  <!-- ปุ่มลบ -->
                   <Button 
                     type="button" 
                     variant="ghost" 
@@ -491,8 +573,6 @@ const handleSubmit = async () => {
                 </li>
               </ul>
             </div>
-            
-            <!-- ไฟล์ที่เพิ่งเลือก (ยังไม่ได้บันทึก) -->
             <div v-if="fileNames.length > 0" class="mb-3">
               <p class="text-sm font-medium text-gray-700 mb-2">ไฟล์ที่เลือกไว้:</p>
               <ul class="space-y-2">
@@ -508,7 +588,6 @@ const handleSubmit = async () => {
                       {{ formatFileSize(selectedFiles[index].size) }}
                     </span>
                   </div>
-                  
                   <Button 
                     type="button" 
                     variant="ghost" 
@@ -521,15 +600,12 @@ const handleSubmit = async () => {
                 </li>
               </ul>
             </div>
-
-            <!-- ปุ่มอัปโหลดไฟล์ -->
             <div class="flex flex-col">
               <div class="flex flex-wrap items-center gap-2">
                 <label for="file-upload" class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                   <UploadIcon class="h-4 w-4" />
                   <span>เลือกไฟล์แนบ</span>
                 </label>
-                
                 <input 
                   id="file-upload" 
                   type="file" 
@@ -538,12 +614,10 @@ const handleSubmit = async () => {
                   @change="handleFileUpload"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                 />
-                
                 <p class="text-xs text-gray-500">
                   รองรับไฟล์ประเภท PDF, Word, Excel, รูปภาพ (ขนาดไม่เกิน 10MB)
                 </p>
               </div>
-              
               <p v-if="form.errors.attachments" class="text-sm text-red-500 mt-1">
                 {{ form.errors.attachments }}
               </p>
@@ -562,7 +636,6 @@ const handleSubmit = async () => {
             <XIcon class="h-4 w-4" />
             <span>ยกเลิก</span>
           </Button>
-          
           <Button
             type="submit"
             :disabled="form.processing"
@@ -577,7 +650,6 @@ const handleSubmit = async () => {
         </DialogFooter>
       </form>
     </DialogContent>
-    
     <!-- Loading Overlay -->
     <div 
       v-if="form.processing" 
