@@ -1,71 +1,83 @@
 <!-- 
   ไฟล์: resources/js/pages/division_risk/DivisionRiskModal.vue
-  คำอธิบาย: Modal component สำหรับเพิ่ม/แก้ไขข้อมูลความเสี่ยงระดับฝ่าย
-  ทำหน้าที่: แสดงฟอร์มสำหรับกรอกข้อมูลความเสี่ยง, อัปโหลดเอกสารแนบ
-  หลักการ: ใช้ Dialog จาก shadcn-vue เป็นพื้นฐาน, แสดงฟอร์มและการจัดการเอกสารแนบ
-  ใช้ร่วมกับ: DivisionRiskController.php ในฝั่ง Backend
+  วัตถุประสงค์: Modal component สำหรับเพิ่ม/แก้ไขข้อมูลความเสี่ยงระดับฝ่าย
+  ฟีเจอร์หลัก: 
+  - ฟอร์มกรอกข้อมูลความเสี่ยง
+  - เลือกความเสี่ยงระดับองค์กรที่เกี่ยวข้อง
+  - กำหนดเกณฑ์การประเมิน (Likelihood & Impact)
+  - อัปโหลดเอกสารแนบ
+  - Responsive design สำหรับทุกหน้าจอ
 -->
 
 <script setup lang="ts">
-// นำเข้าไลบรารีและคอมโพเนนต์ที่จำเป็น
+// =================================================
+// การนำเข้าไลบรารีและ Types
+// =================================================
 import { computed, watch, ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
+import { toast } from 'vue-sonner'
+
+// UI Components
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { toast } from 'vue-sonner'
-import { SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, Trash2Icon, HelpCircleIcon, Loader2Icon } from 'lucide-vue-next'
-import type { DivisionRisk, OrganizationalRisk, CriteriaItem } from '@/types/types'
+
+// Icons
+import { 
+  SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, 
+  Trash2Icon, HelpCircleIcon, Loader2Icon 
+} from 'lucide-vue-next'
+
+// Types และ Composables
+import type { DivisionRisk, OrganizationalRisk } from '@/types/types'
 import { useDivisionRiskData } from '@/composables/useDivisionRiskData'
 
-interface FormCriteriaItem {
+// =================================================
+// Interface และ Type Definitions
+// =================================================
+interface CriteriaItem {
   level: number;
   name: string;
   description: string | null;
-  // id, division_risk_id, created_at, updated_at เป็น optional
-  // จะถูกกำหนดโดย backend
-  id?: number;
-  division_risk_id?: number;
-  created_at?: string;
-  updated_at?: string;
 }
 
-// กำหนด Types สำหรับฟอร์ม
 type RiskFormData = {
   risk_name: string;
   description: string;
   organizational_risk_id?: number | null;
   attachments: File[] | null;
-  // เปลี่ยนจาก CriteriaItem[] เป็น Record<string, any>[]
-  // เพื่อให้สอดคล้องกับ FormDataConvertible
   likelihood_criteria: Record<string, any>[];
   impact_criteria: Record<string, any>[];
 }
 
-// กำหนด props และ events
+// =================================================
+// Props และ Events
+// =================================================
 const props = defineProps<{
-  show: boolean; // สถานะแสดง/ซ่อน Modal
-  risk?: DivisionRisk; // ข้อมูลความเสี่ยงสำหรับการแก้ไข
-  initialRisks?: DivisionRisk[]; // ข้อมูลความเสี่ยงทั้งหมด
-  organizationalRisks?: OrganizationalRisk[]; // ข้อมูลความเสี่ยงระดับองค์กรทั้งหมด
+  show: boolean;
+  risk?: DivisionRisk;
+  initialRisks?: DivisionRisk[];
+  organizationalRisks?: OrganizationalRisk[];
 }>()
-
-// เพิ่มตัวแปรเก็บสถานะการแสดงส่วนเกณฑ์การประเมิน
-const showCriteriaSection = ref<boolean>(false);
-
-// ฟังก์ชันสลับการแสดง/ซ่อนส่วนเกณฑ์การประเมิน
-const toggleCriteriaSection = () => {
-  showCriteriaSection.value = !showCriteriaSection.value;
-}
 
 const emit = defineEmits<{
-  (e: 'update:show', value: boolean): void; // อัปเดตสถานะ Modal
-  (e: 'saved'): void; // บันทึกข้อมูลสำเร็จ
+  (e: 'update:show', value: boolean): void;
+  (e: 'saved'): void;
 }>()
 
-// ใช้ composable เพื่อแยกการจัดการข้อมูลออกจาก UI
+// =================================================
+// Reactive Variables
+// =================================================
+// สถานะการแสดงส่วนเกณฑ์การประเมิน
+const showCriteriaSection = ref<boolean>(false);
+// สถานะการแสดงข้อความช่วยเหลือ
+const showHelp = ref<boolean>(false)
+
+// =================================================
+// Composable สำหรับจัดการข้อมูล
+// =================================================
 const { 
   existingAttachments, selectedFiles, fileNames,
   loadAttachments, submitForm, addSelectedFiles, removeSelectedFile, 
@@ -73,21 +85,24 @@ const {
   getFileIcon, formatFileSize 
 } = useDivisionRiskData(props.initialRisks, props.show)
 
-// สถานะสำหรับแสดง tooltip ช่วยเหลือ
-const showHelp = ref<boolean>(false)
-
+// =================================================
 // Computed Properties
+// =================================================
 const isEditing = computed(() => !!props.risk?.id)
-const modalTitle = computed(() => isEditing.value ? 'แก้ไขความเสี่ยงระดับฝ่าย' : 'เพิ่มความเสี่ยงระดับฝ่าย')
+const modalTitle = computed(() => 
+  isEditing.value ? 'แก้ไขความเสี่ยงระดับฝ่าย' : 'เพิ่มความเสี่ยงระดับฝ่าย'
+)
 
-// สร้างฟอร์มด้วย Inertia useForm
+// =================================================
+// Form Setup
+// =================================================
 const form = useForm<RiskFormData>({
-  risk_name: props.risk?.risk_name ?? '',
-  description: props.risk?.description ?? '',
-  organizational_risk_id: props.risk?.organizational_risk_id ?? null,
+  risk_name: '',
+  description: '',
+  organizational_risk_id: null,
   attachments: null,
   
-  // เพิ่มค่าเริ่มต้นสำหรับเกณฑ์โอกาสเกิด 4 ระดับ
+  // เกณฑ์โอกาสเกิด 4 ระดับ (ค่าเริ่มต้น)
   likelihood_criteria: [
     { level: 1, name: 'น้อยมาก', description: 'โอกาสเกิดน้อยกว่า 25%' },
     { level: 2, name: 'น้อย', description: 'โอกาสเกิด 25-50%' },
@@ -95,7 +110,7 @@ const form = useForm<RiskFormData>({
     { level: 4, name: 'สูง', description: 'โอกาสเกิดมากกว่า 75%' }
   ] as Record<string, any>[],
   
-  // เพิ่มค่าเริ่มต้นสำหรับเกณฑ์ผลกระทบ 4 ระดับ
+  // เกณฑ์ผลกระทบ 4 ระดับ (ค่าเริ่มต้น)
   impact_criteria: [
     { level: 1, name: 'น้อยมาก', description: 'ผลกระทบต่อฝ่ายเล็กน้อย' },
     { level: 2, name: 'น้อย', description: 'ผลกระทบต่อฝ่ายพอสมควร' },
@@ -104,7 +119,10 @@ const form = useForm<RiskFormData>({
   ] as Record<string, any>[],
 })
 
+// =================================================
 // Watchers
+// =================================================
+// เฝ้าดูการเปิด/ปิด Modal และโหลดข้อมูล
 watch(() => props.show, (newVal) => {
   if (newVal && props.risk) {
     // โหลดข้อมูลสำหรับการแก้ไข
@@ -114,25 +132,43 @@ watch(() => props.show, (newVal) => {
     form.organizational_risk_id = props.risk.organizational_risk_id
     loadAttachments(props.risk)
     
-    // โหลดข้อมูลเกณฑ์การประเมิน (ถ้ามี)
+    // โหลดเกณฑ์การประเมินที่มีอยู่ (ถ้ามี)
     if (props.risk.likelihood_criteria && props.risk.likelihood_criteria.length > 0) {
-      // ใช้ type assertion เพื่อช่วยให้ TypeScript เข้าใจ type
       form.likelihood_criteria = [...props.risk.likelihood_criteria] as Record<string, any>[]
     }
     if (props.risk.impact_criteria && props.risk.impact_criteria.length > 0) {
       form.impact_criteria = [...props.risk.impact_criteria] as Record<string, any>[]
     }
   } else if (newVal) {
+    // รีเซ็ตฟอร์มสำหรับการเพิ่มใหม่
     form.reset()
     loadAttachments()
   }
 })
+
+// =================================================
+// Methods / Functions
+// =================================================
 
 /**
  * ปิด Modal และรีเซ็ตสถานะ
  */
 const closeModal = () => {
   emit('update:show', false)
+}
+
+/**
+ * สลับการแสดง/ซ่อนส่วนเกณฑ์การประเมิน
+ */
+const toggleCriteriaSection = () => {
+  showCriteriaSection.value = !showCriteriaSection.value;
+}
+
+/**
+ * สลับการแสดงข้อความช่วยเหลือ
+ */
+const toggleHelp = () => {
+  showHelp.value = !showHelp.value
 }
 
 /**
@@ -151,11 +187,11 @@ const handleFileUpload = (event: Event) => {
 /**
  * ตรวจสอบความถูกต้องของฟอร์ม
  */
-const validateForm = () => {
+const validateForm = (): boolean => {
   let isValid = true
   const errors: string[] = []
   
-  // ตรวจสอบข้อมูลสำคัญ
+  // ตรวจสอบฟิลด์จำเป็น
   if (!form.risk_name.trim()) {
     errors.push('กรุณาระบุชื่อความเสี่ยง')
     isValid = false
@@ -175,6 +211,7 @@ const validateForm = () => {
     }
   }
   
+  // แสดงข้อผิดพลาด (ถ้ามี)
   if (!isValid) {
     toast.warning('กรุณาตรวจสอบข้อมูล', {
       icon: InfoIcon,
@@ -186,13 +223,13 @@ const validateForm = () => {
 }
 
 /**
- * ส่งข้อมูลไปยัง backend
+ * ส่งข้อมูลไปยัง Backend
  */
 const handleSubmit = async () => {
   if (!validateForm()) return
   
   try {
-    // แสดง toast ทันทีที่กดบันทึก
+    // แสดง Loading toast
     toast.loading('กำลังบันทึกข้อมูล', {
       id: 'saving-risk',
       duration: 60000
@@ -200,7 +237,7 @@ const handleSubmit = async () => {
     
     console.log('กำลังส่งข้อมูล, mode:', isEditing.value ? 'แก้ไข' : 'เพิ่ม', 'id:', props.risk?.id)
     
-    // แปลงข้อมูลเกณฑ์การประเมินเป็น plain objects ผ่าน JSON
+    // เตรียมข้อมูลสำหรับส่ง
     const formData = {
       risk_name: form.risk_name,
       description: form.description,
@@ -209,12 +246,14 @@ const handleSubmit = async () => {
       impact_criteria: JSON.parse(JSON.stringify(form.impact_criteria))
     }
     
+    // ส่งข้อมูลผ่าน composable
     await submitForm(
       formData,
       isEditing.value ? props.risk?.id : undefined,
       closeModal
     )
     
+    // แสดงข้อความสำเร็จ
     toast.success('บันทึกข้อมูลเรียบร้อย', {
       id: 'saving-risk'
     })
@@ -229,13 +268,6 @@ const handleSubmit = async () => {
     })
   }
 }
-
-/**
- * สลับการแสดงข้อความช่วยเหลือ
- */
-const toggleHelp = () => {
-  showHelp.value = !showHelp.value
-}
 </script>
 
 <template>
@@ -244,16 +276,19 @@ const toggleHelp = () => {
     @update:open="(val) => emit('update:show', val)"
   >
     <DialogContent class="sm:max-w-[550px] max-w-[95%] max-h-[85vh] overflow-y-auto">
-      <!-- ส่วนหัวของ Modal -->
+      <!-- ==================== ส่วนหัวของ Modal ==================== -->
       <DialogHeader>
         <DialogTitle>{{ modalTitle }}</DialogTitle>
-        <DialogDescription class="sr-only">กรอกข้อมูลความเสี่ยงระดับฝ่าย</DialogDescription>
+        <DialogDescription class="sr-only">
+          กรอกข้อมูลความเสี่ยงระดับฝ่าย
+        </DialogDescription>
       </DialogHeader>
 
-      <!-- แบบฟอร์มกรอกข้อมูล -->
+      <!-- ==================== แบบฟอร์มหลัก ==================== -->
       <form @submit.prevent="handleSubmit" class="space-y-4 mt-4">
         <div class="grid gap-4 py-2">
-          <!-- ฟิลด์ชื่อความเสี่ยง พร้อมปุ่มช่วยเหลือ -->
+          
+          <!-- ฟิลด์ชื่อความเสี่ยง -->
           <div class="grid gap-2">
             <Label for="risk_name" class="flex items-center gap-1">
               ชื่อความเสี่ยง
@@ -268,7 +303,7 @@ const toggleHelp = () => {
               </Button>
             </Label>
             
-            <!-- ข้อความช่วยเหลือ - แสดงเมื่อคลิกปุ่มช่วยเหลือ -->
+            <!-- ข้อความช่วยเหลือ -->
             <div v-if="showHelp" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
               ชื่อความเสี่ยงควรระบุให้ชัดเจนและกระชับ แสดงถึงผลกระทบที่อาจเกิดขึ้นกับฝ่าย
               <br />ตัวอย่าง: "ความล่าช้าในการส่งมอบงาน", "การเข้าถึงข้อมูลสำคัญโดยไม่ได้รับอนุญาต"
@@ -284,9 +319,11 @@ const toggleHelp = () => {
             </p>
           </div>
 
-          <!-- ฟิลด์ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง (เพิ่มใหม่) -->
+          <!-- ฟิลด์ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง -->
           <div class="grid gap-2">
-            <Label for="organizational_risk_id">ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง</Label>
+            <Label for="organizational_risk_id">
+              ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง
+            </Label>
             <select
               id="organizational_risk_id"
               v-model="form.organizational_risk_id"
@@ -320,7 +357,7 @@ const toggleHelp = () => {
             </p>
           </div>
 
-          <!-- ส่วนของเกณฑ์การประเมินความเสี่ยง -->
+          <!-- ==================== ส่วนเกณฑ์การประเมิน ==================== -->
           <div class="grid gap-2 border-t border-gray-200 pt-4 mt-4">
             <div class="flex items-center justify-between">
               <Label class="text-base font-medium flex items-center gap-1">
@@ -347,13 +384,18 @@ const toggleHelp = () => {
               </Button>
             </div>
             
-            <!-- รายละเอียดเกณฑ์การประเมิน (แสดงเมื่อกดปุ่ม) -->
+            <!-- รายละเอียดเกณฑ์การประเมิน -->
             <div v-if="showCriteriaSection" class="space-y-4 mt-2 animate-in fade-in-50 duration-300">
-              <!-- 1. เกณฑ์โอกาสเกิด (Likelihood) -->
+              
+              <!-- เกณฑ์โอกาสเกิด (Likelihood) -->
               <div class="border rounded-md p-4 bg-muted/30">
                 <h3 class="font-medium mb-2">เกณฑ์โอกาสเกิด (Likelihood)</h3>
                 <div class="space-y-3">
-                  <div v-for="(criteria, index) in form.likelihood_criteria" :key="`likelihood-${index}`" class="grid gap-2">
+                  <div 
+                    v-for="(criteria, index) in form.likelihood_criteria" 
+                    :key="`likelihood-${index}`" 
+                    class="grid gap-2"
+                  >
                     <div class="flex items-center gap-2">
                       <div class="bg-primary/10 text-primary font-medium rounded-full w-6 h-6 flex items-center justify-center text-xs">
                         {{ criteria.level }}
@@ -374,11 +416,15 @@ const toggleHelp = () => {
                 </div>
               </div>
               
-              <!-- 2. เกณฑ์ผลกระทบ (Impact) -->
+              <!-- เกณฑ์ผลกระทบ (Impact) -->
               <div class="border rounded-md p-4 bg-muted/30">
                 <h3 class="font-medium mb-2">เกณฑ์ผลกระทบ (Impact)</h3>
                 <div class="space-y-3">
-                  <div v-for="(criteria, index) in form.impact_criteria" :key="`impact-${index}`" class="grid gap-2">
+                  <div 
+                    v-for="(criteria, index) in form.impact_criteria" 
+                    :key="`impact-${index}`" 
+                    class="grid gap-2"
+                  >
                     <div class="flex items-center gap-2">
                       <div class="bg-primary/10 text-primary font-medium rounded-full w-6 h-6 flex items-center justify-center text-xs">
                         {{ criteria.level }}
@@ -400,17 +446,17 @@ const toggleHelp = () => {
               </div>
             </div>
             
-            <!-- คำแนะนำสำหรับเกณฑ์การประเมิน -->
+            <!-- คำแนะนำ -->
             <div v-if="!showCriteriaSection" class="text-xs text-muted-foreground">
               คลิก "แสดงรายละเอียด" เพื่อกำหนดเกณฑ์การประเมินความเสี่ยงทั้ง 4 ระดับ
             </div>
           </div>
 
-          <!-- ส่วนของเอกสารแนบ -->
+          <!-- ==================== ส่วนเอกสารแนบ ==================== -->
           <div class="grid gap-2">
             <Label>เอกสารแนบ</Label>
             
-            <!-- แสดงเอกสารแนบที่มีอยู่แล้ว (กรณีแก้ไข) -->
+            <!-- เอกสารแนบที่มีอยู่แล้ว (กรณีแก้ไข) -->
             <div v-if="existingAttachments.length > 0" class="mb-3">
               <p class="text-sm font-medium text-gray-700 mb-2">เอกสารแนบปัจจุบัน:</p>
               <ul class="space-y-2">
@@ -419,17 +465,19 @@ const toggleHelp = () => {
                   :key="attachment.id" 
                   class="flex flex-wrap items-center justify-between p-2 bg-gray-50 rounded-md text-sm border border-gray-200"
                 >
-                  <!-- ส่วนแสดงข้อมูลไฟล์ - สามารถคลิกเพื่อเปิดดู -->
+                  <!-- แสดงข้อมูลไฟล์ (คลิกเพื่อเปิดดู) -->
                   <div 
-                    class="flex items-center gap-2 flex-1 min-w-0 overflow-hidden" 
-                    @click="openAttachment(attachment.url)" 
-                    style="cursor: pointer"
+                    class="flex items-center gap-2 flex-1 min-w-0 overflow-hidden cursor-pointer" 
+                    @click="openAttachment(attachment.url)"
                   >
                     <component :is="getFileIcon(attachment.file_name)" class="h-4 w-4 flex-shrink-0" />
                     <span class="truncate max-w-[200px] sm:max-w-[300px]">{{ attachment.file_name }}</span>
-                    <span class="text-xs text-gray-500 flex-shrink-0">{{ formatFileSize(attachment.file_size || 0) }}</span>
+                    <span class="text-xs text-gray-500 flex-shrink-0">
+                      {{ formatFileSize(attachment.file_size || 0) }}
+                    </span>
                   </div>
                   
+                  <!-- ปุ่มลบ -->
                   <Button 
                     type="button" 
                     variant="ghost" 
@@ -444,7 +492,7 @@ const toggleHelp = () => {
               </ul>
             </div>
             
-            <!-- แสดงไฟล์ที่เพิ่งอัปโหลด (ยังไม่ได้บันทึก) -->
+            <!-- ไฟล์ที่เพิ่งเลือก (ยังไม่ได้บันทึก) -->
             <div v-if="fileNames.length > 0" class="mb-3">
               <p class="text-sm font-medium text-gray-700 mb-2">ไฟล์ที่เลือกไว้:</p>
               <ul class="space-y-2">
@@ -456,7 +504,9 @@ const toggleHelp = () => {
                   <div class="flex items-center gap-2 flex-1 overflow-hidden">
                     <component :is="getFileIcon(fileName)" class="h-4 w-4 flex-shrink-0" />
                     <span class="truncate">{{ fileName }}</span>
-                    <span class="text-xs text-gray-500 flex-shrink-0">{{ formatFileSize(selectedFiles[index].size) }}</span>
+                    <span class="text-xs text-gray-500 flex-shrink-0">
+                      {{ formatFileSize(selectedFiles[index].size) }}
+                    </span>
                   </div>
                   
                   <Button 
@@ -472,7 +522,7 @@ const toggleHelp = () => {
               </ul>
             </div>
 
-            <!-- ปุ่มและคำแนะนำการอัปโหลดไฟล์ -->
+            <!-- ปุ่มอัปโหลดไฟล์ -->
             <div class="flex flex-col">
               <div class="flex flex-wrap items-center gap-2">
                 <label for="file-upload" class="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
@@ -489,7 +539,9 @@ const toggleHelp = () => {
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                 />
                 
-                <p class="text-xs text-gray-500">รองรับไฟล์ประเภท PDF, Word, Excel, รูปภาพ (ขนาดไม่เกิน 10MB)</p>
+                <p class="text-xs text-gray-500">
+                  รองรับไฟล์ประเภท PDF, Word, Excel, รูปภาพ (ขนาดไม่เกิน 10MB)
+                </p>
               </div>
               
               <p v-if="form.errors.attachments" class="text-sm text-red-500 mt-1">
@@ -499,7 +551,7 @@ const toggleHelp = () => {
           </div>
         </div>
 
-        <!-- ส่วนของปุ่มดำเนินการ -->
+        <!-- ==================== ปุ่มดำเนินการ ==================== -->
         <DialogFooter class="flex flex-col-reverse sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-2 space-y-reverse">
           <Button
             type="button"
@@ -518,11 +570,15 @@ const toggleHelp = () => {
           >
             <Loader2Icon v-if="form.processing" class="h-4 w-4 animate-spin" />
             <SaveIcon v-else class="h-4 w-4" />
-            <span>{{ form.processing ? 'กำลังบันทึก...' : (isEditing ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล') }}</span>
+            <span>
+              {{ form.processing ? 'กำลังบันทึก...' : (isEditing ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล') }}
+            </span>
           </Button>
         </DialogFooter>
       </form>
     </DialogContent>
+    
+    <!-- Loading Overlay -->
     <div 
       v-if="form.processing" 
       class="absolute inset-0 bg-white/70 flex items-center justify-center rounded-lg z-50"
