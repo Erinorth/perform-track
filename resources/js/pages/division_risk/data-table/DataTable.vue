@@ -93,8 +93,6 @@ const columnVisibility = ref<VisibilityState>({
   id: false,
   created_at: false,
   updated_at: false,
-  // ซ่อนคอลัมน์ description บนมือถือ
-  description: isMobile.value
 })
 // สถานะการเลือกแถวสำหรับทำการลบหลายรายการ
 const rowSelection = ref({})
