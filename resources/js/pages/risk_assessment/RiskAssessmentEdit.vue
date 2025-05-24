@@ -1,3 +1,12 @@
+<!-- 
+  ไฟล์: resources/js/pages/risk_assessment/RiskAssessmentEdit.vue
+  คำอธิบาย: หน้าสำหรับแก้ไขข้อมูลการประเมินความเสี่ยง
+  ปรับปรุงฟิลด์ "ความเสี่ยงระดับฝ่าย" ให้ใช้ DivisionRiskCombobox
+  ทำหน้าที่: แสดงฟอร์มสำหรับแก้ไขข้อมูลการประเมินความเสี่ยง, อัปโหลดเอกสารแนบ
+  หลักการ: ใช้ฟอร์มแบบเต็มหน้าจอ สำหรับการแก้ไขข้อมูลโดยเฉพาะ
+  แก้ไข: ใช้ DivisionRiskCombobox แทน Select component
+-->
+
 <script setup lang="ts">
 // ==================== นำเข้า Layout และ Navigation ====================
 import AppLayout from '@/layouts/AppLayout.vue'
@@ -6,6 +15,7 @@ import { router } from '@inertiajs/vue3'
 
 // ==================== นำเข้า Types และ Interfaces ====================
 import type { BreadcrumbItem } from '@/types'
+import type { DivisionRisk, OrganizationalRisk } from '@/types/types'
 
 // ==================== นำเข้า Vue Composition API ====================
 import { ref, computed, onMounted, watch } from 'vue'
@@ -18,27 +28,14 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import RiskMatrix from '@/components/RiskMatrix.vue'
+
+// เพิ่ม import DivisionRiskCombobox
+import DivisionRiskCombobox from '@/components/forms/DivisionRiskCombobox.vue'
 
 // ==================== นำเข้า Utilities ====================
 import { toast } from 'vue-sonner'
@@ -55,12 +52,26 @@ import {
   Trash2 as Trash2Icon,
   HelpCircle as HelpCircleIcon,
   Loader2 as Loader2Icon,
-  Calendar as CalendarIcon,
   AlertCircle as AlertCircleIcon,
 } from 'lucide-vue-next'
 
-// ==================== กำหนด Types ====================
-// กำหนดโครงสร้างข้อมูล props
+// ==================== แก้ไข Types Interface ====================
+interface RiskAssessmentAttachment {
+  id: number
+  filename: string
+  filepath: string
+  filetype: string | null
+  filesize: number | null
+}
+
+interface CriteriaItem {
+  id: number
+  level: number
+  name: string
+  description: string | null
+}
+
+// แก้ไข Props interface ให้ใช้ DivisionRisk type จาก types.ts
 interface Props {
   riskAssessment: {
     id: number
@@ -73,40 +84,21 @@ interface Props {
     division_risk: {
       id: number
       risk_name: string
-      organizational_risk: {
+      description: string
+      organizational_risk?: {
         id: number
         risk_name: string
       }
     }
-    attachments?: Array<{
-      id: number
-      filename: string
-      filepath: string
-      filetype: string | null
-      filesize: number | null
-    }>
+    attachments?: RiskAssessmentAttachment[]
   }
-  divisionRisks: Array<{
-    id: number
-    risk_name: string
-    description: string
-    organizational_risk: {
-      id: number
-      risk_name: string
-    }
-  }>
-  likelihoodCriteria: Record<number, Array<{
-    id: number
-    level: number
-    name: string
-    description: string | null
-  }>>
-  impactCriteria: Record<number, Array<{
-    id: number
-    level: number
-    name: string
-    description: string | null
-  }>>
+  
+  // ใช้ DivisionRisk type จาก types.ts แทน custom interface
+  divisionRisks: DivisionRisk[]
+  
+  // เก็บ criteria แยกไว้เพื่อ backward compatibility
+  likelihoodCriteria: Record<number, CriteriaItem[]>
+  impactCriteria: Record<number, CriteriaItem[]>
 }
 
 const props = defineProps<Props>()
@@ -128,7 +120,10 @@ const isLoading = ref<boolean>(true)
 const showMatrix = ref<boolean>(false)
 const showHelpLikelihood = ref<boolean>(false)
 const showHelpImpact = ref<boolean>(false)
-const selectedDivisionRisk = ref<number>(props.riskAssessment.division_risk_id)
+
+// เปลี่ยนจาก selectedDivisionRisk เป็น DivisionRisk object
+const selectedDivisionRisk = ref<DivisionRisk | null>(null)
+
 const existingAttachments = ref<Array<{
   id: number
   filename: string
@@ -158,13 +153,27 @@ const form = useForm({
 // เกณฑ์การประเมินโอกาสเกิดสำหรับความเสี่ยงที่เลือก
 const selectedLikelihoodCriteria = computed(() => {
   if (!selectedDivisionRisk.value) return []
-  return props.likelihoodCriteria[selectedDivisionRisk.value] || []
+  
+  // ลองใช้จาก division risk ก่อน
+  if (selectedDivisionRisk.value.likelihood_criteria && selectedDivisionRisk.value.likelihood_criteria.length > 0) {
+    return selectedDivisionRisk.value.likelihood_criteria
+  }
+  
+  // ถ้าไม่มีให้ใช้จาก props
+  return props.likelihoodCriteria[selectedDivisionRisk.value.id] || []
 })
 
 // เกณฑ์การประเมินผลกระทบสำหรับความเสี่ยงที่เลือก
 const selectedImpactCriteria = computed(() => {
   if (!selectedDivisionRisk.value) return []
-  return props.impactCriteria[selectedDivisionRisk.value] || []
+  
+  // ลองใช้จาก division risk ก่อน
+  if (selectedDivisionRisk.value.impact_criteria && selectedDivisionRisk.value.impact_criteria.length > 0) {
+    return selectedDivisionRisk.value.impact_criteria
+  }
+  
+  // ถ้าไม่มีให้ใช้จาก props
+  return props.impactCriteria[selectedDivisionRisk.value.id] || []
 })
 
 // คำนวณคะแนนความเสี่ยงและระดับความเสี่ยง
@@ -186,17 +195,52 @@ const riskLevel = computed(() => {
   }
 })
 
-// กลุ่มความเสี่ยงระดับฝ่ายตามความเสี่ยงระดับองค์กร
-const groupedDivisionRisks = computed(() => {
-  return props.divisionRisks.reduce((result, risk) => {
-    const orgRiskName = risk.organizational_risk?.risk_name || 'ไม่ระบุความเสี่ยงระดับองค์กร'
-    if (!result[orgRiskName]) {
-      result[orgRiskName] = []
-    }
-    result[orgRiskName].push(risk)
-    return result
-  }, {} as Record<string, typeof props.divisionRisks>)
-})
+// ===============================
+// Event Handlers สำหรับ DivisionRiskCombobox
+// ===============================
+
+/**
+ * หาความเสี่ยงหน่วยงานจาก ID
+ */
+const findDivisionRiskById = (id: number | null): DivisionRisk | null => {
+  if (!id || !props.divisionRisks) return null
+  return props.divisionRisks.find(risk => risk.id === id) || null
+}
+
+/**
+ * จัดการการเลือกความเสี่ยงหน่วยงาน
+ */
+const handleDivisionRiskSelect = (risk: DivisionRisk) => {
+  console.log('เลือกความเสี่ยงระดับฝ่าย:', {
+    id: risk.id,
+    risk_name: risk.risk_name,
+    organizational_risk: risk.organizational_risk?.risk_name || 'ไม่ระบุ'
+  })
+  
+  selectedDivisionRisk.value = risk
+  form.division_risk_id = risk.id.toString()
+  
+  // รีเซ็ตค่าการประเมินเมื่อเลือกความเสี่ยงอื่น
+  form.likelihood_level = ''
+  form.impact_level = ''
+  
+  toast.success(`เลือกความเสี่ยง: ${risk.risk_name}`, {
+    duration: 2000
+  })
+}
+
+/**
+ * จัดการการล้างค่าความเสี่ยงหน่วยงาน
+ */
+const handleDivisionRiskClear = () => {
+  console.log('ล้างความเสี่ยงระดับฝ่าย')
+  selectedDivisionRisk.value = null
+  form.division_risk_id = ''
+  
+  // รีเซ็ตค่าการประเมิน
+  form.likelihood_level = ''
+  form.impact_level = ''
+}
 
 // ==================== Methods ====================
 /**
@@ -204,30 +248,6 @@ const groupedDivisionRisks = computed(() => {
  */
 const navigateBack = () => {
   router.visit(route('risk-assessments.index'))
-}
-
-/**
- * เมื่อเลือกความเสี่ยงระดับฝ่าย - แก้ไขให้รองรับ AcceptableValue
- */
-const onDivisionRiskChange = (value: unknown) => {
-  // แปลงค่าที่ได้รับเป็น string เพื่อความปลอดภัย
-  const stringValue = value === null || value === undefined ? null : String(value)
-  
-  if (stringValue === null || stringValue === '') {
-    // กรณีไม่มีการเลือกค่า
-    form.division_risk_id = ''
-    selectedDivisionRisk.value = 0
-  } else {
-    // กรณีมีการเลือกค่า
-    form.division_risk_id = stringValue
-    selectedDivisionRisk.value = parseInt(stringValue)
-  }
-  
-  // รีเซ็ตค่าการประเมินเมื่อเลือกความเสี่ยงอื่น
-  form.likelihood_level = ''
-  form.impact_level = ''
-  
-  console.log('เลือกความเสี่ยงระดับฝ่าย:', stringValue)
 }
 
 /**
@@ -468,6 +488,9 @@ onMounted(() => {
   // โหลดข้อมูลเอกสารแนบ
   loadAttachments()
   
+  // ตั้งค่า selectedDivisionRisk จากข้อมูลที่มีอยู่
+  selectedDivisionRisk.value = findDivisionRiskById(props.riskAssessment.division_risk_id)
+  
   setTimeout(() => {
     isLoading.value = false
     console.log('โหลดข้อมูลเสร็จสิ้น')
@@ -527,7 +550,7 @@ onMounted(() => {
                 </p>
               </div>
 
-              <!-- งวดการประเมิน - แก้ไข @update:model-value -->
+              <!-- งวดการประเมิน -->
               <div>
                 <Label for="assessment_period">
                   งวดการประเมิน <span class="text-red-500">*</span>
@@ -550,43 +573,57 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- ความเสี่ยงระดับฝ่าย - แก้ไข @update:model-value -->
-              <div>
-                <Label for="division_risk_id">
-                  ความเสี่ยงระดับฝ่าย <span class="text-red-500">*</span>
-                </Label>
-                <Select 
-                  v-model="form.division_risk_id"
-                  @update:model-value="onDivisionRiskChange"
+            <!-- แทนที่ Select ด้วย DivisionRiskCombobox -->
+            <div class="grid gap-2">
+              <Label class="flex items-center gap-1">
+                ความเสี่ยงระดับฝ่าย <span class="text-red-500">*</span>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon"
+                  class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                  @click="toggleHelpLikelihood"
                 >
-                  <SelectTrigger 
-                    class="w-full mt-1" 
-                    :class="{ 'border-red-500': form.errors.division_risk_id }"
-                  >
-                    <SelectValue placeholder="เลือกความเสี่ยงระดับฝ่าย" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup v-for="(risks, orgRiskName) in groupedDivisionRisks" :key="orgRiskName">
-                      <SelectLabel>{{ orgRiskName }}</SelectLabel>
-                      <SelectItem 
-                        v-for="risk in risks" 
-                        :key="risk.id" 
-                        :value="risk.id.toString()"
-                      >
-                        {{ risk.risk_name }}
-                      </SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <p v-if="form.errors.division_risk_id" class="text-sm text-red-500 mt-1">
-                  {{ form.errors.division_risk_id }}
-                </p>
+                  <HelpCircleIcon class="h-4 w-4" />
+                </Button>
+              </Label>
+              
+              <!-- คำอธิบายสำหรับความเสี่ยงฝ่าย -->
+              <div v-if="showHelpLikelihood" class="text-xs text-gray-500 bg-gray-50 dark:bg-gray-900 p-2 rounded-md mb-1">
+                เลือกความเสี่ยงระดับฝ่ายที่ต้องการประเมิน ซึ่งจะมีเกณฑ์เฉพาะของแต่ละความเสี่ยง<br>
+                หากเลือกความเสี่ยงใหม่ ค่าการประเมินจะถูกรีเซ็ตเพื่อให้ใช้เกณฑ์ที่ถูกต้อง
               </div>
+              
+              <!-- ใช้ DivisionRiskCombobox แทน Select -->
+              <DivisionRiskCombobox
+                :division-risks="props.divisionRisks || []"
+                v-model="selectedDivisionRisk"
+                placeholder="เลือกความเสี่ยงฝ่ายที่ต้องการประเมิน..."
+                :required="true"
+                :disabled="form.processing"
+                show-organizational-risk
+                @select="handleDivisionRiskSelect"
+                @clear="handleDivisionRiskClear"
+              >
+                <template #error>
+                  <p v-if="form.errors.division_risk_id" class="text-sm text-red-500 mt-1">
+                    {{ form.errors.division_risk_id }}
+                  </p>
+                </template>
+                
+                <template #help>
+                  <p v-if="selectedDivisionRisk" class="text-xs text-muted-foreground mt-1">
+                    <strong>รายละเอียด:</strong> {{ selectedDivisionRisk.description }}
+                    <span v-if="selectedDivisionRisk.organizational_risk">
+                      <br><strong>ความเสี่ยงองค์กรที่เกี่ยวข้อง:</strong> {{ selectedDivisionRisk.organizational_risk.risk_name }}
+                    </span>
+                  </p>
+                </template>
+              </DivisionRiskCombobox>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- ระดับโอกาสเกิด - แก้ไข @update:model-value -->
+              <!-- ระดับโอกาสเกิด -->
               <div>
                 <div class="flex items-center justify-between">
                   <Label for="likelihood_level">
@@ -617,6 +654,7 @@ onMounted(() => {
                 <Select 
                   v-model="form.likelihood_level"
                   @update:model-value="onLikelihoodChange"
+                  :disabled="!selectedDivisionRisk"
                 >
                   <SelectTrigger 
                     class="w-full mt-1" 
@@ -625,10 +663,13 @@ onMounted(() => {
                     <SelectValue placeholder="เลือกระดับโอกาสเกิด" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 - น้อยมาก</SelectItem>
-                    <SelectItem value="2">2 - น้อย</SelectItem>
-                    <SelectItem value="3">3 - ปานกลาง</SelectItem>
-                    <SelectItem value="4">4 - สูง</SelectItem>
+                    <SelectItem 
+                      v-for="criteria in selectedLikelihoodCriteria" 
+                      :key="criteria.id"
+                      :value="criteria.level.toString()"
+                    >
+                      {{ criteria.level }} - {{ criteria.name }}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <p v-if="form.errors.likelihood_level" class="text-sm text-red-500 mt-1">
@@ -636,7 +677,7 @@ onMounted(() => {
                 </p>
               </div>
 
-              <!-- ระดับผลกระทบ - แก้ไข @update:model-value -->
+              <!-- ระดับผลกระทบ -->
               <div>
                 <div class="flex items-center justify-between">
                   <Label for="impact_level">
@@ -667,6 +708,7 @@ onMounted(() => {
                 <Select 
                   v-model="form.impact_level"
                   @update:model-value="onImpactChange"
+                  :disabled="!selectedDivisionRisk"
                 >
                   <SelectTrigger 
                     class="w-full mt-1" 
@@ -675,10 +717,13 @@ onMounted(() => {
                     <SelectValue placeholder="เลือกระดับผลกระทบ" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 - น้อยมาก</SelectItem>
-                    <SelectItem value="2">2 - น้อย</SelectItem>
-                    <SelectItem value="3">3 - ปานกลาง</SelectItem>
-                    <SelectItem value="4">4 - สูง</SelectItem>
+                    <SelectItem 
+                      v-for="criteria in selectedImpactCriteria" 
+                      :key="criteria.id"
+                      :value="criteria.level.toString()"
+                    >
+                      {{ criteria.level }} - {{ criteria.name }}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <p v-if="form.errors.impact_level" class="text-sm text-red-500 mt-1">
@@ -729,7 +774,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- ส่วนของเอกสารแนบ -->
+        <!-- ส่วนของเอกสารแนบ (ยังคงเหมือนเดิม) -->
         <div class="bg-white shadow-sm rounded-lg overflow-hidden dark:bg-gray-800">
           <div class="p-6 space-y-4">
             <h2 class="text-lg font-medium">เอกสารแนบ</h2>
@@ -837,7 +882,7 @@ onMounted(() => {
           
           <Button
             type="submit"
-            :disabled="form.processing"
+            :disabled="form.processing || !selectedDivisionRisk"
             class="w-full sm:w-auto flex items-center justify-center gap-2"
           >
             <Loader2Icon v-if="form.processing" class="h-4 w-4 animate-spin" />
