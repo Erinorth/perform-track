@@ -3,6 +3,7 @@
   คำอธิบาย: Modal component สำหรับเพิ่ม/แก้ไขข้อมูลการประเมินความเสี่ยง
   ใช้: แสดงฟอร์มสำหรับกรอกข้อมูลการประเมินความเสี่ยง และจัดการเอกสารแนบ
   การทำงาน: รองรับการแสดงระดับความเสี่ยงจากฐานข้อมูลและคำนวณคะแนนอัตโนมัติ
+  แก้ไข: ใช้ DivisionRiskCombobox แทน select element
 -->
 
 <script setup lang="ts">
@@ -18,6 +19,9 @@ import { toast } from 'vue-sonner'
 import { SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, Trash2Icon, HelpCircleIcon, Loader2Icon } from 'lucide-vue-next'
 import type { RiskAssessment, DivisionRisk } from '@/types/types'
 import { useRiskAssessmentData } from '@/composables/useRiskAssessmentData'
+
+// เพิ่ม import DivisionRiskCombobox
+import DivisionRiskCombobox from '@/components/forms/DivisionRiskCombobox.vue'
 
 // กำหนด Types สำหรับฟอร์ม
 type AssessmentFormData = {
@@ -55,6 +59,9 @@ const {
 // สถานะสำหรับแสดง tooltip ช่วยเหลือ (ตำแหน่งเดียวกับที่ใช้จริง)
 const showTooltip = ref<string | null>(null)
 
+// เพิ่ม state สำหรับ DivisionRisk object
+const selectedDivisionRisk = ref<DivisionRisk | null>(null)
+
 // Computed Properties
 const isEditing = computed(() => !!props.assessment?.id)
 const modalTitle = computed(() => isEditing.value ? 'แก้ไขการประเมินความเสี่ยง' : 'เพิ่มการประเมินความเสี่ยง')
@@ -87,15 +94,6 @@ const getRiskLevelDisplay = computed(() => {
   if (score <= 6) return { text: 'ปานกลาง', color: 'bg-yellow-100 text-yellow-800' };
   if (score <= 9) return { text: 'สูง', color: 'bg-orange-100 text-orange-800' };
   return { text: 'สูงมาก', color: 'bg-red-100 text-red-800' };
-})
-
-/**
- * ความเสี่ยงระดับฝ่ายที่เลือก
- * สำหรับเข้าถึงข้อมูลเกณฑ์
- */
-const selectedDivisionRisk = computed(() => {
-  if (!form.division_risk_id) return null;
-  return props.divisionRisks?.find(risk => risk.id === form.division_risk_id);
 })
 
 /**
@@ -169,6 +167,50 @@ function getDefaultLevelName(level: number): string {
   }
 }
 
+// ===============================
+// Event Handlers สำหรับ DivisionRiskCombobox
+// ===============================
+
+/**
+ * จัดการการเลือกความเสี่ยงหน่วยงาน
+ */
+const handleDivisionRiskSelect = (risk: DivisionRisk) => {
+  console.log('เลือกความเสี่ยงหน่วยงาน:', risk)
+  selectedDivisionRisk.value = risk
+  form.division_risk_id = risk.id
+  
+  // รีเซ็ตค่าการประเมินเมื่อเปลี่ยนความเสี่ยง
+  form.likelihood_level = 1
+  form.impact_level = 1
+  form.risk_score = 1
+  
+  toast.success(`เลือกความเสี่ยง: ${risk.risk_name}`, {
+    duration: 2000
+  })
+}
+
+/**
+ * จัดการการล้างค่าความเสี่ยงหน่วยงาน
+ */
+const handleDivisionRiskClear = () => {
+  console.log('ล้างความเสี่ยงหน่วยงาน')
+  selectedDivisionRisk.value = null
+  form.division_risk_id = null
+  
+  // รีเซ็ตค่าการประเมิน
+  form.likelihood_level = 1
+  form.impact_level = 1
+  form.risk_score = 1
+}
+
+/**
+ * หาความเสี่ยงหน่วยงานจาก ID
+ */
+const findDivisionRiskById = (id: number | null): DivisionRisk | null => {
+  if (!id || !props.divisionRisks) return null
+  return props.divisionRisks.find(risk => risk.id === id) || null
+}
+
 // โหลดข้อมูลเมื่อ Modal เปิด
 watch(() => props.show, (newVal) => {
   if (newVal && props.assessment) {
@@ -177,14 +219,12 @@ watch(() => props.show, (newVal) => {
     
     // แสดงข้อมูลเกี่ยวกับเอกสารแนบที่มีอยู่
     console.log('ข้อมูลเอกสารแนบที่มากับ assessment:', {
-    hasAttachments: !!props.assessment.attachments,
-    // แก้ไขโดยใช้การตรวจสอบ Optional Chaining และใช้ attachments แทน
-    attachmentsCount: props.assessment.attachments?.length || 0,
-    // ใช้ Object.hasOwn เพื่อตรวจสอบ property ที่อาจมีอยู่จริงในข้อมูล runtime
-    hasExtraAttachmentFields: Object.hasOwn(props.assessment, 'attachment') || 
-                              Object.hasOwn(props.assessment, 'risk_assessment_attachments'),
-    keys: Object.keys(props.assessment)
-  });
+      hasAttachments: !!props.assessment.attachments,
+      attachmentsCount: props.assessment.attachments?.length || 0,
+      hasExtraAttachmentFields: Object.hasOwn(props.assessment, 'attachment') || 
+                                Object.hasOwn(props.assessment, 'risk_assessment_attachments'),
+      keys: Object.keys(props.assessment)
+    });
     
     // กำหนดค่าให้ฟอร์ม
     form.assessment_year = props.assessment.assessment_year;
@@ -195,6 +235,9 @@ watch(() => props.show, (newVal) => {
     form.division_risk_id = props.assessment.division_risk_id;
     form.notes = props.assessment.notes ?? '';
     
+    // ตั้งค่า selectedDivisionRisk
+    selectedDivisionRisk.value = findDivisionRiskById(props.assessment.division_risk_id)
+    
     // โหลดเอกสารแนบ
     loadAttachments(props.assessment);
   } else if (newVal) {
@@ -202,6 +245,7 @@ watch(() => props.show, (newVal) => {
     form.reset();
     form.assessment_year = new Date().getFullYear();
     form.assessment_period = 1;
+    selectedDivisionRisk.value = null;
     loadAttachments();
   }
 });
@@ -415,10 +459,10 @@ const handleSubmit = async () => {
             </p>
           </div>
 
-          <!-- ฟิลด์ความเสี่ยงฝ่ายที่เกี่ยวข้อง -->
+          <!-- แทนที่ select element ด้วย DivisionRiskCombobox -->
           <div class="grid gap-2">
-            <Label for="division_risk_id" class="flex items-center gap-1">
-              ความเสี่ยงฝ่ายที่ประเมิน
+            <Label class="flex items-center gap-1">
+              ความเสี่ยงฝ่ายที่ประเมิน <span class="text-red-500">*</span>
               <Button 
                 type="button" 
                 variant="ghost" 
@@ -432,26 +476,36 @@ const handleSubmit = async () => {
             
             <!-- คำอธิบายสำหรับความเสี่ยงฝ่าย -->
             <div v-if="showTooltip === 'division_risk'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
-              เลือกความเสี่ยงระดับฝ่ายที่ต้องการประเมิน ซึ่งจะมีเกณฑ์เฉพาะของแต่ละความเสี่ยง
+              เลือกความเสี่ยงระดับฝ่ายที่ต้องการประเมิน ซึ่งจะมีเกณฑ์เฉพาะของแต่ละความเสี่ยง<br>
+              หากเลือกความเสี่ยงใหม่ ค่าการประเมินจะถูกรีเซ็ตเพื่อให้ใช้เกณฑ์ที่ถูกต้อง
             </div>
             
-            <select
-              id="division_risk_id"
-              v-model="form.division_risk_id"
-              class="rounded-md border border-input bg-background px-3 py-2"
+            <!-- ใช้ DivisionRiskCombobox แทน select -->
+            <DivisionRiskCombobox
+              :division-risks="props.divisionRisks || []"
+              v-model="selectedDivisionRisk"
+              placeholder="เลือกความเสี่ยงฝ่ายที่ต้องการประเมิน..."
+              :required="true"
+              :disabled="form.processing"
+              show-organizational-risk
+              @select="handleDivisionRiskSelect"
+              @clear="handleDivisionRiskClear"
             >
-              <option :value="null">-- เลือกความเสี่ยงฝ่าย --</option>
-              <option
-                v-for="risk in props.divisionRisks || []"
-                :key="risk.id"
-                :value="risk.id"
-              >
-                {{ risk.risk_name }}
-              </option>
-            </select>
-            <p v-if="form.errors.division_risk_id" class="text-sm text-red-500">
-              {{ form.errors.division_risk_id }}
-            </p>
+              <template #error>
+                <p v-if="form.errors.division_risk_id" class="text-sm text-red-500 mt-1">
+                  {{ form.errors.division_risk_id }}
+                </p>
+              </template>
+              
+              <template #help>
+                <p v-if="selectedDivisionRisk" class="text-xs text-muted-foreground mt-1">
+                  <strong>รายละเอียด:</strong> {{ selectedDivisionRisk.description }}
+                  <span v-if="selectedDivisionRisk.organizational_risk">
+                    <br><strong>ความเสี่ยงองค์กรที่เกี่ยวข้อง:</strong> {{ selectedDivisionRisk.organizational_risk.risk_name }}
+                  </span>
+                </p>
+              </template>
+            </DivisionRiskCombobox>
           </div>
 
           <!-- การประเมินความเสี่ยง - แสดงเป็น Grid 2 คอลัมน์ -->
@@ -495,6 +549,7 @@ const handleSubmit = async () => {
                   step="1"
                   v-model="form.likelihood_level"
                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  :disabled="!selectedDivisionRisk"
                 />
                 <div class="flex justify-between text-xs text-gray-500 mt-1">
                   <span>1</span>
@@ -550,6 +605,7 @@ const handleSubmit = async () => {
                   step="1"
                   v-model="form.impact_level"
                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  :disabled="!selectedDivisionRisk"
                 />
                 <div class="flex justify-between text-xs text-gray-500 mt-1">
                   <span>1</span>
@@ -638,7 +694,7 @@ const handleSubmit = async () => {
             </p>
           </div>
 
-          <!-- ส่วนของเอกสารแนบ -->
+          <!-- ส่วนของเอกสารแนบ (ยังคงเหมือนเดิม) -->
           <div class="grid gap-2">
             <Label class="flex items-center gap-1">
               เอกสารแนบ
@@ -766,8 +822,8 @@ const handleSubmit = async () => {
             </Button>
             <Button 
               type="submit" 
-              :disabled="form.processing"
-              :class="{'opacity-50 cursor-not-allowed': form.processing}"
+              :disabled="form.processing || !selectedDivisionRisk"
+              :class="{'opacity-50 cursor-not-allowed': form.processing || !selectedDivisionRisk}"
             >
               <SaveIcon class="h-4 w-4 mr-2" />
               {{ isEditing ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล' }}
