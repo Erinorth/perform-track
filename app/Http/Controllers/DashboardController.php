@@ -28,7 +28,7 @@ class DashboardController extends Controller
         // เตรียมข้อมูลสำหรับ Dashboard
         $trendData = $this->prepareTrendData($timeRange, $riskType);
         $riskSummary = $this->prepareRiskSummary($riskType);
-        $heatmapData = $this->prepareHeatmapData($riskType);
+        $riskMatrixData = $this->prepareRiskMatrixData($riskType); // เปลี่ยนชื่อจาก heatmapData
         $recentIncidents = $this->countRecentIncidents();
         $riskTypeOptions = $this->getRiskTypeOptions();
 
@@ -36,7 +36,7 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'trendData' => $trendData,
             'riskSummary' => $riskSummary,
-            'heatmapData' => $heatmapData,
+            'riskMatrixData' => $riskMatrixData, // เปลี่ยนชื่อ
             'recentIncidents' => $recentIncidents,
             'riskTypeOptions' => $riskTypeOptions
         ]);
@@ -102,7 +102,7 @@ class DashboardController extends Controller
         // จัดกลุ่มข้อมูลตามสัปดาห์
         $periods = $this->getPeriods($timeRange);
         
-        // สร้างโครงสร้างข้อมูล (ปรับเป็น 3 ระดับ)
+        // สร้างโครงสร้างข้อมูล (ปรับเป็น 4 ระดับ)
         $groupedData = [];
         foreach ($periods as $period) {
             $periodData = $assessments->filter(function ($assessment) use ($period) {
@@ -112,8 +112,11 @@ class DashboardController extends Controller
             
             $groupedData[] = [
                 'date' => $period['label'],
+                'critical' => $periodData->filter(function ($a) {
+                    return $a->likelihood_level * $a->impact_level >= 13 && $a->likelihood_level * $a->impact_level <= 16;
+                })->count(),
                 'high' => $periodData->filter(function ($a) {
-                    return $a->likelihood_level * $a->impact_level >= 9 && $a->likelihood_level * $a->impact_level <= 16;
+                    return $a->likelihood_level * $a->impact_level >= 9 && $a->likelihood_level * $a->impact_level <= 12;
                 })->count(),
                 'medium' => $periodData->filter(function ($a) {
                     return $a->likelihood_level * $a->impact_level >= 4 && $a->likelihood_level * $a->impact_level <= 8;
@@ -212,13 +215,15 @@ class DashboardController extends Controller
         }
             
         $riskCounts = $query->select(
-                DB::raw('COUNT(CASE WHEN likelihood_level * impact_level >= 9 AND likelihood_level * impact_level <= 16 THEN 1 END) as high'),
+                DB::raw('COUNT(CASE WHEN likelihood_level * impact_level >= 13 AND likelihood_level * impact_level <= 16 THEN 1 END) as critical'),
+                DB::raw('COUNT(CASE WHEN likelihood_level * impact_level >= 9 AND likelihood_level * impact_level <= 12 THEN 1 END) as high'),
                 DB::raw('COUNT(CASE WHEN likelihood_level * impact_level >= 4 AND likelihood_level * impact_level <= 8 THEN 1 END) as medium'),
                 DB::raw('COUNT(CASE WHEN likelihood_level * impact_level >= 1 AND likelihood_level * impact_level <= 3 THEN 1 END) as low')
             )
             ->first();
             
         return [
+            'critical' => $riskCounts->critical ?? 0,
             'high' => $riskCounts->high ?? 0,
             'medium' => $riskCounts->medium ?? 0,
             'low' => $riskCounts->low ?? 0
@@ -226,12 +231,12 @@ class DashboardController extends Controller
     }
 
     /**
-     * สร้างข้อมูลสำหรับ Heatmap
+     * สร้างข้อมูลสำหรับ Risk Matrix Bubble Chart
      * 
      * @param string|int $riskType ประเภทความเสี่ยง (all หรือ id)
-     * @return array ข้อมูลจำนวนความเสี่ยงในแต่ละช่อง
+     * @return array ข้อมูลสำหรับ Risk Matrix พร้อมรายละเอียดความเสี่ยง
      */
-    private function prepareHeatmapData($riskType = 'all')
+    private function prepareRiskMatrixData($riskType = 'all')
     {
         // ใช้ข้อมูลจากการประเมินล่าสุดของแต่ละความเสี่ยง
         $latestAssessments = DB::table('risk_assessments as ra')
@@ -243,30 +248,66 @@ class DashboardController extends Controller
                 $join->on('ra.division_risk_id', '=', 'latest.division_risk_id')
                     ->on('ra.assessment_date', '=', 'latest.latest_date');
             })
-            ->join('division_risks as dr', 'ra.division_risk_id', '=', 'dr.id');
+            ->join('division_risks as dr', 'ra.division_risk_id', '=', 'dr.id')
+            ->join('organizational_risks as org', 'dr.organizational_risk_id', '=', 'org.id');
             
         // กรองตามประเภทความเสี่ยง
         if ($riskType !== 'all') {
             $query->where('dr.organizational_risk_id', $riskType);
         }
             
-        $heatmapData = $query->select(
-                'ra.likelihood_level as likelihood',
-                'ra.impact_level as impact',
-                DB::raw('COUNT(*) as risks')
+        // ดึงข้อมูลการประเมินพร้อมรายละเอียดความเสี่ยง
+        $assessments = $query->select(
+                'ra.likelihood_level',
+                'ra.impact_level',
+                'ra.assessment_date',
+                'ra.notes',
+                'dr.id as division_risk_id',
+                'dr.risk_name',
+                'dr.description',
+                'org.id as organizational_risk_id',
+                'org.risk_name as org_risk_name'
             )
-            ->groupBy('likelihood', 'impact')
-            ->get()
-            ->map(function($item) {
-                return [
-                    'likelihood' => $item->likelihood,
-                    'impact' => $item->impact,
-                    'risks' => (int) $item->risks
-                ];
-            })
-            ->toArray();
+            ->get();
             
-        return $heatmapData;
+        // จัดกลุ่มข้อมูลตาม likelihood_level และ impact_level
+        $matrixData = [];
+        foreach ($assessments as $assessment) {
+            $key = $assessment->likelihood_level . '_' . $assessment->impact_level;
+            
+            if (!isset($matrixData[$key])) {
+                $matrixData[$key] = [
+                    'likelihood_level' => $assessment->likelihood_level,
+                    'impact_level' => $assessment->impact_level,
+                    'risk_score' => $assessment->likelihood_level * $assessment->impact_level,
+                    'risks' => []
+                ];
+            }
+            
+            // เพิ่มข้อมูลความเสี่ยงเข้าไปในกลุ่ม
+            $matrixData[$key]['risks'][] = [
+                'id' => $assessment->division_risk_id,
+                'risk_name' => $assessment->risk_name,
+                'description' => $assessment->description,
+                'division_risk_id' => $assessment->division_risk_id,
+                'organizational_risk_id' => $assessment->organizational_risk_id,
+                'org_risk_name' => $assessment->org_risk_name,
+                'assessment_date' => $assessment->assessment_date,
+                'notes' => $assessment->notes
+            ];
+        }
+        
+        // แปลงเป็น array และเรียงลำดับ
+        $result = array_values($matrixData);
+        
+        // Log สำหรับ debugging
+        Log::info('Risk Matrix Data prepared', [
+            'total_groups' => count($result),
+            'total_risks' => $assessments->count(),
+            'risk_type_filter' => $riskType
+        ]);
+        
+        return $result;
     }
 
     /**
