@@ -21,10 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 
 // Combobox Radix Vue
-import {
-  ComboboxRoot, ComboboxAnchor, ComboboxInput, ComboboxTrigger, ComboboxContent,
-  ComboboxViewport, ComboboxEmpty, ComboboxItem, ComboboxItemIndicator
-} from 'radix-vue'
+import OrganizationalRiskCombobox from '@/components/forms/OrganizationalRiskCombobox.vue'
 
 // Icons
 import {
@@ -373,68 +370,21 @@ const getDisplayValue = (value: ComboboxValue): string => {
             <Label for="organizational_risk_id">
               ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง
             </Label>
-            <!-- Combobox Radix Vue - แก้ไข type ให้ compatible -->
-            <ComboboxRoot
+            
+            <OrganizationalRiskCombobox
+              :organizational-risks="organizationalRisks || []"
               v-model="selectedOrganizationalRisk"
-              :display-value="getDisplayValue"
-              v-model:searchTerm="organizationalSearch"
-              @update:open="handleComboboxOpenChange"
-              class="w-full relative"
+              placeholder="ค้นหาหรือเลือกความเสี่ยงระดับองค์กร..."
+              :disabled="form.processing"
+              @select="(risk) => form.organizational_risk_id = risk.id"
+              @clear="() => form.organizational_risk_id = null"
             >
-              <ComboboxAnchor
-                ref="comboboxAnchorRef"
-                class="relative flex items-center justify-between rounded border border-input bg-background px-3 h-10 w-full"
-              >
-                <ComboboxInput
-                  id="organizational_risk_id"
-                  class="!bg-transparent outline-none flex-1 text-base h-full selection:bg-gray-100 placeholder:text-gray-400"
-                  :placeholder="selectedOrganizationalRisk ? selectedOrganizationalRisk.risk_name : 'ค้นหาหรือเลือกความเสี่ยงระดับองค์กร...'"
-                  autocomplete="off"
-                  aria-autocomplete="list"
-                />
-                <div class="flex items-center gap-1">
-                  <!-- ปุ่มล้างค่า -->
-                  <Button
-                    v-if="selectedOrganizationalRisk"
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    class="h-6 w-6 text-gray-400 hover:text-gray-600"
-                    @click.stop="clearOrganizationalRisk"
-                  >
-                    <XIcon class="h-3 w-3" />
-                  </Button>
-                  <ComboboxTrigger>
-                    <ChevronDownIcon class="h-4 w-4 text-gray-500" />
-                  </ComboboxTrigger>
-                </div>
-              </ComboboxAnchor>
-              <ComboboxContent 
-                class="absolute z-10 mt-2 bg-white overflow-hidden rounded shadow-lg border border-gray-200"
-                :style="{ width: dropdownWidth }"
-              >
-                <ComboboxViewport class="p-1 max-h-60 overflow-y-auto">
-                  <ComboboxEmpty class="text-gray-400 text-xs font-medium text-center py-2">
-                    ไม่พบรายการ
-                  </ComboboxEmpty>
-                  <template v-for="risk in filteredOrganizationalRisks" :key="risk.id">
-                    <ComboboxItem
-                      :value="risk"
-                      @select="handleSelectOrganizationalRisk(risk)"
-                      class="text-base leading-none text-gray-700 rounded flex items-center h-10 px-3 pr-8 relative select-none data-[highlighted]:bg-primary/10 data-[highlighted]:text-primary cursor-pointer"
-                    >
-                      <span class="truncate">{{ risk.risk_name }}</span>
-                      <ComboboxItemIndicator class="absolute right-2 inline-flex items-center">
-                        <CheckIcon class="h-4 w-4 text-primary" />
-                      </ComboboxItemIndicator>
-                    </ComboboxItem>
-                  </template>
-                </ComboboxViewport>
-              </ComboboxContent>
-            </ComboboxRoot>
-            <p v-if="form.errors.organizational_risk_id" class="text-sm text-red-500">
-              {{ form.errors.organizational_risk_id }}
-            </p>
+              <template #error>
+                <p v-if="form.errors.organizational_risk_id" class="text-sm text-red-500 mt-1">
+                  {{ form.errors.organizational_risk_id }}
+                </p>
+              </template>
+            </OrganizationalRiskCombobox>
           </div>
 
           <!-- ฟิลด์รายละเอียด -->
