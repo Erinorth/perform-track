@@ -1,6 +1,7 @@
 // ไฟล์: resources\js\features\risk_assessment\columns.ts
 // หน้านี้กำหนดคอลัมน์สำหรับ DataTable ของการประเมินความเสี่ยง
 // เพิ่ม event สำหรับลบ (delete) ข้อมูลใน action และแสดงชื่อความเสี่ยงระดับฝ่าย
+// ย้ายปุ่มย่อ/ขยายไปยังคอลัมน์งวดการประเมิน
 
 import { h } from 'vue'
 import { router } from '@inertiajs/vue3' // เพิ่มการนำเข้า router จาก inertiajs
@@ -22,6 +23,7 @@ declare module '@tanstack/vue-table' {
   }
 }
 
+// ฟังก์ชันกำหนดระดับความเสี่ยงตามคะแนน
 const getRiskLevel = (score: number): { text: string, color: string } => {
   if (score <= 3) {
     return { text: 'ต่ำ', color: 'bg-green-100 text-green-800' }
@@ -61,7 +63,7 @@ export const columns: ColumnDef<RiskAssessment>[] = [
       })
     ),
   },
-  // เพิ่มคอลัมน์ใหม่: ชื่อความเสี่ยงระดับฝ่าย
+  // คอลัมน์ชื่อความเสี่ยงระดับฝ่าย - ลบปุ่มย่อ/ขยายออก
   {
     id: "division_risk_name",
     header: ({ column }) => (
@@ -76,26 +78,14 @@ export const columns: ColumnDef<RiskAssessment>[] = [
       const divisionRisk = row.original.division_risk
       console.log('แสดงชื่อความเสี่ยงระดับฝ่าย:', divisionRisk?.risk_name || 'ไม่มีข้อมูล')
       
-      return h('div', { class: 'flex items-center gap-2' }, [
-        // ปุ่มสามเหลี่ยมสำหรับย่อ/ขยาย
-        h(Button, {
-          variant: 'ghost',
-          size: 'icon',
-          class: 'p-0 h-8 w-8',
-          onClick: (e: Event) => {
-            e.stopPropagation() // ป้องกันการ bubble ของ event
-            // logTableAction('expand', 'division_risk', row.original.id)
-            row.toggleExpanded() // สลับสถานะย่อ/ขยาย
-          }
-        }, () => h(ChevronDown, {
-          class: `h-4 w-4 transition-transform ${row.getIsExpanded() ? 'rotate-180' : ''}`,
-        })),
-        // ชื่อความเสี่ยงระดับฝ่าย
+      // แสดงเฉพาะชื่อความเสี่ยงระดับฝ่าย ไม่มีปุ่มย่อ/ขยาย
+      return h('div', { class: 'flex items-center' }, [
         h('span', { class: 'truncate font-medium' }, divisionRisk?.risk_name || '-')
       ])
     },
     enableSorting: true,
   },
+  // คอลัมน์งวดการประเมิน - ย้ายปุ่มย่อ/ขยายมาไว้ที่นี่
   {
     id: "assessment_period",
     header: ({ column }) => (
@@ -106,9 +96,32 @@ export const columns: ColumnDef<RiskAssessment>[] = [
     ),
     accessorFn: (row) => formatAssessmentPeriod(row.assessment_year, row.assessment_period),
     cell: ({ row }) => {
-      return formatAssessmentPeriod(row.original.assessment_year, row.original.assessment_period)
+      const assessmentPeriod = formatAssessmentPeriod(row.original.assessment_year, row.original.assessment_period)
+      console.log('แสดงงวดการประเมิน:', assessmentPeriod)
+      
+      return h('div', { class: 'flex items-center gap-2' }, [
+        // ปุ่มสามเหลี่ยมสำหรับย่อ/ขยาย - ย้ายมาจากคอลัมน์ division_risk_name
+        h(Button, {
+          variant: 'ghost',
+          size: 'icon',
+          class: 'p-0 h-8 w-8 flex-shrink-0',
+          onClick: (e: Event) => {
+            e.stopPropagation() // ป้องกันการ bubble ของ event
+            console.log('สลับการขยาย/ย่อแถว:', row.original.id)
+            row.toggleExpanded() // สลับสถานะย่อ/ขยาย
+          }
+        }, () => h(ChevronDown, {
+          class: `h-4 w-4 transition-transform duration-200 ${row.getIsExpanded() ? 'rotate-180' : ''}`,
+        })),
+        // แสดงงวดการประเมิน
+        h('span', { 
+          class: 'truncate font-medium',
+          title: assessmentPeriod // แสดง tooltip เมื่อ hover
+        }, assessmentPeriod)
+      ])
     },
     filterFn: filterByPeriod,
+    enableSorting: true,
   },
   {
     accessorKey: "likelihood_level", // ระดับโอกาสเกิด
@@ -161,7 +174,6 @@ export const columns: ColumnDef<RiskAssessment>[] = [
         title: 'ระดับผลกระทบ'
       })
     ),
-
     // แก้ไขจุดที่มีการเข้าถึง divisionRisk.impactCriteria
     cell: ({ row }) => {
       const level = row.getValue("impact_level");
@@ -297,7 +309,7 @@ export const columns: ColumnDef<RiskAssessment>[] = [
           data: dropdownData, 
           menuLabel: 'ตัวเลือกการประเมินความเสี่ยง',
           onExpand: () => {
-            console.log('ขยายแถวข้อมูล', assessment.id)
+            console.log('ดูรายละเอียดการประเมินความเสี่ยง', assessment.id)
             router.visit(`/risk-assessments/${assessment.id}`, {
               data: { 
                 previousPage: window.location.href,
@@ -307,11 +319,11 @@ export const columns: ColumnDef<RiskAssessment>[] = [
             });
           },
           onEdit: () => {
-            console.log('แก้ไขข้อมูลความเสี่ยง:', assessment.id)
+            console.log('แก้ไขข้อมูลการประเมินความเสี่ยง:', assessment.id)
             meta?.onEdit?.(assessment)
           },
           onDelete: () => {
-            console.log('ลบข้อมูลความเสี่ยง:', assessment.id)
+            console.log('ลบข้อมูลการประเมินความเสี่ยง:', assessment.id)
             meta?.onDelete?.(assessment)
           },
         }),
