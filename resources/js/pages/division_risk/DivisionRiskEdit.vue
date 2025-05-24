@@ -1,10 +1,11 @@
 <!-- 
   ไฟล์: resources/js/pages/division_risk/DivisionRiskEdit.vue
   คำอธิบาย: หน้าสำหรับแก้ไขข้อมูลความเสี่ยงระดับฝ่าย
-  ปรับปรุงฟิลด์ "ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง" ให้ใช้ Radix Vue Combobox ที่ search ได้
+  ปรับปรุงฟิลด์ "ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง" ให้ใช้ OrganizationalRiskCombobox
   ทำหน้าที่: แสดงฟอร์มสำหรับแก้ไขข้อมูลความเสี่ยง, อัปโหลดเอกสารแนบ
   หลักการ: ใช้ฟอร์มแบบเต็มหน้าจอ สำหรับการแก้ไขข้อมูลโดยเฉพาะ
   ใช้ร่วมกับ: DivisionRiskController.php ในฝั่ง Backend
+  แก้ไข: ใช้ OrganizationalRiskCombobox แทน Radix Vue Combobox โดยตรง
 -->
 
 <script setup lang="ts">
@@ -25,16 +26,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
 
-// Combobox Radix Vue
-import {
-  ComboboxRoot, ComboboxAnchor, ComboboxInput, ComboboxTrigger, ComboboxContent,
-  ComboboxViewport, ComboboxEmpty, ComboboxItem, ComboboxItemIndicator
-} from 'radix-vue'
+// เพิ่ม import OrganizationalRiskCombobox
+import OrganizationalRiskCombobox from '@/components/forms/OrganizationalRiskCombobox.vue'
 
 import { 
   SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, 
-  Trash2Icon, HelpCircleIcon, Loader2Icon, ArrowLeftIcon,
-  ChevronDownIcon, CheckIcon
+  Trash2Icon, HelpCircleIcon, Loader2Icon, ArrowLeftIcon
 } from 'lucide-vue-next'
 
 // ==================== นำเข้า Composables ====================
@@ -76,9 +73,6 @@ type RiskFormData = {
   impact_criteria: Record<string, any>[];
 }
 
-// Type สำหรับ Combobox - ให้รองรับ OrganizationalRisk และ undefined
-type ComboboxValue = OrganizationalRisk | undefined
-
 // กำหนด props และ events
 const props = defineProps<{
   risk: DivisionRisk; // ข้อมูลความเสี่ยงสำหรับการแก้ไข
@@ -97,30 +91,9 @@ const toggleCriteriaSection = () => {
 // เพิ่มตัวแปรเก็บสถานะการโหลดข้อมูล
 const isLoading = ref<boolean>(true);
 
-// ==================== Combobox State ====================
-// ฟิลด์ combobox สำหรับความเสี่ยงระดับองค์กร
-const organizationalSearch = ref('')
-const selectedOrganizationalRisk = ref<ComboboxValue>(undefined)
-const isComboboxOpen = ref(false)
-
-// Ref สำหรับคำนวณขนาด dropdown
-const comboboxAnchorRef = ref<HTMLElement>()
-const dropdownWidth = ref('auto')
-
-// ฟิลด์ combobox: filter option ตาม search - แสดงทั้งหมดเมื่อไม่มี search term
-const filteredOrganizationalRisks = computed(() => {
-  if (!props.organizationalRisks) return []
-  
-  // ถ้าไม่มี search term หรือ search term ว่าง ให้แสดงทั้งหมด
-  if (!organizationalSearch.value || organizationalSearch.value.trim() === '') {
-    return props.organizationalRisks
-  }
-  
-  // กรองตาม search term
-  return props.organizationalRisks.filter(risk =>
-    risk.risk_name.toLowerCase().includes(organizationalSearch.value.toLowerCase())
-  )
-})
+// ==================== OrganizationalRisk State ====================
+// เปลี่ยนจาก combobox state หลายตัวเป็นตัวแปรเดียว
+const selectedOrganizationalRisk = ref<OrganizationalRisk | null>(null)
 
 // ใช้ composable เพื่อแยกการจัดการข้อมูลออกจาก UI
 const { 
@@ -157,6 +130,40 @@ const form = useForm<RiskFormData>({
   ] as Record<string, any>[],
 })
 
+// ===============================
+// Event Handlers สำหรับ OrganizationalRiskCombobox
+// ===============================
+
+/**
+ * จัดการการเลือกความเสี่ยงองค์กร
+ */
+const handleOrganizationalRiskSelect = (risk: OrganizationalRisk) => {
+  console.log('เลือกความเสี่ยงระดับองค์กร:', risk)
+  selectedOrganizationalRisk.value = risk
+  form.organizational_risk_id = risk.id
+  
+  toast.success(`เลือกความเสี่ยงองค์กร: ${risk.risk_name}`, {
+    duration: 2000
+  })
+}
+
+/**
+ * จัดการการล้างค่าความเสี่ยงองค์กร
+ */
+const handleOrganizationalRiskClear = () => {
+  console.log('ล้างความเสี่ยงระดับองค์กร')
+  selectedOrganizationalRisk.value = null
+  form.organizational_risk_id = null
+}
+
+/**
+ * หาความเสี่ยงองค์กรจาก ID
+ */
+const findOrganizationalRiskById = (id: number | null): OrganizationalRisk | null => {
+  if (!id || !props.organizationalRisks) return null
+  return props.organizationalRisks.find(risk => risk.id === id) || null
+}
+
 // โหลดข้อมูลเมื่อคอมโพเนนต์ถูกโหลด
 onMounted(() => {
   if (props.risk) {
@@ -166,11 +173,8 @@ onMounted(() => {
     form.description = props.risk.description
     form.organizational_risk_id = props.risk.organizational_risk_id
     
-    // sync combobox value - ปรับให้ไม่เป็น null
-    selectedOrganizationalRisk.value = (props.organizationalRisks || []).find(
-      r => r.id === props.risk?.organizational_risk_id
-    ) || undefined
-    organizationalSearch.value = selectedOrganizationalRisk.value?.risk_name || ''
+    // ตั้งค่า selectedOrganizationalRisk จาก ID
+    selectedOrganizationalRisk.value = findOrganizationalRiskById(props.risk.organizational_risk_id)
     
     loadAttachments(props.risk)
     
@@ -185,11 +189,6 @@ onMounted(() => {
   }
   
   isLoading.value = false
-  
-  // คำนวณขนาด dropdown เมื่อโหลดข้อมูลเสร็จ
-  nextTick(() => {
-    updateDropdownWidth()
-  })
 })
 
 /**
@@ -304,66 +303,6 @@ const handleSubmit = async () => {
 const toggleHelp = () => {
   showHelp.value = !showHelp.value
 }
-
-// ===============================
-// Combobox: เมื่อเลือก option
-// ===============================
-function handleSelectOrganizationalRisk(risk: OrganizationalRisk) {
-  console.log('เลือกความเสี่ยงระดับองค์กร:', risk)
-  selectedOrganizationalRisk.value = risk
-  organizationalSearch.value = risk.risk_name
-  form.organizational_risk_id = risk.id
-}
-
-// ===============================
-// Combobox: จัดการเมื่อเปิด/ปิด dropdown
-// ===============================
-function handleComboboxOpenChange(open: boolean) {
-  isComboboxOpen.value = open
-  console.log('combobox open state:', open)
-  
-  // เมื่อเปิด dropdown ให้รีเซ็ต search term เพื่อแสดงตัวเลือกทั้งหมด
-  if (open) {
-    organizationalSearch.value = ''
-    // คำนวณขนาด dropdown ใหม่
-    nextTick(() => {
-      updateDropdownWidth()
-    })
-  } else {
-    // เมื่อปิด dropdown ถ้ามีการเลือกแล้วให้แสดงชื่อที่เลือก
-    if (selectedOrganizationalRisk.value) {
-      organizationalSearch.value = selectedOrganizationalRisk.value.risk_name
-    }
-  }
-}
-
-// ===============================
-// Combobox: จัดการการล้างค่า
-// ===============================
-function clearOrganizationalRisk() {
-  console.log('ล้างการเลือกความเสี่ยงระดับองค์กร')
-  selectedOrganizationalRisk.value = undefined
-  organizationalSearch.value = ''
-  form.organizational_risk_id = null
-}
-
-// ===============================
-// คำนวณขนาด dropdown ให้เท่ากับ anchor
-// ===============================
-function updateDropdownWidth() {
-  if (comboboxAnchorRef.value) {
-    const anchorWidth = comboboxAnchorRef.value.offsetWidth
-    dropdownWidth.value = `${anchorWidth}px`
-    console.log('อัพเดทขนาด dropdown:', dropdownWidth.value)
-  }
-}
-
-// ===============================
-// Combobox: Display value function - แก้ไข type safety
-// ===============================
-const getDisplayValue = (value: ComboboxValue): string => {
-  return value?.risk_name || ''
-}
 </script>
 
 <template>
@@ -403,7 +342,7 @@ const getDisplayValue = (value: ComboboxValue): string => {
               <!-- ฟิลด์ชื่อความเสี่ยง พร้อมปุ่มช่วยเหลือ -->
               <div class="grid gap-2">
                 <Label for="risk_name" class="flex items-center gap-1">
-                  ชื่อความเสี่ยง
+                  ชื่อความเสี่ยง <span class="text-red-500">*</span>
                   <Button 
                     type="button" 
                     variant="ghost" 
@@ -425,89 +364,68 @@ const getDisplayValue = (value: ComboboxValue): string => {
                   id="risk_name" 
                   v-model="form.risk_name" 
                   placeholder="ระบุชื่อความเสี่ยงระดับฝ่าย"
+                  required
                 />
                 <p v-if="form.errors.risk_name" class="text-sm text-red-500">
                   {{ form.errors.risk_name }}
                 </p>
               </div>
 
-              <!-- ฟิลด์ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง (Combobox) -->
+              <!-- แทนที่ส่วน ComboboxRoot เดิมด้วย OrganizationalRiskCombobox -->
               <div class="grid gap-2">
-                <Label for="organizational_risk_id">
+                <Label class="flex items-center gap-1">
                   ความเสี่ยงระดับองค์กรที่เกี่ยวข้อง
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="icon"
+                    class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                    @click="toggleHelp"
+                  >
+                    <HelpCircleIcon class="h-4 w-4" />
+                  </Button>
                 </Label>
-                <!-- Combobox Radix Vue -->
-                <ComboboxRoot
+                
+                <!-- คำอธิบายสำหรับความเสี่ยงองค์กร -->
+                <div v-if="showHelp" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+                  เลือกความเสี่ยงระดับองค์กรที่เกี่ยวข้องกับความเสี่ยงระดับฝ่ายนี้ (ถ้ามี)
+                  <br />การเชื่อมโยงนี้จะช่วยในการติดตามและจัดการความเสี่ยงแบบบูรณาการ
+                </div>
+                
+                <!-- ใช้ OrganizationalRiskCombobox แทน ComboboxRoot -->
+                <OrganizationalRiskCombobox
+                  :organizational-risks="props.organizationalRisks || []"
                   v-model="selectedOrganizationalRisk"
-                  :display-value="getDisplayValue"
-                  v-model:searchTerm="organizationalSearch"
-                  @update:open="handleComboboxOpenChange"
-                  class="w-full relative"
+                  placeholder="ค้นหาหรือเลือกความเสี่ยงระดับองค์กร..."
+                  :disabled="form.processing"
+                  @select="handleOrganizationalRiskSelect"
+                  @clear="handleOrganizationalRiskClear"
                 >
-                  <ComboboxAnchor
-                    ref="comboboxAnchorRef"
-                    class="relative flex items-center justify-between rounded border border-input bg-background px-3 h-10 w-full"
-                  >
-                    <ComboboxInput
-                      id="organizational_risk_id"
-                      class="!bg-transparent outline-none flex-1 text-base h-full selection:bg-gray-100 placeholder:text-gray-400"
-                      :placeholder="selectedOrganizationalRisk ? selectedOrganizationalRisk.risk_name : 'ค้นหาหรือเลือกความเสี่ยงระดับองค์กร...'"
-                      autocomplete="off"
-                      aria-autocomplete="list"
-                    />
-                    <div class="flex items-center gap-1">
-                      <!-- ปุ่มล้างค่า -->
-                      <Button
-                        v-if="selectedOrganizationalRisk"
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        class="h-6 w-6 text-gray-400 hover:text-gray-600"
-                        @click.stop="clearOrganizationalRisk"
-                      >
-                        <XIcon class="h-3 w-3" />
-                      </Button>
-                      <ComboboxTrigger>
-                        <ChevronDownIcon class="h-4 w-4 text-gray-500" />
-                      </ComboboxTrigger>
-                    </div>
-                  </ComboboxAnchor>
-                  <ComboboxContent 
-                    class="absolute z-10 mt-2 bg-white overflow-hidden rounded shadow-lg border border-gray-200"
-                    :style="{ width: dropdownWidth }"
-                  >
-                    <ComboboxViewport class="p-1 max-h-60 overflow-y-auto">
-                      <ComboboxEmpty class="text-gray-400 text-xs font-medium text-center py-2">
-                        ไม่พบรายการ
-                      </ComboboxEmpty>
-                      <template v-for="risk in filteredOrganizationalRisks" :key="risk.id">
-                        <ComboboxItem
-                          :value="risk"
-                          @select="handleSelectOrganizationalRisk(risk)"
-                          class="text-base leading-none text-gray-700 rounded flex items-center h-10 px-3 pr-8 relative select-none data-[highlighted]:bg-primary/10 data-[highlighted]:text-primary cursor-pointer"
-                        >
-                          <span class="truncate">{{ risk.risk_name }}</span>
-                          <ComboboxItemIndicator class="absolute right-2 inline-flex items-center">
-                            <CheckIcon class="h-4 w-4 text-primary" />
-                          </ComboboxItemIndicator>
-                        </ComboboxItem>
-                      </template>
-                    </ComboboxViewport>
-                  </ComboboxContent>
-                </ComboboxRoot>
-                <p v-if="form.errors.organizational_risk_id" class="text-sm text-red-500">
-                  {{ form.errors.organizational_risk_id }}
-                </p>
+                  <template #error>
+                    <p v-if="form.errors.organizational_risk_id" class="text-sm text-red-500 mt-1">
+                      {{ form.errors.organizational_risk_id }}
+                    </p>
+                  </template>
+                  
+                  <template #help>
+                    <p v-if="selectedOrganizationalRisk" class="text-xs text-muted-foreground mt-1">
+                      <strong>รายละเอียด:</strong> {{ selectedOrganizationalRisk.description }}
+                    </p>
+                  </template>
+                </OrganizationalRiskCombobox>
               </div>
 
               <!-- ฟิลด์รายละเอียด -->
               <div class="grid gap-2">
-                <Label for="description">รายละเอียดความเสี่ยง</Label>
+                <Label for="description">
+                  รายละเอียดความเสี่ยง <span class="text-red-500">*</span>
+                </Label>
                 <Textarea 
                   id="description" 
                   v-model="form.description" 
                   placeholder="ระบุรายละเอียดความเสี่ยง เช่น สาเหตุ ผลกระทบที่อาจเกิดขึ้น" 
                   :rows="6"
+                  required
                 />
                 <p v-if="form.errors.description" class="text-sm text-red-500">
                   {{ form.errors.description }}

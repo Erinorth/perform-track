@@ -143,7 +143,9 @@ class DivisionRiskController extends Controller
             'impactCriteria',
             'attachments',
             'riskAssessments' => function ($query) {
-                $query->orderBy('assessment_date', 'desc');
+                // แก้ไขจุดนี้: เปลี่ยนจาก orderBy('assessment_date', 'desc') 
+                // เป็น orderByDesc('assessment_year')->orderByDesc('assessment_period')
+                $query->orderByDesc('assessment_year')->orderByDesc('assessment_period');
             }
         ]);
 
