@@ -16,7 +16,8 @@ return new class extends Migration
         
         Schema::create('risk_assessments', function (Blueprint $table) {
             $table->id();
-            $table->date('assessment_date');
+            $table->year('assessment_year')->comment('ปีที่ประเมิน เช่น 2024, 2025');
+            $table->unsignedTinyInteger('assessment_period')->comment('งวดการประเมิน: 1 = ครึ่งปีแรก (ม.ค.-มิ.ย.), 2 = ครึ่งปีหลัง (ก.ค.-ธ.ค.)');
             $table->unsignedTinyInteger('likelihood_level'); // 1-4
             $table->unsignedTinyInteger('impact_level'); // 1-4
             $table->unsignedTinyInteger('risk_score')->virtualAs('likelihood_level * impact_level');
