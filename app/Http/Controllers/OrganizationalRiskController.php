@@ -48,6 +48,21 @@ class OrganizationalRiskController extends Controller
     }
 
     /**
+     * แสดงหน้าสร้างความเสี่ยงใหม่
+     */
+    public function create()
+    {
+        $this->authorize('create', OrganizationalRisk::class);
+        
+        Log::info('เข้าถึงหน้าสร้างความเสี่ยงองค์กรใหม่', [
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+        
+        return Inertia::render('organizational_risk/OrganizationalRiskForm');
+    }
+
+    /**
      * บันทึกข้อมูลความเสี่ยงระดับองค์กรใหม่ลงฐานข้อมูล
      * 
      * @param \App\Http\Requests\StoreOrganizationalRiskRequest $request คำขอที่ผ่านการตรวจสอบแล้ว
@@ -114,20 +129,31 @@ class OrganizationalRiskController extends Controller
      */
     public function edit(OrganizationalRisk $organizationalRisk)
     {
-        // โหลดข้อมูลความเสี่ยงพร้อมความสัมพันธ์ที่จำเป็น
+        $this->authorize('update', $organizationalRisk);
+        
+        // โหลดข้อมูลพร้อมเอกสารแนบ
         $risk = OrganizationalRisk::with(['attachments', 'divisionRisks'])
             ->findOrFail($organizationalRisk->id);
 
-        // บันทึก log การเข้าถึงหน้าฟอร์มแก้ไข
-        \Log::info('เข้าถึงฟอร์มแก้ไขความเสี่ยงระดับองค์กร', [
+        // เพิ่ม URL สำหรับเอกสารแนบ
+        if ($risk->attachments) {
+            $risk->attachments->transform(function ($attachment) {
+                $attachment->url = route('organizational-risks.attachments.view', [
+                    'organizationalRisk' => $attachment->organizational_risk_id,
+                    'attachment' => $attachment->id
+                ]);
+                return $attachment;
+            });
+        }
+
+        Log::info('เข้าถึงฟอร์มแก้ไขความเสี่ยงระดับองค์กร', [
             'risk_id' => $risk->id,
             'risk_name' => $risk->risk_name,
-            'user' => \Auth::check() ? \Auth::user()->name : 'ไม่ระบุ',
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
 
-        // ส่งข้อมูลไปยัง Inertia Page
-        return Inertia::render('organizational_risk/OrganizationalRiskEdit', [
+        return Inertia::render('organizational_risk/OrganizationalRiskForm', [
             'risk' => $risk
         ]);
     }
