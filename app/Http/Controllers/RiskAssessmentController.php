@@ -28,7 +28,7 @@ class RiskAssessmentController extends Controller
 {
     /**
      * แสดงรายการการประเมินความเสี่ยงทั้งหมด
-     * ดึงข้อมูลพร้อมความสัมพันธ์และเรียงลำดับตามวันที่ประเมิน
+     * ดึงข้อมูลพร้อมความสัมพันธ์และเรียงลำดับตามปีและช่วงการประเมิน
      * 
      * @return \Inertia\Response หน้า Vue พร้อมข้อมูลการประเมินความเสี่ยงทั้งหมด
      */
@@ -41,7 +41,8 @@ class RiskAssessmentController extends Controller
             'divisionRisk.impactCriteria', // เพิ่มการดึงข้อมูลเกณฑ์ผลกระทบ
             'divisionRisk.likelihoodCriteria' // เพิ่มการดึงข้อมูลเกณฑ์โอกาส
             ])
-            ->orderBy('assessment_date', 'desc')
+            ->orderByDesc('assessment_year')
+            ->orderByDesc('assessment_period')
             ->get();
 
         // ดึงข้อมูล division_risks พร้อมเกณฑ์
@@ -104,7 +105,8 @@ class RiskAssessmentController extends Controller
             // บันทึกล็อกสำหรับการติดตามและตรวจสอบ
             Log::info('สร้างการประเมินความเสี่ยงใหม่', [
                 'id' => $assessment->id,
-                'assessment_date' => $assessment->assessment_date,
+                'assessment_year' => $assessment->assessment_year,
+                'assessment_period' => $assessment->assessment_period,
                 'user' => auth()->check() ? auth()->user()->name : 'ไม่ระบุ',
                 'timestamp' => now()->format('Y-m-d H:i:s')
             ]);
@@ -114,7 +116,8 @@ class RiskAssessmentController extends Controller
             
             // ดึงข้อมูลการประเมินความเสี่ยงทั้งหมดมาใหม่หลังจากบันทึกข้อมูล
             $assessments = RiskAssessment::with(['divisionRisk'])
-                ->orderBy('assessment_date', 'desc')
+                ->orderByDesc('assessment_year')
+                ->orderByDesc('assessment_period')
                 ->get();
                 
             // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จและข้อมูลล่าสุด
@@ -191,7 +194,8 @@ class RiskAssessmentController extends Controller
         try {
             // อัปเดตข้อมูลพื้นฐาน
             $riskAssessment->update([
-                'assessment_date' => $request->assessment_date,
+                'assessment_year' => $request->assessment_year,
+                'assessment_period' => $request->assessment_period,
                 'likelihood_level' => $request->likelihood_level,
                 'impact_level' => $request->impact_level,
                 'risk_score' => $request->risk_score,
@@ -247,7 +251,8 @@ class RiskAssessmentController extends Controller
         // บันทึก log สำหรับการตรวจสอบ
         Log::info('ลบการประเมินความเสี่ยง', [
             'id' => $oldData['id'],
-            'assessment_date' => $oldData['assessment_date'],
+            'assessment_year' => $oldData['assessment_year'] ?? null,
+            'assessment_period' => $oldData['assessment_period'] ?? null,
             'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
@@ -290,7 +295,8 @@ class RiskAssessmentController extends Controller
 
             // ดึงข้อมูลความเสี่ยงที่อัปเดตล่าสุดเพื่อส่งกลับไป
     $updatedAssessments = RiskAssessment::with(['attachments', 'divisionRisk'])
-        ->orderBy('assessment_date', 'desc')
+        ->orderByDesc('assessment_year')
+        ->orderByDesc('assessment_period')
         ->get();
 
     // กลับไปยังหน้าเดิมพร้อมข้อมูลล่าสุด

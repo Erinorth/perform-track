@@ -21,6 +21,7 @@ import { computed, onMounted, ref } from 'vue';
 // ==================== นำเข้า Utilities ====================
 // นำเข้า toast notifications
 import { toast } from 'vue-sonner';
+import { formatAssessmentPeriod } from '@/lib/utils';
 
 // ==================== นำเข้า Icons ====================
 import { 
@@ -76,13 +77,9 @@ const formattedDates = computed(() => {
       }) 
     : 'ไม่ระบุ';
   
-  // สร้างวันที่ประเมินในรูปแบบไทย
-  const assessment = props.rowData.assessment_date 
-    ? new Date(props.rowData.assessment_date).toLocaleDateString('th-TH', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric'
-      }) 
+  // สร้างงวดการประเมินในรูปแบบปี+งวด
+  const assessment = (props.rowData.assessment_year && props.rowData.assessment_period)
+    ? formatAssessmentPeriod(props.rowData.assessment_year, props.rowData.assessment_period)
     : 'ไม่ระบุ';
   
   return { created, updated, assessment };

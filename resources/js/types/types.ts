@@ -41,7 +41,8 @@ export interface OrganizationalRisk {
   // อินเตอร์เฟซสำหรับการประเมินความเสี่ยง
   export interface RiskAssessment {
     id: number;
-    assessment_date: string;
+    assessment_year: number; // ปีที่ประเมิน
+    assessment_period: number; // งวดการประเมิน: 1 = ครึ่งปีแรก, 2 = ครึ่งปีหลัง
     likelihood_level: number;
     impact_level: number;
     risk_score: number;
@@ -125,4 +126,3 @@ export interface OrganizationalRisk {
     created_at: string;
     updated_at: string;
   }
-  

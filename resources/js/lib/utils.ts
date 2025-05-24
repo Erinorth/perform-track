@@ -99,6 +99,16 @@ export function getHalfYearPeriod(date: Date) {
 }
 
 /**
+ * แปลงปีและงวดการประเมินเป็นข้อความ
+ * @param year ปีที่ประเมิน
+ * @param period งวด (1=ครึ่งปีแรก, 2=ครึ่งปีหลัง)
+ * @returns string
+ */
+export function formatAssessmentPeriod(year: number, period: number): string {
+  return `${year} - ${period === 1 ? 'ครึ่งปีแรก' : 'ครึ่งปีหลัง'}`;
+}
+
+/**
  * ฟังก์ชันกรองตามงวดการประเมิน
  */
 export function filterByPeriod(row: any, columnId: string, filterValues: string[]) {

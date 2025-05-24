@@ -21,7 +21,8 @@ class StoreRiskAssessmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'assessment_date' => 'required|date',
+            'assessment_year' => 'required|integer|min:2000|max:2100',
+            'assessment_period' => 'required|integer|in:1,2',
             'likelihood_level' => 'required|integer|min:1|max:4',
             'impact_level' => 'required|integer|min:1|max:4',
             'division_risk_id' => 'required|exists:division_risks,id',
@@ -35,8 +36,13 @@ class StoreRiskAssessmentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'assessment_date.required' => 'กรุณาระบุวันที่ประเมิน',
-            'assessment_date.date' => 'รูปแบบวันที่ไม่ถูกต้อง',
+            'assessment_year.required' => 'กรุณาระบุปีที่ประเมิน',
+            'assessment_year.integer' => 'ปีที่ประเมินต้องเป็นตัวเลข',
+            'assessment_year.min' => 'ปีที่ประเมินไม่ถูกต้อง',
+            'assessment_year.max' => 'ปีที่ประเมินไม่ถูกต้อง',
+            'assessment_period.required' => 'กรุณาระบุงวดการประเมิน',
+            'assessment_period.integer' => 'งวดการประเมินต้องเป็นตัวเลข',
+            'assessment_period.in' => 'งวดการประเมินต้องเป็น 1 หรือ 2',
             'likelihood_level.required' => 'กรุณาระบุระดับโอกาสเกิด',
             'likelihood_level.integer' => 'ระดับโอกาสเกิดต้องเป็นตัวเลข',
             'likelihood_level.min' => 'ระดับโอกาสเกิดต้องมีค่าอย่างน้อย 1',

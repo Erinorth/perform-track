@@ -1,11 +1,11 @@
-<!-- 
+<!--
   ไฟล์: resources/js/pages/division_risk/DivisionRiskShow.vue
   
   คำอธิบาย: หน้าแสดงรายละเอียดเต็มของความเสี่ยงระดับฝ่าย
   ฟีเจอร์หลัก:
   - แสดงรายละเอียดความเสี่ยงระดับฝ่ายแบบเต็มในหน้าแยก
   - แสดงข้อมูลความเสี่ยงระดับองค์กรที่เกี่ยวข้อง
-  - แสดงประวัติการประเมินความเสี่ยง
+  - แสดงประวัติการประเมินความเสี่ยงแบบงวดครึ่งปี
   - แสดงเกณฑ์การประเมินโอกาสและผลกระทบ
   - แสดงเอกสารแนบและรองรับการดาวน์โหลด
   - รองรับการแสดงผลแบบ Responsive ทั้งบนมือถือและหน้าจอขนาดใหญ่
@@ -59,6 +59,39 @@ const props = defineProps<{
   impact_criteria?: ImpactCriteria[];
 }>();
 
+// ==================== ฟังก์ชันช่วยสำหรับการจัดการงวดการประเมิน ====================
+// ฟังก์ชันสำหรับจัดรูปแบบงวดการประเมิน
+const formatAssessmentPeriod = (year: number, period: number): string => {
+  const periodText = period === 1 ? 'ครึ่งปีแรก' : 'ครึ่งปีหลัง';
+  const monthRange = period === 1 ? '(ม.ค.-มิ.ย.)' : '(ก.ค.-ธ.ค.)';
+  return `${periodText} ${year} ${monthRange}`;
+};
+
+// ฟังก์ชันสำหรับเปรียบเทียบงวดการประเมิน (ใช้สำหรับการเรียงลำดับ)
+const compareAssessmentPeriods = (a: RiskAssessment, b: RiskAssessment): number => {
+  // เปรียบเทียบปีก่อน
+  if (a.assessment_year !== b.assessment_year) {
+    return b.assessment_year - a.assessment_year; // เรียงจากปีใหม่ไปเก่า
+  }
+  // ถ้าปีเดียวกัน ให้เปรียบเทียบงวด
+  return b.assessment_period - a.assessment_period; // เรียงจากงวดหลังไปก่อน
+};
+
+// ฟังก์ชันสำหรับสร้าง key ของงวดการประเมินเพื่อใช้ในการเปรียบเทียบ
+const getAssessmentPeriodKey = (assessment: RiskAssessment): string => {
+  return `${assessment.assessment_year}-${assessment.assessment_period}`;
+};
+
+// ฟังก์ชันตรวจสอบว่าเป็นงวดปัจจุบันหรือไม่
+const isCurrentPeriod = (year: number, period: number): boolean => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // getMonth() returns 0-11
+  const currentPeriod = currentMonth <= 6 ? 1 : 2;
+  
+  return year === currentYear && period === currentPeriod;
+};
+
 // ==================== กำหนด Breadcrumbs ====================
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -100,13 +133,19 @@ const attachmentsCount = computed(() => {
   return hasAttachments.value ? props.risk.attachments?.length : 0;
 });
 
-// ดึงการประเมินล่าสุด
+// ดึงการประเมินล่าสุด (แก้ไขให้ใช้ assessment_year และ assessment_period)
 const latestAssessment = computed(() => {
   if (!hasAssessments.value) return null;
   
-  return [...props.assessments!].sort((a, b) => 
-    new Date(b.assessment_date).getTime() - new Date(a.assessment_date).getTime()
-  )[0];
+  // เรียงลำดับการประเมินจากล่าสุดไปเก่าสุด
+  return [...props.assessments!].sort(compareAssessmentPeriods)[0];
+});
+
+// รายการการประเมินทั้งหมดที่เรียงลำดับแล้ว
+const sortedAssessments = computed(() => {
+  if (!hasAssessments.value) return [];
+  
+  return [...props.assessments!].sort(compareAssessmentPeriods);
 });
 
 // คำนวณระดับความเสี่ยงจากคะแนน
@@ -385,17 +424,24 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
                   </div>
                 </div>
 
-                <!-- แสดงการประเมินความเสี่ยงล่าสุด -->
+                <!-- แสดงการประเมินความเสี่ยงล่าสุด (ปรับให้ใช้ระบบงวด) -->
                 <div v-if="latestAssessment">
                   <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">การประเมินความเสี่ยงล่าสุด</h3>
                   <div class="rounded-lg border p-4 bg-secondary/50">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">วันที่ประเมิน</p>
-                        <p class="font-medium flex items-center">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">งวดการประเมิน</p>
+                        <div class="flex items-center mt-1">
                           <CalendarDays class="h-4 w-4 mr-1.5 text-gray-400" />
-                          {{ new Date(latestAssessment.assessment_date).toLocaleDateString('th-TH') }}
-                        </p>
+                          <span class="font-medium">
+                            {{ formatAssessmentPeriod(latestAssessment.assessment_year, latestAssessment.assessment_period) }}
+                          </span>
+                          <!-- แสดงป้าย "งวดปัจจุบัน" ถ้าเป็นงวดปัจจุบัน -->
+                          <Badge v-if="isCurrentPeriod(latestAssessment.assessment_year, latestAssessment.assessment_period)" 
+                            variant="secondary" class="ml-2 text-xs">
+                            งวดปัจจุบัน
+                          </Badge>
+                        </div>
                       </div>
                       <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">ระดับความเสี่ยง</p>
@@ -407,14 +453,14 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
                       </div>
                       <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">โอกาสเกิด</p>
-                        <p class="font-medium flex items-center">
+                        <p class="font-medium flex items-center mt-1">
                           <AlertCircle class="h-4 w-4 mr-1.5 text-blue-500" />
                           ระดับ {{ latestAssessment.likelihood_level }}
                         </p>
                       </div>
                       <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">ผลกระทบ</p>
-                        <p class="font-medium flex items-center">
+                        <p class="font-medium flex items-center mt-1">
                           <AlertCircle class="h-4 w-4 mr-1.5 text-red-500" />
                           ระดับ {{ latestAssessment.impact_level }}
                         </p>
@@ -454,7 +500,7 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
             </CardContent>
           </Card>
 
-          <!-- แสดงประวัติการประเมินความเสี่ยง -->
+          <!-- แสดงประวัติการประเมินความเสี่ยง (ปรับให้ใช้ระบบงวด) -->
           <Card class="mt-6">
             <CardHeader>
               <CardTitle class="flex items-center gap-2">
@@ -467,19 +513,28 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
             </CardHeader>
             <CardContent>
               <div v-if="hasAssessments" class="space-y-4">
-                <!-- แสดงรายการประเมินความเสี่ยงทั้งหมด -->
-                <div v-for="(assessment, index) in props.assessments" :key="assessment.id" 
+                <!-- แสดงรายการประเมินความเสี่ยงทั้งหมดที่เรียงลำดับแล้ว -->
+                <div v-for="(assessment, index) in sortedAssessments" :key="assessment.id" 
                   class="rounded-lg border p-4 shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">
                   <div class="flex flex-wrap items-start justify-between gap-4">
                     <!-- ข้อมูลการประเมิน -->
                     <div class="flex-1">
-                      <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-2 flex-wrap">
                         <Badge :class="getRiskLevel(assessment.risk_score).class">
                           {{ getRiskLevel(assessment.risk_score).level }} ({{ assessment.risk_score }})
                         </Badge>
                         <span class="text-sm text-gray-500 dark:text-gray-400">
-                          ประเมินเมื่อ {{ new Date(assessment.assessment_date).toLocaleDateString('th-TH') }}
+                          {{ formatAssessmentPeriod(assessment.assessment_year, assessment.assessment_period) }}
                         </span>
+                        <!-- แสดงป้าย "ล่าสุด" สำหรับการประเมินล่าสุด -->
+                        <Badge v-if="index === 0" variant="outline" class="text-xs">
+                          ล่าสุด
+                        </Badge>
+                        <!-- แสดงป้าย "งวดปัจจุบัน" ถ้าเป็นงวดปัจจุบัน -->
+                        <Badge v-if="isCurrentPeriod(assessment.assessment_year, assessment.assessment_period)" 
+                          variant="secondary" class="text-xs">
+                          งวดปัจจุบัน
+                        </Badge>
                       </div>
                       
                       <div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">

@@ -33,8 +33,7 @@ export function useRiskAssessmentActions(initialAssessments: RiskAssessment[]) {
     showModal.value = true;
     
     // บันทึก log เพื่อการตรวจสอบ
-    console.log('เปิด Modal เพื่อแก้ไขการประเมินความเสี่ยงวันที่:', 
-      new Date(assessment.assessment_date).toLocaleDateString('th-TH'));
+    console.log('เปิด Modal เพื่อแก้ไขการประเมินความเสี่ยง ปี:', assessment.assessment_year, 'งวด:', assessment.assessment_period);
   };
 
   // ฟังก์ชันจัดการเมื่อบันทึกข้อมูลสำเร็จ
@@ -49,8 +48,8 @@ export function useRiskAssessmentActions(initialAssessments: RiskAssessment[]) {
 
   // ฟังก์ชันสำหรับลบข้อมูลการประเมินความเสี่ยง
   const handleDelete = (assessment: RiskAssessment) => {
-    const assessmentDate = new Date(assessment.assessment_date).toLocaleDateString('th-TH');
-    confirmDelete(assessment, `การประเมินความเสี่ยงวันที่ ${assessmentDate}`, deleteAssessment);
+    const label = `ปี ${assessment.assessment_year} งวดที่ ${assessment.assessment_period}`;
+    confirmDelete(assessment, `การประเมินความเสี่ยง${label}`, deleteAssessment);
   };
 
   // ฟังก์ชันสำหรับลบข้อมูลหลายรายการพร้อมกัน

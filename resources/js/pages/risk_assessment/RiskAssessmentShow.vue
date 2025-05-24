@@ -30,6 +30,7 @@ import RiskMatrix from '@/components/RiskMatrix.vue'
 
 // ==================== นำเข้า Utilities ====================
 import { toast } from 'vue-sonner'
+import { formatAssessmentPeriod } from '@/lib/utils'
 
 // ==================== นำเข้า Icons ====================
 import { 
@@ -104,15 +105,9 @@ const selectedImpactCriteria = computed(() => {
   )
 })
 
-// จัดรูปแบบวันที่
-const formattedAssessmentDate = computed(() => {
-  return props.riskAssessment.assessment_date 
-    ? new Date(props.riskAssessment.assessment_date).toLocaleDateString('th-TH', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric'
-      }) 
-    : 'ไม่ระบุ'
+// จัดรูปแบบงวดการประเมิน
+const formattedAssessmentPeriod = computed(() => {
+  return formatAssessmentPeriod(props.riskAssessment.assessment_year, props.riskAssessment.assessment_period)
 })
 
 // ตรวจสอบว่ามีเอกสารแนบหรือไม่
@@ -338,7 +333,7 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
               </CardTitle>
               <CardDescription class="text-sm text-muted-foreground flex items-center gap-1.5">
                 <CalendarDays class="h-4 w-4" />
-                            วันที่ประเมิน: {{ formattedAssessmentDate }}
+                            งวดการประเมิน: {{ formattedAssessmentPeriod }}
           </CardDescription>
         </CardHeader>
         <CardContent>

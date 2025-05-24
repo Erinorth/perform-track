@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronDown } from 'lucide-vue-next'
 // นำเข้า icon จาก lucide-vue-next (ถ้าต้องการใช้)
 import { FileText } from 'lucide-vue-next'
-import { filterByPeriod, filterByRiskScore } from "@/lib/utils"
+import { filterByPeriod, filterByRiskScore, formatAssessmentPeriod } from "@/lib/utils"
 
 // ขยาย interface TableMeta เพื่อเพิ่ม event onEdit สำหรับการแก้ไขข้อมูล
 declare module '@tanstack/vue-table' {
@@ -97,21 +97,16 @@ export const columns: ColumnDef<RiskAssessment>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: "assessment_date", // วันที่ประเมิน
+    id: "assessment_period",
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
-        title: 'วันที่ประเมิน'
+        title: 'งวดการประเมิน'
       })
     ),
-    // แปลงวันที่ให้อยู่ในรูปแบบไทย
+    accessorFn: (row) => formatAssessmentPeriod(row.assessment_year, row.assessment_period),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("assessment_date"))
-      return date.toLocaleDateString('th-TH', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
+      return formatAssessmentPeriod(row.original.assessment_year, row.original.assessment_period)
     },
     filterFn: filterByPeriod,
   },

@@ -1,4 +1,3 @@
-<!-- resources/js/pages/risk_assessment/RiskAssessmentEdit.vue -->
 <script setup lang="ts">
 // ==================== นำเข้า Layout และ Navigation ====================
 import AppLayout from '@/layouts/AppLayout.vue'
@@ -65,7 +64,8 @@ import {
 interface Props {
   riskAssessment: {
     id: number
-    assessment_date: string
+    assessment_year: number
+    assessment_period: number
     likelihood_level: number
     impact_level: number
     division_risk_id: number
@@ -144,7 +144,8 @@ const attachmentsToDelete = ref<number[]>([])
 
 // ==================== Form สำหรับส่งข้อมูล ====================
 const form = useForm({
-  assessment_date: props.riskAssessment.assessment_date,
+  assessment_year: props.riskAssessment.assessment_year,
+  assessment_period: props.riskAssessment.assessment_period.toString(),
   division_risk_id: props.riskAssessment.division_risk_id.toString(),
   likelihood_level: props.riskAssessment.likelihood_level.toString(),
   impact_level: props.riskAssessment.impact_level.toString(),
@@ -206,24 +207,54 @@ const navigateBack = () => {
 }
 
 /**
- * เมื่อเลือกความเสี่ยงระดับฝ่าย
+ * เมื่อเลือกความเสี่ยงระดับฝ่าย - แก้ไขให้รองรับ AcceptableValue
  */
-const onDivisionRiskChange = (value: string | null) => {
-  if (value === null) {
+const onDivisionRiskChange = (value: unknown) => {
+  // แปลงค่าที่ได้รับเป็น string เพื่อความปลอดภัย
+  const stringValue = value === null || value === undefined ? null : String(value)
+  
+  if (stringValue === null || stringValue === '') {
     // กรณีไม่มีการเลือกค่า
     form.division_risk_id = ''
     selectedDivisionRisk.value = 0
   } else {
     // กรณีมีการเลือกค่า
-    form.division_risk_id = value
-    selectedDivisionRisk.value = parseInt(value)
+    form.division_risk_id = stringValue
+    selectedDivisionRisk.value = parseInt(stringValue)
   }
   
   // รีเซ็ตค่าการประเมินเมื่อเลือกความเสี่ยงอื่น
   form.likelihood_level = ''
   form.impact_level = ''
   
-  console.log('เลือกความเสี่ยงระดับฝ่าย:', value)
+  console.log('เลือกความเสี่ยงระดับฝ่าย:', stringValue)
+}
+
+/**
+ * เมื่อเลือกระดับโอกาสเกิด - แก้ไขให้รองรับ AcceptableValue
+ */
+const onLikelihoodChange = (value: unknown) => {
+  const stringValue = value === null || value === undefined ? '' : String(value)
+  form.likelihood_level = stringValue
+  console.log('เลือกระดับโอกาสเกิด:', stringValue)
+}
+
+/**
+ * เมื่อเลือกระดับผลกระทบ - แก้ไขให้รองรับ AcceptableValue
+ */
+const onImpactChange = (value: unknown) => {
+  const stringValue = value === null || value === undefined ? '' : String(value)
+  form.impact_level = stringValue
+  console.log('เลือกระดับผลกระทบ:', stringValue)
+}
+
+/**
+ * เมื่อเลือกงวดการประเมิน - แก้ไขให้รองรับ AcceptableValue
+ */
+const onAssessmentPeriodChange = (value: unknown) => {
+  const stringValue = value === null || value === undefined ? '' : String(value)
+  form.assessment_period = stringValue
+  console.log('เลือกงวดการประเมิน:', stringValue)
 }
 
 /**
@@ -333,8 +364,13 @@ const openAttachment = (url: string) => {
  */
 const submitForm = () => {
   // ตรวจสอบความถูกต้องของฟอร์ม
-  if (!form.assessment_date) {
-    toast.error('กรุณาระบุวันที่ประเมิน')
+  if (!form.assessment_year) {
+    toast.error('กรุณาระบุปีที่ประเมิน')
+    return
+  }
+  
+  if (!form.assessment_period) {
+    toast.error('กรุณาเลือกงวดการประเมิน')
     return
   }
   
@@ -473,28 +509,49 @@ onMounted(() => {
             <h2 class="text-lg font-medium border-b pb-2">ข้อมูลการประเมินความเสี่ยง</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- วันที่ประเมิน -->
+              <!-- ปีที่ประเมิน -->
               <div>
-                <div class="flex items-center justify-between">
-                  <Label for="assessment_date">
-                    วันที่ประเมิน <span class="text-red-500">*</span>
-                  </Label>
-                </div>
-                <div class="relative mt-1">
-                  <Input
-                    id="assessment_date"
-                    v-model="form.assessment_date"
-                    type="date"
-                    :class="{ 'border-red-500': form.errors.assessment_date }"
-                  />
-                  <CalendarIcon class="absolute right-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
-                </div>
-                <p v-if="form.errors.assessment_date" class="text-sm text-red-500 mt-1">
-                  {{ form.errors.assessment_date }}
+                <Label for="assessment_year">
+                  ปีที่ประเมิน <span class="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="assessment_year"
+                  v-model="form.assessment_year"
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  :class="{ 'border-red-500': form.errors.assessment_year }"
+                />
+                <p v-if="form.errors.assessment_year" class="text-sm text-red-500 mt-1">
+                  {{ form.errors.assessment_year }}
                 </p>
               </div>
 
-              <!-- ความเสี่ยงระดับฝ่าย -->
+              <!-- งวดการประเมิน - แก้ไข @update:model-value -->
+              <div>
+                <Label for="assessment_period">
+                  งวดการประเมิน <span class="text-red-500">*</span>
+                </Label>
+                <Select 
+                  v-model="form.assessment_period"
+                  @update:model-value="onAssessmentPeriodChange"
+                >
+                  <SelectTrigger class="w-full mt-1" :class="{ 'border-red-500': form.errors.assessment_period }">
+                    <SelectValue placeholder="เลือกงวดการประเมิน" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">ครึ่งปีแรก (ม.ค.-มิ.ย.)</SelectItem>
+                    <SelectItem value="2">ครึ่งปีหลัง (ก.ค.-ธ.ค.)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p v-if="form.errors.assessment_period" class="text-sm text-red-500 mt-1">
+                  {{ form.errors.assessment_period }}
+                </p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- ความเสี่ยงระดับฝ่าย - แก้ไข @update:model-value -->
               <div>
                 <Label for="division_risk_id">
                   ความเสี่ยงระดับฝ่าย <span class="text-red-500">*</span>
@@ -529,7 +586,7 @@ onMounted(() => {
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- ระดับโอกาสเกิด -->
+              <!-- ระดับโอกาสเกิด - แก้ไข @update:model-value -->
               <div>
                 <div class="flex items-center justify-between">
                   <Label for="likelihood_level">
@@ -557,7 +614,10 @@ onMounted(() => {
                   </ul>
                 </div>
                 
-                <Select v-model="form.likelihood_level">
+                <Select 
+                  v-model="form.likelihood_level"
+                  @update:model-value="onLikelihoodChange"
+                >
                   <SelectTrigger 
                     class="w-full mt-1" 
                     :class="{ 'border-red-500': form.errors.likelihood_level }"
@@ -576,7 +636,7 @@ onMounted(() => {
                 </p>
               </div>
 
-              <!-- ระดับผลกระทบ -->
+              <!-- ระดับผลกระทบ - แก้ไข @update:model-value -->
               <div>
                 <div class="flex items-center justify-between">
                   <Label for="impact_level">
@@ -604,7 +664,10 @@ onMounted(() => {
                   </ul>
                 </div>
                 
-                <Select v-model="form.impact_level">
+                <Select 
+                  v-model="form.impact_level"
+                  @update:model-value="onImpactChange"
+                >
                   <SelectTrigger 
                     class="w-full mt-1" 
                     :class="{ 'border-red-500': form.errors.impact_level }"

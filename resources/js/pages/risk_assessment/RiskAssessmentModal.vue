@@ -21,7 +21,8 @@ import { useRiskAssessmentData } from '@/composables/useRiskAssessmentData'
 
 // กำหนด Types สำหรับฟอร์ม
 type AssessmentFormData = {
-  assessment_date: string;
+  assessment_year: number;
+  assessment_period: number;
   likelihood_level: number;
   impact_level: number;
   risk_score?: number;
@@ -66,7 +67,8 @@ const calculatedRiskScore = computed(() => {
 
 // สร้างฟอร์มด้วย Inertia useForm
 const form = useForm<AssessmentFormData>({
-  assessment_date: props.assessment?.assessment_date ?? new Date().toISOString().split('T')[0],
+  assessment_year: props.assessment?.assessment_year ?? new Date().getFullYear(),
+  assessment_period: props.assessment?.assessment_period ?? 1,
   likelihood_level: props.assessment?.likelihood_level ?? 1,
   impact_level: props.assessment?.impact_level ?? 1,
   risk_score: props.assessment?.risk_score ?? 1,
@@ -184,12 +186,9 @@ watch(() => props.show, (newVal) => {
     keys: Object.keys(props.assessment)
   });
     
-    // แปลงรูปแบบวันที่ให้เป็น YYYY-MM-DD เสมอ
-    const dateObj = new Date(props.assessment.assessment_date);
-    const formattedDate = dateObj.toISOString().split('T')[0];
-    
     // กำหนดค่าให้ฟอร์ม
-    form.assessment_date = formattedDate;
+    form.assessment_year = props.assessment.assessment_year;
+    form.assessment_period = props.assessment.assessment_period;
     form.likelihood_level = props.assessment.likelihood_level;
     form.impact_level = props.assessment.impact_level;
     form.risk_score = props.assessment.risk_score;
@@ -201,7 +200,8 @@ watch(() => props.show, (newVal) => {
   } else if (newVal) {
     // รีเซ็ตฟอร์มสำหรับการเพิ่มใหม่
     form.reset();
-    form.assessment_date = new Date().toISOString().split('T')[0];
+    form.assessment_year = new Date().getFullYear();
+    form.assessment_period = 1;
     loadAttachments();
   }
 });
@@ -246,8 +246,13 @@ const validateForm = () => {
   const errors: string[] = []
   
   // ตรวจสอบข้อมูลสำคัญ
-  if (!form.assessment_date) {
-    errors.push('กรุณาระบุวันที่ประเมิน')
+  if (!form.assessment_year || form.assessment_year < 2000 || form.assessment_year > 2100) {
+    errors.push('กรุณาระบุปีที่ประเมินที่ถูกต้อง (2000-2100)')
+    isValid = false
+  }
+  
+  if (!form.assessment_period || (form.assessment_period !== 1 && form.assessment_period !== 2)) {
+    errors.push('กรุณาเลือกงวดการประเมินที่ถูกต้อง (1 หรือ 2)')
     isValid = false
   }
   
@@ -300,7 +305,8 @@ const handleSubmit = async () => {
     
     await submitForm(
       { 
-        assessment_date: form.assessment_date,
+        assessment_year: form.assessment_year,
+        assessment_period: form.assessment_period,
         likelihood_level: form.likelihood_level,
         impact_level: form.impact_level,
         risk_score: form.risk_score,
@@ -344,33 +350,68 @@ const handleSubmit = async () => {
       <!-- แบบฟอร์มกรอกข้อมูล -->
       <form @submit.prevent="handleSubmit" class="space-y-4 mt-4">
         <div class="grid gap-4 py-2">
-          <!-- ฟิลด์วันที่ประเมิน -->
+          <!-- ฟิลด์ปีที่ประเมิน -->
           <div class="grid gap-2">
-            <Label for="assessment_date" class="flex items-center gap-1">
-              วันที่ประเมิน
+            <Label for="assessment_year" class="flex items-center gap-1">
+              ปีที่ประเมิน
               <Button 
                 type="button" 
                 variant="ghost" 
                 size="icon"
                 class="h-5 w-5 text-gray-500 hover:text-gray-700"
-                @click="toggleTooltip('assessment_date')"
+                @click="toggleTooltip('assessment_year')"
               >
                 <HelpCircleIcon class="h-4 w-4" />
               </Button>
             </Label>
             
             <!-- ข้อความช่วยเหลือ - แสดงเฉพาะเมื่อคลิกปุ่มช่วยเหลือ -->
-            <div v-if="showTooltip === 'assessment_date'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
-              ระบุวันที่ทำการประเมินความเสี่ยงนี้ เพื่อติดตามการเปลี่ยนแปลงของระดับความเสี่ยงตามระยะเวลา
+            <div v-if="showTooltip === 'assessment_year'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+              ระบุปีที่ทำการประเมินความเสี่ยง
             </div>
             
             <Input 
-              id="assessment_date" 
-              v-model="form.assessment_date" 
-              type="date"
+              id="assessment_year" 
+              v-model="form.assessment_year" 
+              type="number"
+              min="2000"
+              max="2100"
             />
-            <p v-if="form.errors.assessment_date" class="text-sm text-red-500">
-              {{ form.errors.assessment_date }}
+            <p v-if="form.errors.assessment_year" class="text-sm text-red-500">
+              {{ form.errors.assessment_year }}
+            </p>
+          </div>
+
+          <!-- ฟิลด์งวดการประเมิน -->
+          <div class="grid gap-2">
+            <Label for="assessment_period" class="flex items-center gap-1">
+              งวดการประเมิน
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon"
+                class="h-5 w-5 text-gray-500 hover:text-gray-700"
+                @click="toggleTooltip('assessment_period')"
+              >
+                <HelpCircleIcon class="h-4 w-4" />
+              </Button>
+            </Label>
+            
+            <!-- คำอธิบายสำหรับงวดการประเมิน -->
+            <div v-if="showTooltip === 'assessment_period'" class="text-xs text-gray-500 bg-gray-50 p-2 rounded-md mb-1">
+              เลือกงวดการประเมิน (1 = ครึ่งปีแรก, 2 = ครึ่งปีหลัง)
+            </div>
+            
+            <select
+              id="assessment_period"
+              v-model="form.assessment_period"
+              class="rounded-md border border-input bg-background px-3 py-2"
+            >
+              <option :value="1">ครึ่งปีแรก (ม.ค.-มิ.ย.)</option>
+              <option :value="2">ครึ่งปีหลัง (ก.ค.-ธ.ค.)</option>
+            </select>
+            <p v-if="form.errors.assessment_period" class="text-sm text-red-500">
+              {{ form.errors.assessment_period }}
             </p>
           </div>
 

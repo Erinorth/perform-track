@@ -12,7 +12,11 @@ class RiskAssessmentFactory extends Factory
 
     public function definition(): array
     {
+        $year = fake()->numberBetween(2023, 2025);
+        $period = fake()->numberBetween(1, 2);
         return [
+            'assessment_year' => $year,
+            'assessment_period' => $period,
             'likelihood_level' => fake()->numberBetween(1, 4),
             'impact_level' => fake()->numberBetween(1, 4),
             'notes' => fake()->paragraph(1),

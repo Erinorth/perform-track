@@ -1,9 +1,9 @@
 <!--
-  ไฟล์: resources/js/features/risk_assessment/DataTable.vue
+  ไฟล์: resources\js\pages\risk_assessment\data-table\DataTable.vue
   
   คำอธิบาย: Component หลักสำหรับแสดงตารางข้อมูลการประเมินความเสี่ยง
   ฟีเจอร์หลัก:
-  - การค้นหาข้อมูลจาก assessment_date และ notes
+  - การค้นหาข้อมูลจาก assessment_year, assessment_period และ notes
   - การเรียงลำดับข้อมูลในแต่ละคอลัมน์
   - การแบ่งหน้าเพื่อแสดงผล
   - การขยายแถวเพื่อดูรายละเอียดเพิ่มเติม
@@ -17,7 +17,7 @@
 import type { DivisionRisk, RiskAssessment } from '@/types/types';
 
 // นำเข้า Vue Composition API
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed } from 'vue';
 
 // นำเข้า types จาก @tanstack/vue-table สำหรับการจัดการตาราง
 import type {
@@ -26,7 +26,7 @@ import type {
   SortingState,
   VisibilityState,
   ExpandedState,
-} from '@tanstack/vue-table'
+} from '@tanstack/vue-table';
 
 // ==================== นำเข้า UI Components ====================
 // นำเข้า component ตารางพื้นฐานจาก shadcn-vue
@@ -37,17 +37,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/components/ui/table';
 
 // นำเข้า UI components สำหรับการใช้งานร่วมกับตาราง
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   DataTablePagination, 
   DataTableViewOptions, 
   TagFilter, 
   BulkActionMenu 
-} from '@/components/ui/data-table'
+} from '@/components/ui/data-table';
 
 // ==================== นำเข้า Utilities และ Composables ====================
 // นำเข้าฟังก์ชันสำหรับจัดการตารางจาก @tanstack/vue-table
@@ -59,22 +59,19 @@ import {
   getSortedRowModel,
   getExpandedRowModel,
   useVueTable,
-} from '@tanstack/vue-table'
+} from '@tanstack/vue-table';
 
 // นำเข้า helper utilities
-import { valueUpdater } from '@/lib/utils'
+import { valueUpdater } from '@/lib/utils';
 
 // นำเข้า composable สำหรับตรวจสอบขนาดหน้าจอ (Responsive Design)
-import { useMediaQuery } from '@/composables/useMediaQuery'
+import { useMediaQuery } from '@/composables/useMediaQuery';
 
 // นำเข้า component แสดงรายละเอียดเมื่อขยายแถว
-import ExpandedRow from './ExpandedRow.vue'
+import ExpandedRow from './ExpandedRow.vue';
 
 // นำเข้า toast notifications
-import { toast } from 'vue-sonner'
-
-// เพิ่มฟังก์ชันสำหรับจัดการวันที่
-import { formatDate, getHalfYearPeriod } from '@/lib/utils'
+import { toast } from 'vue-sonner';
 
 // ==================== กำหนด Props ====================
 // กำหนด props ที่ต้องการรับจาก parent component
@@ -82,15 +79,32 @@ const props = defineProps<{
   columns: ColumnDef<TData, TValue>[]  // โครงสร้างคอลัมน์
   data: TData[]                        // ข้อมูลที่จะแสดงในตาราง
   meta?: any                           // ข้อมูลเพิ่มเติม เช่น callback functions สำหรับการ CRUD
-}>()
+}>();
+
+// ==================== ฟังก์ชันช่วยสำหรับการจัดการงวดการประเมิน ====================
+// ฟังก์ชันสำหรับจัดรูปแบบงวดการประเมิน
+const formatAssessmentPeriod = (year: number, period: number): string => {
+  const periodText = period === 1 ? 'ครึ่งปีแรก' : 'ครึ่งปีหลัง';
+  const monthRange = period === 1 ? '(ม.ค.-มิ.ย.)' : '(ก.ค.-ธ.ค.)';
+  return `${periodText} ${year} ${monthRange}`;
+};
+
+// ฟังก์ชันสำหรับตรวจสอบว่าอยู่ในงวดไหน
+const getCurrentPeriod = (): { year: number; period: number } => {
+  const now = new Date();
+  const month = now.getMonth() + 1; // getMonth() returns 0-11
+  const year = now.getFullYear();
+  const period = month <= 6 ? 1 : 2;
+  return { year, period };
+};
 
 // ==================== กำหนด Reactive States ====================
 // สถานะการเรียงลำดับข้อมูลในตาราง
-const sorting = ref<SortingState>([])
+const sorting = ref<SortingState>([]);
 // สถานะการกรองข้อมูลในแต่ละคอลัมน์
-const columnFilters = ref<ColumnFiltersState>([])
+const columnFilters = ref<ColumnFiltersState>([]);
 // ตรวจสอบว่าเป็นหน้าจอมือถือหรือไม่ (Responsive)
-const isMobile = useMediaQuery('(max-width: 768px)')
+const isMobile = useMediaQuery('(max-width: 768px)');
 // กำหนดการแสดง/ซ่อนคอลัมน์ตามขนาดหน้าจอ
 const columnVisibility = ref<VisibilityState>({
   id: false,
@@ -98,21 +112,21 @@ const columnVisibility = ref<VisibilityState>({
   updated_at: false,
   // ซ่อนคอลัมน์ notes บนมือถือ
   notes: isMobile.value
-})
+});
 // สถานะการเลือกแถวสำหรับทำการลบหลายรายการ
-const rowSelection = ref({})
+const rowSelection = ref({});
 // สถานะการขยายแถวเพื่อดูรายละเอียดเพิ่มเติม
-const expanded = ref<ExpandedState>({})
+const expanded = ref<ExpandedState>({});
 // คำค้นหาสำหรับค้นหาทั้งตาราง
-const searchQuery = ref('')
+const searchQuery = ref('');
 // สถานะกำลังลบข้อมูล
-const isDeleting = ref(false)
+const isDeleting = ref(false);
 
 // ==================== Watch Effects ====================
 // เมื่อ searchQuery เปลี่ยน ให้อัปเดตการกรองข้อมูลทันที
 watch(searchQuery, (value) => {
-  table.setGlobalFilter(value)
-})
+  table.setGlobalFilter(value);
+});
 
 // ติดตามการเปลี่ยนแปลงของขนาดหน้าจอเพื่อปรับการแสดงผล (Responsive Design)
 watch(isMobile, (mobile) => {
@@ -121,21 +135,21 @@ watch(isMobile, (mobile) => {
     columnVisibility.value = {
       ...columnVisibility.value,
       notes: true
-    }
+    };
   } else {
     // ถ้าไม่ใช่มือถือ ให้แสดงคอลัมน์ notes
     columnVisibility.value = {
       ...columnVisibility.value,
       notes: false
-    }
+    };
   }
-})
+});
 
 // ==================== สร้างและกำหนดค่าตาราง ====================
 const table = useVueTable({
   // ดึงข้อมูลและโครงสร้างคอลัมน์จาก props
-  get data() { return props.data },
-  get columns() { return props.columns },
+  get data() { return props.data; },
+  get columns() { return props.columns; },
   
   // กำหนด models สำหรับจัดการตาราง
   getCoreRowModel: getCoreRowModel(),             // โมเดลพื้นฐานจำเป็นต้องมี
@@ -153,12 +167,12 @@ const table = useVueTable({
   
   // กำหนดสถานะปัจจุบันของตาราง
   state: {
-    get sorting() { return sorting.value },
-    get columnFilters() { return columnFilters.value },
-    get columnVisibility() { return columnVisibility.value },
-    get rowSelection() { return rowSelection.value },
-    get expanded() { return expanded.value },
-    get globalFilter() { return searchQuery.value }
+    get sorting() { return sorting.value; },
+    get columnFilters() { return columnFilters.value; },
+    get columnVisibility() { return columnVisibility.value; },
+    get rowSelection() { return rowSelection.value; },
+    get expanded() { return expanded.value; },
+    get globalFilter() { return searchQuery.value; }
   },
   
   // กำหนดฟังก์ชันสำหรับกรองข้อมูลจากการค้นหา (ค้นหาเฉพาะ division_risk.risk_name และ notes)
@@ -171,214 +185,219 @@ const table = useVueTable({
     // ดึงบันทึก (notes)
     const notes = row.original.notes?.toLowerCase() || '';
     
-    // คืนค่า true ถ้าพบคำค้นหาในชื่อความเสี่ยงระดับฝ่ายหรือบันทึก
-    return riskName.includes(searchValue) || notes.includes(searchValue);
+    // ดึงข้อมูลงวดการประเมินเพื่อการค้นหา
+    const assessmentPeriod = formatAssessmentPeriod(
+      row.original.assessment_year, 
+      row.original.assessment_period
+    ).toLowerCase();
+    
+    // คืนค่า true ถ้าพบคำค้นหาในชื่อความเสี่ยงระดับฝ่าย, บันทึก, หรืองวดการประเมิน
+    return riskName.includes(searchValue) || 
+           notes.includes(searchValue) || 
+           assessmentPeriod.includes(searchValue);
   },
   
   // ส่ง meta ไปใช้ใน table เพื่อเรียกใช้ callback functions
   meta: props.meta,
-})
+});
 
 // ==================== Computed Properties ====================
 // คำนวณจำนวนแถวที่ถูกเลือกสำหรับ bulk actions
 const selectedRowsCount = computed(() => {
-  return Object.keys(rowSelection.value).length
-})
+  return Object.keys(rowSelection.value).length;
+});
 
 // คำนวณรายการ ID ที่ถูกเลือกทั้งหมดสำหรับการลบหลายรายการ
 const selectedRowIds = computed(() => {
   return Object.keys(rowSelection.value).map(rowIndex => {
-    const row = table.getRowModel().rows[parseInt(rowIndex)]
-    return row?.original?.id
-  }).filter(Boolean) // กรอง null/undefined ออก
-})
+    const row = table.getRowModel().rows[parseInt(rowIndex)];
+    return row?.original?.id;
+  }).filter(Boolean); // กรอง null/undefined ออก
+});
 
 // ==================== Methods ====================
-// ฟังก์ชันล้างตัวกรองทั้งหมด// ฟังก์ชันล้างตัวกรองทั้งหมด
+// ฟังก์ชันล้างตัวกรองทั้งหมด
 const clearAllFilters = () => {
   // ล้าง search query
-  searchQuery.value = ''
+  searchQuery.value = '';
   
   // ล้างตัวกรองคอลัมน์
   table.getAllColumns().forEach(column => {
     if (column.getCanFilter()) {
-      column.setFilterValue(undefined)
+      column.setFilterValue(undefined);
     }
-  })
+  });
   
   // แสดง toast แจ้งเตือน
   toast.success('ล้างตัวกรองทั้งหมดแล้ว', {
     duration: 2000
-  })
-}
+  });
+};
 
 // ฟังก์ชันสำหรับลบข้อมูลที่เลือกทั้งหมด
 const handleBulkDelete = async () => {
   // ตรวจสอบว่ามีรายการที่เลือกหรือไม่
   if (!selectedRowIds.value.length) {
-    toast.error('ไม่มีรายการที่เลือก')
-    return
+    toast.error('ไม่มีรายการที่เลือก');
+    return;
   }
   
   // ตรวจสอบว่ามีเมธอด onBulkDelete ที่ส่งมาจาก parent component หรือไม่
   if (!props.meta?.onBulkDelete) {
-    console.error('ไม่พบเมธอด onBulkDelete ใน meta')
-    toast.error('เกิดข้อผิดพลาด: ไม่สามารถดำเนินการลบข้อมูลพร้อมกันได้')
-    return
+    console.error('ไม่พบเมธอด onBulkDelete ใน meta');
+    toast.error('เกิดข้อผิดพลาด: ไม่สามารถดำเนินการลบข้อมูลพร้อมกันได้');
+    return;
   }
   
   try {
     // กำหนดสถานะกำลังลบข้อมูล
-    isDeleting.value = true
+    isDeleting.value = true;
     
     // เรียกใช้ onBulkDelete จาก meta
-    await props.meta.onBulkDelete(selectedRowIds.value)
+    await props.meta.onBulkDelete(selectedRowIds.value);
     
     // รีเซ็ตการเลือกหลังจากลบสำเร็จ
-    rowSelection.value = {}
+    rowSelection.value = {};
   } catch (error) {
     // บันทึก log และแสดง toast error เมื่อเกิดข้อผิดพลาด
-    console.error('เกิดข้อผิดพลาดในการลบข้อมูล:', error)
-    toast.error('เกิดข้อผิดพลาดในการลบข้อมูล โปรดลองอีกครั้ง')
+    console.error('เกิดข้อผิดพลาดในการลบข้อมูล:', error);
+    toast.error('เกิดข้อผิดพลาดในการลบข้อมูล โปรดลองอีกครั้ง');
   } finally {
     // รีเซ็ตสถานะการลบข้อมูล
-    isDeleting.value = false
+    isDeleting.value = false;
   }
-}
+};
 
 // ฟังก์ชันสำหรับยกเลิกการเลือกทั้งหมด
 const clearRowSelection = () => {
-  rowSelection.value = {}
-}
+  rowSelection.value = {};
+};
 
 // เพิ่ม state สำหรับเก็บข้อมูลตัวกรอง
-const assessmentPeriods = ref<{ value: string; label: string; count?: number }[]>([])
-const likelihoodLevels = ref<{ value: string; label: string; count?: number }[]>([])
-const impactLevels = ref<{ value: string; label: string; count?: number }[]>([])
-const riskScoreLevels = ref<{ value: string; label: string; count?: number }[]>([])
+const assessmentPeriods = ref<{ value: string; label: string; count?: number }[]>([]);
+const likelihoodLevels = ref<{ value: string; label: string; count?: number }[]>([]);
+const impactLevels = ref<{ value: string; label: string; count?: number }[]>([]);
+const riskScoreLevels = ref<{ value: string; label: string; count?: number }[]>([]);
 
 // ฟังก์ชันสำหรับสร้างตัวกรองจากข้อมูล
 const generateFilters = () => {
-  // สร้างตัวกรองสำหรับงวดการประเมิน (ครึ่งปี)
-  const periodsMap = new Map<string, number>()
+  // สร้างตัวกรองสำหรับงวดการประเมิน (ปี + งวด)
+  const periodsMap = new Map<string, number>();
   props.data.forEach(item => {
-    if (item.assessment_date) {
-      const date = new Date(item.assessment_date)
-      const period = getHalfYearPeriod(date)
-      const key = period.value
-      periodsMap.set(key, (periodsMap.get(key) || 0) + 1)
+    if (item.assessment_year && item.assessment_period) {
+      const key = `${item.assessment_year}-${item.assessment_period}`;
+      periodsMap.set(key, (periodsMap.get(key) || 0) + 1);
     }
-  })
+  });
   assessmentPeriods.value = Array.from(periodsMap.entries())
     .map(([value, count]) => {
-      const [year, half] = value.split('-')
+      const [year, period] = value.split('-');
       return {
         value,
-        label: `${year} - ${half === '1' ? 'ครึ่งปีแรก' : 'ครึ่งปีหลัง'}`,
+        label: formatAssessmentPeriod(Number(year), Number(period)),
         count
-      }
+      };
     })
-    .sort((a, b) => b.value.localeCompare(a.value)) // เรียงจากปีล่าสุด
+    .sort((a, b) => b.value.localeCompare(a.value));
 
   // สร้างตัวกรองสำหรับระดับโอกาสเกิด
-  const likelihoodMap = new Map<string, number>()
+  const likelihoodMap = new Map<string, number>();
   props.data.forEach(item => {
     if (item.likelihood_level) {
-      const key = item.likelihood_level.toString()
-      likelihoodMap.set(key, (likelihoodMap.get(key) || 0) + 1)
+      const key = item.likelihood_level.toString();
+      likelihoodMap.set(key, (likelihoodMap.get(key) || 0) + 1);
     }
-  })
+  });
   likelihoodLevels.value = Array.from(likelihoodMap.entries())
     .map(([value, count]) => ({
       value,
       label: `ระดับ ${value}`,
       count
     }))
-    .sort((a, b) => parseInt(a.value) - parseInt(b.value))
+    .sort((a, b) => parseInt(a.value) - parseInt(b.value));
 
   // สร้างตัวกรองสำหรับระดับผลกระทบ
-  const impactMap = new Map<string, number>()
+  const impactMap = new Map<string, number>();
   props.data.forEach(item => {
     if (item.impact_level) {
-      const key = item.impact_level.toString()
-      impactMap.set(key, (impactMap.get(key) || 0) + 1)
+      const key = item.impact_level.toString();
+      impactMap.set(key, (impactMap.get(key) || 0) + 1);
     }
-  })
+  });
   impactLevels.value = Array.from(impactMap.entries())
     .map(([value, count]) => ({
       value,
       label: `ระดับ ${value}`,
       count
     }))
-    .sort((a, b) => parseInt(a.value) - parseInt(b.value))
+    .sort((a, b) => parseInt(a.value) - parseInt(b.value));
 
   // สร้างตัวกรองสำหรับคะแนนความเสี่ยง
-  const scoreMap = new Map<string, number>()
+  const scoreMap = new Map<string, number>();
   props.data.forEach(item => {
     if (item.risk_score) {
-      const score = item.risk_score
-      let level = ''
+      const score = item.risk_score;
+      let level = '';
       
       // แบ่งระดับความเสี่ยงตามคะแนน
       if (score >= 9 && score <= 16) {
-        level = 'high'
+        level = 'high';
       } else if (score >= 4 && score <= 8) {
-        level = 'medium'
+        level = 'medium';
       } else if (score >= 1 && score <= 3) {
-        level = 'low'
+        level = 'low';
       }
       
       if (level) {
-        scoreMap.set(level, (scoreMap.get(level) || 0) + 1)
+        scoreMap.set(level, (scoreMap.get(level) || 0) + 1);
       }
     }
-  })
+  });
   
   riskScoreLevels.value = [
     { value: 'high', label: 'สูง (9-16)', count: scoreMap.get('high') || 0 },
     { value: 'medium', label: 'กลาง (4-8)', count: scoreMap.get('medium') || 0 },
     { value: 'low', label: 'ต่ำ (1-3)', count: scoreMap.get('low') || 0 }
-  ]
-}
+  ];
+};
 
 // เรียกใช้ฟังก์ชันสร้างตัวกรองเมื่อข้อมูลเปลี่ยนแปลง
 watch(() => props.data, () => {
-  generateFilters()
-}, { immediate: true, deep: true })
+  generateFilters();
+}, { immediate: true, deep: true });
 
 // เพิ่มฟังก์ชันสำหรับกรองตามงวดการประเมิน
 const filterByPeriod = (row: any, id: string, filterValues: string[]) => {
-  if (!filterValues?.length) return true
-  
-  const date = new Date(row.getValue(id))
-  const period = getHalfYearPeriod(date).value
-  
-  return filterValues.includes(period)
-}
+  if (!filterValues?.length) return true;
+  const year = row.original.assessment_year;
+  const period = row.original.assessment_period;
+  const key = `${year}-${period}`;
+  return filterValues.includes(key);
+};
 
 // เพิ่มฟังก์ชันสำหรับกรองตามระดับความเสี่ยง
 const filterByRiskScore = (row: any, id: string, filterValues: string[]) => {
-  if (!filterValues?.length) return true
+  if (!filterValues?.length) return true;
   
-  const score = row.getValue(id)
-  let level = ''
+  const score = row.getValue(id);
+  let level = '';
   
   if (score >= 9 && score <= 16) {
-    level = 'high'
+    level = 'high';
   } else if (score >= 4 && score <= 8) {
-    level = 'medium'
+    level = 'medium';
   } else if (score >= 1 && score <= 3) {
-    level = 'low'
+    level = 'low';
   }
   
-  return filterValues.includes(level)
-}
+  return filterValues.includes(level);
+};
 
 // คำนวณว่ามีตัวกรองที่ใช้งานอยู่หรือไม่
 const hasActiveTagFilters = computed(() => {
   // ตรวจสอบว่ามีการใช้ column filters หรือไม่
-  return table.getState().columnFilters.length > 0
-})
+  return table.getState().columnFilters.length > 0;
+});
 </script>
 
 <template>
@@ -387,7 +406,7 @@ const hasActiveTagFilters = computed(() => {
     <!-- ช่องค้นหา -->
     <Input
       class="max-w-xs sm:max-w-sm"
-      placeholder="ค้นหาจากชื่อความเสี่ยงระดับฝ่าย หรือบันทึก..."
+      placeholder="ค้นหาจากชื่อความเสี่ยงระดับฝ่าย, งวดการประเมิน หรือบันทึก..."
       v-model="searchQuery"
     />
 
@@ -408,9 +427,10 @@ const hasActiveTagFilters = computed(() => {
       <TagFilter
         v-if="assessmentPeriods.length > 0"
         title="งวดการประเมิน"
-        column="assessment_date"
+        column="assessment_period"
         :options="assessmentPeriods"
         :table="table"
+        :filter-fn="filterByPeriod"
       />
       
       <!-- กรองตามระดับโอกาสเกิด -->
@@ -438,6 +458,7 @@ const hasActiveTagFilters = computed(() => {
         column="risk_score"
         :options="riskScoreLevels"
         :table="table"
+        :filter-fn="filterByRiskScore"
       />
     </div>
 
@@ -452,7 +473,7 @@ const hasActiveTagFilters = computed(() => {
         @clear="clearRowSelection"
         @export="() => {}"
       />
-
+      
       <!-- ปุ่ม View อยู่ซ้าย ถัดมาเป็นปุ่มตัวเลือก -->
       <DataTableViewOptions :table="table" />
     </div>
@@ -466,7 +487,8 @@ const hasActiveTagFilters = computed(() => {
         <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
           <TableHead v-for="header in headerGroup.headers" :key="header.id">
             <FlexRender
-              v-if="!header.isPlaceholder" :render="header.column.columnDef.header"
+              v-if="!header.isPlaceholder" 
+              :render="header.column.columnDef.header"
               :props="header.getContext()"
             />
           </TableHead>

@@ -14,7 +14,8 @@ import type { RiskAssessment, RiskAssessmentAttachment } from '@/types/types';
 
 // นิยาม interface สำหรับข้อมูลฟอร์ม
 interface AssessmentFormData {
-  assessment_date: string;
+  assessment_year: number;
+  assessment_period: number;
   likelihood_level: number;
   impact_level: number;
   risk_score?: number;
@@ -99,12 +100,14 @@ export function useRiskAssessmentData(initialAssessments: RiskAssessment[] = [],
         console.log('📄 โหลดข้อมูลเอกสารแนบสำเร็จ', {
           count: existingAttachments.value.length,
           assessment_id: assessment.id,
-          assessment_date: assessment.assessment_date
+          assessment_year: assessment.assessment_year,
+          assessment_period: assessment.assessment_period
         });
       } else {
         console.log('ไม่พบข้อมูลเอกสารแนบสำหรับการประเมินนี้', {
           assessment_id: assessment.id,
-          assessment_date: assessment.assessment_date,
+          assessment_year: assessment.assessment_year,
+          assessment_period: assessment.assessment_period,
           keys: Object.keys(assessment),
         });
         existingAttachments.value = [];
@@ -142,7 +145,8 @@ export function useRiskAssessmentData(initialAssessments: RiskAssessment[] = [],
       }
       
       // เพิ่มข้อมูลหลัก
-      form.append('assessment_date', formData.assessment_date);
+      form.append('assessment_year', formData.assessment_year.toString());
+      form.append('assessment_period', formData.assessment_period.toString());
       form.append('likelihood_level', formData.likelihood_level.toString());
       form.append('impact_level', formData.impact_level.toString());
       
@@ -180,10 +184,10 @@ export function useRiskAssessmentData(initialAssessments: RiskAssessment[] = [],
           preserveState: false,
           onSuccess: (page) => {
             // แสดงข้อความแจ้งเตือนสำเร็จ
-            const formattedDate = new Date(formData.assessment_date).toLocaleDateString('th-TH');
+            const formattedPeriod = `ปี ${formData.assessment_year} งวดที่ ${formData.assessment_period}`;
             toast.success(assessmentId ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', {
               icon: CheckCircle2Icon,
-              description: `การประเมินความเสี่ยงวันที่ ${formattedDate} ${assessmentId ? 'ได้รับการแก้ไข' : 'ได้รับการเพิ่ม'}เรียบร้อยแล้ว`
+              description: `การประเมินความเสี่ยง${formattedPeriod} ${assessmentId ? 'ได้รับการแก้ไข' : 'ได้รับการเพิ่ม'}เรียบร้อยแล้ว`
             });
             
             resetAttachmentState();
@@ -215,7 +219,8 @@ export function useRiskAssessmentData(initialAssessments: RiskAssessment[] = [],
                 toast.success('ลบข้อมูลการประเมินความเสี่ยงเรียบร้อยแล้ว');
                 
                 console.log('✅ ลบข้อมูลการประเมินความเสี่ยงสำเร็จ', {
-                    assessment_date: new Date(assessment.assessment_date).toLocaleDateString('th-TH'),
+                    assessment_year: assessment.assessment_year,
+                    assessment_period: assessment.assessment_period,
                     id: assessment.id
                 });
                 

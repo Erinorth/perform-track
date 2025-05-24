@@ -18,22 +18,19 @@ class RiskAssessmentSeeder extends Seeder
         }
 
         foreach ($divisionRisks as $divisionRisk) {
-            // สร้างผลการประเมินย้อนหลังทุก 3 เดือน สำหรับปี 2024
-            $assessmentDates = [
-                '2024-01-15',
-                '2024-04-15',
-                '2024-07-15',
-                '2024-10-15',
+            // สร้างผลการประเมินย้อนหลัง 2 งวด สำหรับปี 2024
+            $periods = [
+                ['year' => 2024, 'period' => 1],
+                ['year' => 2024, 'period' => 2],
             ];
 
-            foreach ($assessmentDates as $date) {
-                $quarter = floor((int)date('m', strtotime($date)) / 3) + 1;
-                
+            foreach ($periods as $p) {
                 RiskAssessment::create([
-                    'assessment_date' => $date,
+                    'assessment_year' => $p['year'],
+                    'assessment_period' => $p['period'],
                     'likelihood_level' => rand(1, 4),
                     'impact_level' => rand(1, 4),
-                    'notes' => "ผลการประเมินประจำไตรมาส {$quarter} ปี " . date('Y', strtotime($date)),
+                    'notes' => "ผลการประเมินครึ่งปีที่ {$p['period']} ปี {$p['year']}",
                     'division_risk_id' => $divisionRisk->id,
                 ]);
             }

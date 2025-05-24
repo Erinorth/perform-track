@@ -18,7 +18,8 @@ class RiskAssessment extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'assessment_date', 
+        'assessment_year',
+        'assessment_period',
         'likelihood_level', 
         'impact_level', 
         'risk_score', 
@@ -32,7 +33,8 @@ class RiskAssessment extends Model
      * @var array
      */
     protected $casts = [
-        'assessment_date' => 'date',
+        'assessment_year' => 'integer',
+        'assessment_period' => 'integer',
         'likelihood_level' => 'integer',
         'impact_level' => 'integer',
         'risk_score' => 'integer',
