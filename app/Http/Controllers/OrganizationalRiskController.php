@@ -216,30 +216,44 @@ class OrganizationalRiskController extends Controller
      */
     public function destroy(OrganizationalRisk $organizationalRisk)
     {
-        // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบและบันทึก log
-        $oldData = $organizationalRisk->toArray();
-        
-        // ตรวจสอบว่ามีความเสี่ยงระดับฝ่ายที่เชื่อมโยงกับความเสี่ยงนี้หรือไม่
-        $hasDivisionRisks = $organizationalRisk->divisionRisks()->exists();
-        
-        // ป้องกันการลบข้อมูลที่มีการเชื่อมโยงกับข้อมูลอื่น
-        if ($hasDivisionRisks) {
-            return redirect()->back()->with('error', 'ไม่สามารถลบความเสี่ยงนี้ได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่');
+        try {
+            // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบและบันทึก log
+            $oldData = $organizationalRisk->toArray();
+            
+            // ตรวจสอบว่ามีความเสี่ยงระดับฝ่ายที่เชื่อมโยงกับความเสี่ยงนี้หรือไม่
+            $hasDivisionRisks = $organizationalRisk->divisionRisks()->exists();
+            
+            // ป้องกันการลบข้อมูลที่มีการเชื่อมโยงกับข้อมูลอื่น
+            if ($hasDivisionRisks) {
+                return redirect()->back()->with('error', 'ไม่สามารถลบความเสี่ยงนี้ได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่');
+            }
+            
+            // ดำเนินการลบข้อมูล (Soft Delete)
+            $organizationalRisk->delete();
+            
+            // บันทึก log สำหรับการตรวจสอบ
+            Log::info('ลบความเสี่ยงระดับองค์กร', [
+                'id' => $oldData['id'],
+                'name' => $oldData['risk_name'],
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
+            
+            // แก้ไขตรงนี้ - เปลี่ยนจาก redirect()->back() เป็น redirect ไปหน้า index
+            return redirect()->route('organizational-risks.index')
+                ->with('success', 'ลบความเสี่ยงระดับองค์กรเรียบร้อยแล้ว');
+                
+        } catch (\Exception $e) {
+            // บันทึกล็อกกรณีเกิดข้อผิดพลาด
+            Log::error('ลบความเสี่ยงระดับองค์กรล้มเหลว', [
+                'id' => $organizationalRisk->id,
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการลบข้อมูล: ' . $e->getMessage());
         }
-        
-        // ดำเนินการลบข้อมูล (Soft Delete)
-        $organizationalRisk->delete();
-        
-        // บันทึก log สำหรับการตรวจสอบ
-        Log::info('ลบความเสี่ยงระดับองค์กร', [
-            'id' => $oldData['id'],
-            'name' => $oldData['risk_name'],
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-        
-        // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จ
-        return redirect()->back()->with('success', 'ลบความเสี่ยงระดับองค์กรเรียบร้อยแล้ว');
     }
 
     /**
