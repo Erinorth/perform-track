@@ -87,7 +87,7 @@ class DashboardController extends Controller
         };
         
         // สร้าง query builder
-        $query = RiskAssessment::where('assessment_date', '>=', $startDate);
+        $query = RiskAssessment::where('created_at', '>=', $startDate); // แก้ assessment_date -> created_at
         
         // กรองตามประเภทความเสี่ยง (ถ้าไม่ใช่ 'all')
         if ($riskType !== 'all') {
@@ -106,7 +106,7 @@ class DashboardController extends Controller
         $groupedData = [];
         foreach ($periods as $period) {
             $periodData = $assessments->filter(function ($assessment) use ($period) {
-                $assessmentDate = Carbon::parse($assessment->assessment_date);
+                $assessmentDate = Carbon::parse($assessment->created_at); // แก้ assessment_date -> created_at
                 return $assessmentDate->between($period['start'], $period['end']);
             });
             
@@ -199,13 +199,13 @@ class DashboardController extends Controller
     {
         // ใช้ข้อมูลจากการประเมินล่าสุดของแต่ละความเสี่ยง
         $latestAssessments = DB::table('risk_assessments as ra')
-            ->select('division_risk_id', DB::raw('MAX(assessment_date) as latest_date'))
+            ->select('division_risk_id', DB::raw('MAX(created_at) as latest_date')) // แก้ assessment_date -> created_at
             ->groupBy('division_risk_id');
             
         $query = DB::table('risk_assessments as ra')
             ->joinSub($latestAssessments, 'latest', function($join) {
                 $join->on('ra.division_risk_id', '=', 'latest.division_risk_id')
-                    ->on('ra.assessment_date', '=', 'latest.latest_date');
+                    ->on('ra.created_at', '=', 'latest.latest_date'); // แก้ assessment_date -> created_at
             })
             ->join('division_risks as dr', 'ra.division_risk_id', '=', 'dr.id');
         
@@ -240,13 +240,13 @@ class DashboardController extends Controller
     {
         // ใช้ข้อมูลจากการประเมินล่าสุดของแต่ละความเสี่ยง
         $latestAssessments = DB::table('risk_assessments as ra')
-            ->select('division_risk_id', DB::raw('MAX(assessment_date) as latest_date'))
+            ->select('division_risk_id', DB::raw('MAX(created_at) as latest_date')) // แก้ assessment_date -> created_at
             ->groupBy('division_risk_id');
             
         $query = DB::table('risk_assessments as ra')
             ->joinSub($latestAssessments, 'latest', function($join) {
                 $join->on('ra.division_risk_id', '=', 'latest.division_risk_id')
-                    ->on('ra.assessment_date', '=', 'latest.latest_date');
+                    ->on('ra.created_at', '=', 'latest.latest_date'); // แก้ assessment_date -> created_at
             })
             ->join('division_risks as dr', 'ra.division_risk_id', '=', 'dr.id')
             ->join('organizational_risks as org', 'dr.organizational_risk_id', '=', 'org.id');
@@ -260,7 +260,7 @@ class DashboardController extends Controller
         $assessments = $query->select(
                 'ra.likelihood_level',
                 'ra.impact_level',
-                'ra.assessment_date',
+                'ra.created_at as assessment_date', // เปลี่ยนชื่อ field ส่งออกให้ frontend เหมือนเดิม
                 'ra.notes',
                 'dr.id as division_risk_id',
                 'dr.risk_name',

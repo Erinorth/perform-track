@@ -52,8 +52,6 @@ class OrganizationalRiskController extends Controller
      */
     public function create()
     {
-        $this->authorize('create', OrganizationalRisk::class);
-        
         Log::info('เข้าถึงหน้าสร้างความเสี่ยงองค์กรใหม่', [
             'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
             'timestamp' => now()->format('Y-m-d H:i:s')
@@ -129,8 +127,6 @@ class OrganizationalRiskController extends Controller
      */
     public function edit(OrganizationalRisk $organizationalRisk)
     {
-        $this->authorize('update', $organizationalRisk);
-        
         // โหลดข้อมูลพร้อมเอกสารแนบ
         $risk = OrganizationalRisk::with(['attachments', 'divisionRisks'])
             ->findOrFail($organizationalRisk->id);
@@ -138,9 +134,10 @@ class OrganizationalRiskController extends Controller
         // เพิ่ม URL สำหรับเอกสารแนบ
         if ($risk->attachments) {
             $risk->attachments->transform(function ($attachment) {
+                // แก้ไข parameter จาก 'attachment' => $attachment->id เป็น 'attachmentId' => $attachment->id
                 $attachment->url = route('organizational-risks.attachments.view', [
                     'organizationalRisk' => $attachment->organizational_risk_id,
-                    'attachment' => $attachment->id
+                    'attachmentId' => $attachment->id
                 ]);
                 return $attachment;
             });

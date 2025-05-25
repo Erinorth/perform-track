@@ -339,26 +339,6 @@ const handleSubmit = async () => {
 const toggleHelp = () => {
   showHelp.value = !showHelp.value
 }
-
-/**
- * ยกเลิกการแก้ไขและรีเซ็ตฟอร์ม (สำหรับโหมดแก้ไข)
- */
-const resetForm = () => {
-  if (isEditMode.value && props.risk) {
-    // รีเซ็ตค่าในฟอร์มกลับไปเป็นค่าเดิม
-    form.risk_name = props.risk.risk_name
-    form.description = props.risk.description
-    
-    // ล้างไฟล์ที่เลือกใหม่
-    selectedFiles.value.length = 0
-    form.attachments = null
-    
-    // โหลดเอกสารแนับเดิมใหม่
-    loadAttachments(props.risk)
-    
-    toast.info('รีเซ็ตฟอร์มเรียบร้อย')
-  }
-}
 </script>
 
 <template>
@@ -562,18 +542,6 @@ const resetForm = () => {
             >
               <ArrowLeftIcon class="h-4 w-4" />
               <span>{{ isCreateMode ? 'กลับไปรายการ' : 'กลับไปรายละเอียด' }}</span>
-            </Button>
-            
-            <!-- ปุ่มรีเซ็ต (แสดงเฉพาะในโหมดแก้ไข) -->
-            <Button
-              v-if="isEditMode"
-              type="button"
-              variant="ghost"
-              @click="resetForm"
-              class="w-full sm:w-auto flex items-center gap-2 text-orange-600 hover:text-orange-700"
-            >
-              <InfoIcon class="h-4 w-4" />
-              <span>รีเซ็ตฟอร์ม</span>
             </Button>
           </div>
           

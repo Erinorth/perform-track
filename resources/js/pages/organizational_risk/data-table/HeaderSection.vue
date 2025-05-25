@@ -6,6 +6,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { router } from '@inertiajs/vue3'
 
 // UI Components
 import { Button } from '@/components/ui/button'
@@ -43,7 +44,8 @@ const handleQuickCreate = () => {
 }
 
 const handleCreate = () => {
-  emit('create')
+  // ไปยังหน้า OrganizationalRiskForm (route: organizational-risks.create)
+  router.visit(route('organizational-risks.create'))
   isDropdownOpen.value = false
 }
 </script>
