@@ -98,7 +98,7 @@ onMounted(() => {
       <HeaderSection 
         title="การประเมินความเสี่ยง"
         description="รายการการประเมินความเสี่ยงทั้งหมดในระบบ"
-        @create="openCreateModal"
+        @quickCreate="openCreateModal"
       />
       
       <!-- แสดงตารางข้อมูลการประเมินความเสี่ยง -->

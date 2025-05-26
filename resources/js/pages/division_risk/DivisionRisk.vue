@@ -73,7 +73,7 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel } = useConfir
       <HeaderSection 
         title="จัดการความเสี่ยงฝ่าย"
         description="รายการความเสี่ยงฝ่ายทั้งหมดในระบบ"
-        @create="openCreateModal"
+        @quickCreate="openCreateModal"
       />
       
       <!-- แสดงตารางข้อมูลความเสี่ยงฝ่าย -->
