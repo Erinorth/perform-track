@@ -69,7 +69,9 @@ class DivisionRiskController extends Controller
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
-        return Inertia::render('division_risk/DivisionRiskForm');
+        return Inertia::render('division_risk/DivisionRiskForm',[
+            'organizationalRisks' => OrganizationalRisk::orderBy('risk_name')->get(),  // ดึงข้อมูลความเสี่ยงระดับองค์กรทั้งหมด
+        ]);
     }
 
     /**
