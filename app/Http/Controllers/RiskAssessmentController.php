@@ -77,7 +77,7 @@ class RiskAssessmentController extends Controller
         $likelihoodCriteria = LikelihoodCriterion::all()->groupBy('division_risk_id');
         $impactCriteria = ImpactCriterion::all()->groupBy('division_risk_id');
         
-        return Inertia::render('risk_assessment/Create', [
+        return Inertia::render('risk_assessment/RiskAssessmentForm', [
             'divisionRisks' => $divisionRisks,
             'likelihoodCriteria' => $likelihoodCriteria,
             'impactCriteria' => $impactCriteria

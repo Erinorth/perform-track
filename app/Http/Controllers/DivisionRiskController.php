@@ -60,7 +60,20 @@ class DivisionRiskController extends Controller
     }
 
     /**
-     * บันทึกข้อมูลความเสี่ยงระดับฝ่ายใหม่ลงฐานข้อมูล
+     * แสดงหน้าสร้างความเสี่ยงใหม่
+     */
+    public function create()
+    {
+        Log::info('เข้าถึงหน้าสร้างความเสี่ยงฝ่ายใหม่', [
+            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'timestamp' => now()->format('Y-m-d H:i:s')
+        ]);
+        
+        return Inertia::render('division_risk/DivisionRiskForm');
+    }
+
+    /**
+     * บันทึกข้อมูลความเสี่ยงระดับองค์กรใหม่ลงฐานข้อมูล
      * 
      * @param \App\Http\Requests\StoreDivisionRiskRequest $request คำขอที่ผ่านการตรวจสอบแล้ว
      * @return \Illuminate\Http\RedirectResponse Redirect กลับพร้อมข้อความแจ้งผล
