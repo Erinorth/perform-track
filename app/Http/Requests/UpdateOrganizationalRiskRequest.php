@@ -1,16 +1,6 @@
 <?php
-/**
- * ไฟล์: app\Http\Requests\UpdateOrganizationalRiskRequest.php
- * คำอธิบาย: Form Request สำหรับตรวจสอบข้อมูลในการอัปเดตความเสี่ยงระดับองค์กร
- * 
- * คลาสนี้รับผิดชอบในการ:
- * - ตรวจสอบความถูกต้องของข้อมูลที่ส่งมาจากฟอร์มแก้ไขความเสี่ยง
- * - กำหนดกฎการตรวจสอบฟิลด์ต่างๆ ทั้งข้อมูลพื้นฐานและเอกสารแนบ
- * - ให้ข้อความแจ้งเตือนเป็นภาษาไทยที่เป็นมิตรกับผู้ใช้
- * - บันทึกข้อมูลการตรวจสอบที่ล้มเหลวเพื่อการแก้ไขปัญหา
- * 
- * ทำงานร่วมกับ: OrganizationalRiskController (ใช้ในเมธอด update)
- */
+// ไฟล์: app\Http\Requests\UpdateOrganizationalRiskRequest.php
+// Request สำหรับตรวจสอบข้อมูลการแก้ไขความเสี่ยงระดับองค์กร
 
 namespace App\Http\Requests;
 
@@ -21,107 +11,115 @@ use Illuminate\Support\Facades\Auth;
 class UpdateOrganizationalRiskRequest extends FormRequest
 {
     /**
-     * ตรวจสอบสิทธิ์การใช้งาน
-     * 
-     * ฟังก์ชันนี้ตรวจสอบว่าผู้ใช้งานมีสิทธิ์ในการอัปเดตข้อมูลความเสี่ยงหรือไม่
-     * ถ้าต้องการใช้ระบบตรวจสอบสิทธิ์ (Policy) ให้แก้ไขเป็น:
-     * return auth()->user()->can('update', $this->route('organizationalRisk'));
-     * 
-     * ในรุ่นนี้ยังอนุญาตให้ทุกคนสามารถแก้ไขข้อมูลได้ หากต้องการจำกัดสิทธิ์
-     * ในอนาคต สามารถสร้าง Policy ใหม่และแก้ไขฟังก์ชันนี้
-     * 
-     * @return bool ค่า true ถ้าผู้ใช้มีสิทธิ์, false ถ้าไม่มีสิทธิ์
+     * ตรวจสอบว่าผู้ใช้มีสิทธิ์ในการแก้ไขความเสี่ยงระดับองค์กรหรือไม่
      */
     public function authorize(): bool
     {
-        // สำหรับตอนนี้ อนุญาตให้ทุกคนที่เข้าถึงได้สามารถแก้ไขข้อมูลได้
-        // เพื่อความปลอดภัยมากขึ้น ควรแก้ไขเพื่อใช้ระบบสิทธิ์ในอนาคต
-        return true;
+        return Auth::check(); // ตรวจสอบว่าผู้ใช้ล็อกอินแล้วหรือไม่
     }
 
     /**
-     * กำหนดกฎการตรวจสอบข้อมูล
-     * 
-     * กำหนดเงื่อนไขการตรวจสอบสำหรับแต่ละฟิลด์:
-     * - risk_name: ชื่อความเสี่ยงต้องไม่เป็นค่าว่างและมีความยาวไม่เกิน 255 ตัวอักษร
-     * - description: รายละเอียดความเสี่ยงต้องไม่เป็นค่าว่าง
-     * - attachments: ไฟล์แนบเป็นทางเลือก (ไม่บังคับ) แต่ถ้ามีต้องเป็น array 
-     * - attachments.*: แต่ละไฟล์ต้องเป็นประเภท PDF, Word, Excel หรือรูปภาพ และขนาดไม่เกิน 10MB
-     *   (จำกัดขนาดเพื่อป้องกันการใช้ทรัพยากรเซิร์ฟเวอร์มากเกินไปและลดเวลาในการอัปโหลด)
-     * - attachments_to_delete: รายการ ID ของเอกสารแนบที่ต้องการลบ (เป็นทางเลือก)
-     * - attachments_to_delete.*: แต่ละ ID ต้องเป็นตัวเลขและมีอยู่ในตาราง organizational_risk_attachments
-     * 
-     * @return array กฎการตรวจสอบสำหรับแต่ละฟิลด์
+     * กำหนดกฎการตรวจสอบความถูกต้องของข้อมูล
      */
-    public function rules()
+    public function rules(): array
     {
+        $organizationalRiskId = $this->route('organizational_risk') ? 
+            $this->route('organizational_risk')->id : 
+            $this->route('organizationalRisk')->id;
+
         return [
-            'risk_name' => 'required|string|max:255',
-            'description' => 'required|string',
-            'attachments' => 'nullable|array',
-            'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240', // 10MB
+            'risk_name' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:organizational_risks,risk_name,' . $organizationalRiskId
+            ],
+            'description' => [
+                'required',
+                'string',
+                'max:2000'
+            ],
+            'attachments' => 'nullable|array|max:10',
+            'attachments.*' => [
+                'file',
+                'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif',
+                'max:10240' // 10MB
+            ],
             'attachments_to_delete' => 'nullable|array',
-            'attachments_to_delete.*' => 'integer|exists:organizational_risk_attachments,id',
+            'attachments_to_delete.*' => [
+                'integer',
+                'exists:organizational_risk_attachments,id'
+            ],
         ];
     }
 
     /**
-     * กำหนดข้อความแจ้งเตือนที่เป็นมิตรกับผู้ใช้
-     * 
-     * กำหนดข้อความแจ้งเตือนเป็นภาษาไทยเพื่อให้ผู้ใช้เข้าใจง่าย
-     * โดยระบุข้อความเฉพาะสำหรับแต่ละกฎการตรวจสอบที่ล้มเหลว
-     * 
-     * ข้อความเหล่านี้จะปรากฏในฟอร์มเมื่อผู้ใช้กรอกข้อมูลไม่ถูกต้อง
-     * เช่น เมื่อไม่ได้ระบุชื่อความเสี่ยง หรืออัปโหลดไฟล์ที่ไม่รองรับ
-     * 
-     * @return array ข้อความแจ้งเตือนสำหรับแต่ละกฎการตรวจสอบ
+     * กำหนดข้อความแจ้งเตือนที่กำหนดเอง
      */
-    public function messages()
+    public function messages(): array
     {
         return [
             'risk_name.required' => 'กรุณาระบุชื่อความเสี่ยง',
-            'risk_name.max' => 'ชื่อความเสี่ยงต้องมีความยาวไม่เกิน 255 ตัวอักษร',
+            'risk_name.string' => 'ชื่อความเสี่ยงต้องเป็นข้อความ',
+            'risk_name.max' => 'ชื่อความเสี่ยงต้องไม่เกิน 255 ตัวอักษร',
+            'risk_name.unique' => 'ชื่อความเสี่ยงนี้มีอยู่แล้วในระบบ',
             'description.required' => 'กรุณาระบุรายละเอียดความเสี่ยง',
+            'description.string' => 'รายละเอียดความเสี่ยงต้องเป็นข้อความ',
+            'description.max' => 'รายละเอียดความเสี่ยงต้องไม่เกิน 2,000 ตัวอักษร',
+            'attachments.array' => 'ไฟล์แนบต้องเป็นรูปแบบ array',
+            'attachments.max' => 'สามารถแนบไฟล์ได้สูงสุด 10 ไฟล์',
             'attachments.*.file' => 'ไฟล์แนบไม่ถูกต้อง',
             'attachments.*.mimes' => 'รองรับเฉพาะไฟล์ PDF, Word, Excel และรูปภาพเท่านั้น',
             'attachments.*.max' => 'ขนาดไฟล์ต้องไม่เกิน 10MB',
-            'attachments_to_delete.*.exists' => 'ไม่พบไฟล์ที่ต้องการลบ',
+            'attachments_to_delete.array' => 'รายการไฟล์ที่ต้องการลบต้องเป็นรูปแบบ array',
+            'attachments_to_delete.*.integer' => 'รหัสไฟล์ที่ต้องการลบต้องเป็นตัวเลข',
+            'attachments_to_delete.*.exists' => 'ไฟล์แนบที่ต้องการลบไม่มีอยู่ในระบบ',
         ];
     }
-    
+
     /**
-     * ดำเนินการเมื่อการตรวจสอบล้มเหลว
-     * 
-     * เมื่อข้อมูลที่ส่งมาไม่ผ่านการตรวจสอบ ฟังก์ชันนี้จะบันทึกข้อมูลเพิ่มเติมลงใน log
-     * เพื่อใช้ในการวิเคราะห์ปัญหาและติดตามการใช้งานที่ไม่ถูกต้อง
-     * 
-     * ข้อมูลที่บันทึกประกอบด้วย:
-     * - ID และชื่อของความเสี่ยงที่กำลังอัปเดต
-     * - รายการข้อผิดพลาดทั้งหมดที่ตรวจพบ
-     * - ข้อมูลที่ผู้ใช้ส่งมา (ยกเว้นข้อมูลที่ละเอียดอ่อน)
-     * - ชื่อผู้ใช้และ IP address สำหรับการตรวจสอบย้อนกลับ
-     * 
-     * @param \Illuminate\Contracts\Validation\Validator $validator ตัวตรวจสอบที่มีข้อผิดพลาด
-     * @return void
-     * @throws \Illuminate\Validation\ValidationException ส่งต่อข้อผิดพลาดไปยัง Laravel
+     * กำหนดชื่อฟิลด์ที่ใช้ในข้อความแสดงข้อผิดพลาด
      */
-    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    public function attributes(): array
     {
-        // ดึงข้อมูลความเสี่ยงที่กำลังอัปเดต
-        $risk = $this->route('organizationalRisk');
+        return [
+            'risk_name' => 'ชื่อความเสี่ยง',
+            'description' => 'รายละเอียดความเสี่ยง',
+            'attachments' => 'ไฟล์แนบ',
+            'attachments_to_delete' => 'ไฟล์ที่ต้องการลบ',
+        ];
+    }
+
+    /**
+     * เตรียมข้อมูลก่อนการตรวจสอบ
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'risk_name' => $this->risk_name ? trim($this->risk_name) : null,
+            'description' => $this->description ? trim($this->description) : null,
+        ]);
+    }
+
+    /**
+     * บันทึกข้อมูลเพิ่มเติมลง log เมื่อการตรวจสอบเกิดข้อผิดพลาด
+     */
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator): void
+    {
+        $risk = $this->route('organizational_risk') ?? $this->route('organizationalRisk');
         
-        // บันทึก log เมื่อการตรวจสอบล้มเหลว
-        Log::info('การตรวจสอบข้อมูลการอัปเดตความเสี่ยงระดับองค์กรล้มเหลว', [
+        Log::warning('การตรวจสอบข้อมูลการแก้ไขความเสี่ยงระดับองค์กรล้มเหลว', [
             'risk_id' => $risk ? $risk->id : null,
             'risk_name' => $risk ? $risk->risk_name : null,
             'errors' => $validator->errors()->toArray(),
-            'input' => $this->except(['_token', '_method']), // ยกเว้นข้อมูลที่ละเอียดอ่อน
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'ip' => $this->ip(),
+            'input' => $this->except(['attachments', '_token', '_method']),
+            'user_id' => Auth::id(),
+            'user_name' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'ip_address' => $this->ip(),
+            'user_agent' => $this->userAgent(),
             'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
-        // เรียกใช้ parent method เพื่อส่งข้อผิดพลาดไปยัง Laravel ตามปกติ
         parent::failedValidation($validator);
     }
 }
