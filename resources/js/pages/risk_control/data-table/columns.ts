@@ -21,6 +21,7 @@ declare module '@tanstack/vue-table' {
     onDelete?: (control: TData) => void
     onToggleStatus?: (control: TData) => void
     onViewDetails?: (control: TData) => void
+    onBulkDelete?: (ids: number[]) => void
   }
 }
 
@@ -64,13 +65,28 @@ const getStatusStyle = (status: string): { variant: string, color: string, icon:
 }
 
 // ฟังก์ชันสำหรับกรองข้อมูลตามประเภทการควบคุม
-const filterByControlType = (row: any, id: string, value: string) => {
+const filterByControlType = (row: any, id: string, value: string[]) => {
+  if (!value?.length) return true
   return value.includes(row.getValue(id))
 }
 
 // ฟังก์ชันสำหรับกรองข้อมูลตามสถานะ
-const filterByStatus = (row: any, id: string, value: string) => {
+const filterByStatus = (row: any, id: string, value: string[]) => {
+  if (!value?.length) return true
   return value.includes(row.getValue(id))
+}
+
+// ฟังก์ชันสำหรับกรองข้อมูลตามผู้รับผิดชอบ
+const filterByOwner = (row: any, id: string, value: string[]) => {
+  if (!value?.length) return true
+  return value.includes(row.getValue(id))
+}
+
+// ฟังก์ชันสำหรับกรองข้อมูลตามความเสี่ยงระดับฝ่าย
+const filterByDivisionRisk = (row: any, id: string, filterValues: string[]) => {
+  if (!filterValues?.length) return true
+  const riskName = row.original.division_risk?.risk_name
+  return riskName && filterValues.includes(riskName)
 }
 
 // ฟังก์ชันจัดรูปแบบวันที่
@@ -111,6 +127,7 @@ export const columns: ColumnDef<RiskControl>[] = [
         title: 'ID'
       })
     ),
+    enableHiding: true,
   },
   // คอลัมน์ชื่อการควบคุม - ย้ายปุ่มย่อ/ขยายมาไว้ที่นี่
   {
@@ -160,9 +177,9 @@ export const columns: ColumnDef<RiskControl>[] = [
     },
     enableSorting: true,
   },
-  // คอลัมน์ชื่อความเสี่ยงระดับฝ่าย
+  // คอลัมน์ชื่อความเสี่ยงระดับฝ่าย - แก้ไข id จาก division_risk_name เป็น division_risk
   {
-    id: "division_risk_name",
+    id: "division_risk", // แก้ไข: เปลี่ยนจาก division_risk_name เป็น division_risk
     header: ({ column }) => (
       h(DataTableColumnHeader, {
         column: column,
@@ -187,6 +204,8 @@ export const columns: ColumnDef<RiskControl>[] = [
         }, `องค์กร: ${divisionRisk.organizational_risk.risk_name}`)
       ])
     },
+    // เพิ่ม filterFn สำหรับความเสี่ยงระดับฝ่าย
+    filterFn: filterByDivisionRisk,
     enableSorting: true,
   },
   // คอลัมน์ประเภทการควบคุม
@@ -277,6 +296,7 @@ export const columns: ColumnDef<RiskControl>[] = [
         }, owner)
       ])
     },
+    filterFn: filterByOwner,
     enableSorting: true,
   },
   // คอลัมน์รายละเอียดการดำเนินการ
@@ -301,6 +321,28 @@ export const columns: ColumnDef<RiskControl>[] = [
       }, truncatedDetails)
     },
     enableHiding: true // สามารถซ่อนคอลัมน์นี้ได้
+  },
+  // คอลัมน์รายละเอียด (เพิ่มเติม)
+  {
+    accessorKey: "description",
+    header: ({ column }) => (
+      h(DataTableColumnHeader, {
+        column: column,
+        title: 'รายละเอียด'
+      })
+    ),
+    cell: ({ row }) => {
+      const description = row.getValue("description") as string
+      if (!description) return h('span', { class: 'text-gray-400' }, '-')
+      
+      const truncatedDescription = description.length > 50 ? `${description.substring(0, 50)}...` : description
+      
+      return h('span', {
+        class: 'text-sm',
+        title: description
+      }, truncatedDescription)
+    },
+    enableHiding: true
   },
   {
     accessorKey: "created_at", // วันที่สร้างข้อมูล
@@ -362,8 +404,13 @@ export const columns: ColumnDef<RiskControl>[] = [
           menuLabel: 'ตัวเลือกการควบคุมความเสี่ยง',
           onExpand: () => {
             console.log('ดูรายละเอียดการควบคุมความเสี่ยง', control.id)
-            // เรียกใช้ meta function สำหรับดูรายละเอียด
-            meta?.onViewDetails?.(control)
+            router.visit(`/risk-controls/${control.id}`, {
+              data: { 
+                previousPage: window.location.href,
+                source: 'data-table'
+              },
+              preserveState: true
+            });
           },
           onEdit: () => {
             console.log('แก้ไขข้อมูลการควบคุมความเสี่ยง:', control.id)
@@ -391,5 +438,7 @@ export {
   getStatusStyle,
   filterByControlType,
   filterByStatus,
+  filterByOwner,
+  filterByDivisionRisk,
   formatDateTime
 }
