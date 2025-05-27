@@ -720,9 +720,9 @@ const handleSubmit = async () => {
                     class="flex items-center gap-2 flex-1 min-w-0 overflow-hidden cursor-pointer" 
                     @click="openAttachment(attachment.url)"
                   >
-                    <component :is="getFileIcon(attachment.filename)" class="h-4 w-4 flex-shrink-0" />
-                    <span class="truncate max-w-[200px] sm:max-w-[300px]">{{ attachment.filename }}</span>
-                    <span class="text-xs text-gray-500 flex-shrink-0">{{ formatFileSize(attachment.filesize || 0) }}</span>
+                    <component :is="getFileIcon(attachment.file_name)" class="h-4 w-4 flex-shrink-0" />
+                    <span class="truncate max-w-[200px] sm:max-w-[300px]">{{ attachment.file_name }}</span>
+                    <span class="text-xs text-gray-500 flex-shrink-0">{{ formatFileSize(attachment.file_size || 0) }}</span>
                   </div>
                   
                   <Button 

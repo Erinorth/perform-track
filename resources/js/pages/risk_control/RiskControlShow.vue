@@ -182,7 +182,7 @@ const attachmentsCount = computed(() => {
 const downloadAttachment = (attachment: RiskControlAttachment) => {
   // แสดง toast แจ้งเตือนผู้ใช้
   toast.info('กำลังดาวน์โหลดเอกสาร', {
-    description: `ไฟล์ ${attachment.filename} กำลังถูกดาวน์โหลด`,
+    description: `ไฟล์ ${attachment.file_name} กำลังถูกดาวน์โหลด`,
     duration: 3000
   })
   
@@ -203,7 +203,7 @@ const viewAttachmentFullScreen = (attachment: RiskControlAttachment) => {
   console.log('เปิดหน้าดูไฟล์แนบการควบคุมความเสี่ยงแบบเต็มจอ:', attachment)
   
   toast.info('กำลังเปิดไฟล์แนบ', {
-    description: `กำลังเปิดไฟล์ ${attachment.filename}`,
+    description: `กำลังเปิดไฟล์ ${attachment.file_name}`,
     duration: 3000
   })
 }
@@ -282,10 +282,10 @@ const deleteRiskControl = async () => {
 /**
  * ฟังก์ชันเลือกไอคอนตามประเภทไฟล์
  */
-const getFileIcon = (filetype: string | null) => {
-  if (!filetype) return FileText
+const getFileIcon = (file_type: string | null) => {
+  if (!file_type) return FileText
   
-  const type = filetype.toLowerCase()
+  const type = file_type.toLowerCase()
   
   if (type.includes('pdf')) {
     return FileText
@@ -552,13 +552,13 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
                     <!-- แสดงข้อมูลไฟล์ -->
                     <div class="flex flex-1 items-center gap-3 truncate">
                       <!-- แสดงไอคอนตามประเภทไฟล์ -->
-                      <component :is="getFileIcon(attachment.filetype)" class="h-5 w-5 flex-shrink-0 text-gray-400" />
+                      <component :is="getFileIcon(attachment.file_type)" class="h-5 w-5 flex-shrink-0 text-gray-400" />
                       
                       <!-- ชื่อไฟล์และข้อมูลขนาด -->
                       <div class="flex-1 truncate">
-                        <p class="truncate font-medium">{{ attachment.filename }}</p>
+                        <p class="truncate font-medium">{{ attachment.file_name }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
-                          {{ formatFileSize(attachment.filesize) }}
+                          {{ formatFileSize(attachment.file_size) }}
                         </p>
                       </div>
                     </div>
@@ -569,7 +569,7 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel, openConfirm 
                         variant="ghost" 
                         size="icon" 
                         @click="viewAttachmentFullScreen(attachment)" 
-                        v-if="attachment.filetype && (attachment.filetype.includes('pdf') || attachment.filetype.includes('image'))"
+                        v-if="attachment.file_type && (attachment.file_type.includes('pdf') || attachment.file_type.includes('image'))"
                       >
                         <Eye class="h-4 w-4" />
                       </Button>

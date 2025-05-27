@@ -1,50 +1,65 @@
 <?php
-/**
- * ไฟล์: app\Http\Controllers\OrganizationalRiskController.php
- * คำอธิบาย: Controller สำหรับจัดการความเสี่ยงระดับองค์กรในระบบประเมินความเสี่ยง
- * เทคโนโลยี: Laravel 12, Inertia.js, Vue 3
- * ทำหน้าที่: จัดการข้อมูลความเสี่ยงระดับองค์กรและเอกสารแนบที่เกี่ยวข้อง
- * ความสัมพันธ์: เชื่อมโยงกับ OrganizationalRisk Model และส่งข้อมูลไปยัง Vue ผ่าน Inertia
- */
+// ไฟล์: app\Http\Controllers\OrganizationalRiskController.php
+// Controller สำหรับจัดการความเสี่ยงระดับองค์กรในระบบประเมินความเสี่ยง
+// รองรับการจัดการเอกสารแนบแบบครบถ้วนและปลอดภัย
 
 namespace App\Http\Controllers;
 
-// นำเข้า Models และ Requests ที่เกี่ยวข้อง
-use App\Models\OrganizationalRisk;  // โมเดลสำหรับจัดการข้อมูลความเสี่ยงระดับองค์กร
-use App\Models\OrganizationalRiskAttachment;  // โมเดลสำหรับจัดการข้อมูลเอกสารแนบ
-use App\Http\Requests\StoreOrganizationalRiskRequest;  // Form Request สำหรับตรวจสอบข้อมูลการเพิ่ม
-use App\Http\Requests\UpdateOrganizationalRiskRequest;  // Form Request สำหรับตรวจสอบข้อมูลการแก้ไข
-use Illuminate\Http\Request;  // สำหรับจัดการคำขอจาก HTTP
-use Illuminate\Support\Facades\Log;  // สำหรับบันทึก log การทำงาน
-use Inertia\Inertia;  // เชื่อมต่อกับ Vue frontend
-use Illuminate\Support\Facades\Auth;  // จัดการข้อมูลผู้ใช้ที่ล็อกอิน
-use Illuminate\Support\Facades\Storage;  // จัดการไฟล์ในระบบ
+use App\Models\OrganizationalRisk;
+use App\Models\OrganizationalRiskAttachment;
+use App\Http\Requests\StoreOrganizationalRiskRequest;
+use App\Http\Requests\UpdateOrganizationalRiskRequest;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class OrganizationalRiskController extends Controller
 {
     /**
      * แสดงรายการความเสี่ยงระดับองค์กรทั้งหมด
-     * ดึงข้อมูลพร้อมความสัมพันธ์และเรียงลำดับตามชื่อความเสี่ยง
-     * 
-     * @return \Inertia\Response หน้า Vue พร้อมข้อมูลความเสี่ยงทั้งหมด
      */
     public function index()
     {
-        // ดึงข้อมูลความเสี่ยงระดับองค์กรทั้งหมด พร้อมโหลดความสัมพันธ์
-        $risks = OrganizationalRisk::with(['divisionRisks', 'attachments'])
-            ->orderBy('risk_name')  // เรียงตามชื่อความเสี่ยง
-            ->get();  // ดึงข้อมูลทั้งหมด
+        try {
+            // ดึงข้อมูลความเสี่ยงระดับองค์กรทั้งหมด พร้อมความสัมพันธ์และเอกสารแนบ
+            $risks = OrganizationalRisk::with(['divisionRisks', 'attachments'])
+                ->orderBy('risk_name')
+                ->get();
 
-        // บันทึก log การเข้าถึงหน้ารายการความเสี่ยง เพื่อติดตามการใช้งาน
-        Log::info('เข้าถึงรายการความเสี่ยงระดับองค์กร', [
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
+            // สถิติความเสี่ยงระดับองค์กร
+            $statistics = [
+                'total_risks' => $risks->count(),
+                'risks_with_divisions' => $risks->filter(function ($risk) {
+                    return $risk->divisionRisks->count() > 0;
+                })->count(),
+                'risks_with_attachments' => $risks->filter(function ($risk) {
+                    return $risk->attachments->count() > 0;
+                })->count(),
+            ];
 
-        // ส่งข้อมูลไปยังหน้า Vue ผ่าน Inertia
-        return Inertia::render('organizational_risk/OrganizationalRisk', [
-            'risks' => $risks  // ส่งข้อมูลความเสี่ยงไปยัง Vue component
-        ]);
+            Log::info('เข้าถึงรายการความเสี่ยงระดับองค์กร', [
+                'total_risks' => $statistics['total_risks'],
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
+
+            return Inertia::render('organizational_risk/OrganizationalRisk', [
+                'risks' => $risks,
+                'statistics' => $statistics
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('เกิดข้อผิดพลาดในการดึงรายการความเสี่ยงระดับองค์กร', [
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการโหลดข้อมูล: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -52,402 +67,505 @@ class OrganizationalRiskController extends Controller
      */
     public function create()
     {
-        Log::info('เข้าถึงหน้าสร้างความเสี่ยงองค์กรใหม่', [
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-        
-        return Inertia::render('organizational_risk/OrganizationalRiskForm');
+        try {
+            Log::info('เข้าถึงหน้าสร้างความเสี่ยงองค์กรใหม่', [
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
+            
+            return Inertia::render('organizational_risk/OrganizationalRiskForm');
+
+        } catch (\Exception $e) {
+            Log::error('เกิดข้อผิดพลาดในการเข้าถึงหน้าสร้างความเสี่ยงองค์กร', [
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการโหลดหน้า: ' . $e->getMessage());
+        }
     }
 
     /**
      * บันทึกข้อมูลความเสี่ยงระดับองค์กรใหม่ลงฐานข้อมูล
-     * 
-     * @param \App\Http\Requests\StoreOrganizationalRiskRequest $request คำขอที่ผ่านการตรวจสอบแล้ว
-     * @return \Illuminate\Http\RedirectResponse Redirect กลับพร้อมข้อความแจ้งผล
      */
     public function store(StoreOrganizationalRiskRequest $request)
     {
-        // สร้างข้อมูลความเสี่ยงใหม่โดยใช้ข้อมูลที่ผ่านการตรวจสอบแล้ว
-        $risk = OrganizationalRisk::create($request->validated());
+        DB::beginTransaction();
         
-        // จัดการเอกสารแนบที่ส่งมาพร้อมคำขอ
-        $this->handleAttachments($request, $risk);
-        
-        // บันทึกล็อกสำหรับการติดตามและตรวจสอบ
-        Log::info('สร้างความเสี่ยงองค์กรใหม่', [
-            'id' => $risk->id, 
-            'name' => $risk->risk_name, 
-            'user' => Auth::check() ? Auth::user()->name : null,
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-        
-        // ดึงข้อมูลความเสี่ยงทั้งหมดมาใหม่หลังจากบันทึกข้อมูล
-        $risks = OrganizationalRisk::with('divisionRisks')
-            ->orderBy('risk_name')
-            ->get();
+        try {
+            // สร้างข้อมูลความเสี่ยงใหม่
+            $risk = OrganizationalRisk::create($request->validated());
             
-        // กลับไปยังหน้าเดิมพร้อมข้อความแจ้งสำเร็จและข้อมูลล่าสุด
-        return redirect()->back()
-            ->with('success', 'เพิ่มความเสี่ยงองค์กรเรียบร้อยแล้ว')
-            ->with('risks', $risks);
+            // จัดการเอกสารแนบ (ถ้ามี)
+            $this->handleAttachments($request, $risk);
+            
+            DB::commit();
+            
+            // ดึงข้อมูลพร้อม relationships
+            $risk->load('attachments', 'divisionRisks');
+            
+            Log::info('สร้างความเสี่ยงองค์กรใหม่เรียบร้อย', [
+                'id' => $risk->id,
+                'risk_name' => $risk->risk_name,
+                'attachments_count' => $risk->attachments->count(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
+            
+            return redirect()->back()
+                ->with('success', 'เพิ่มความเสี่ยงองค์กรเรียบร้อยแล้ว')
+                ->with('risk', $risk);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('เกิดข้อผิดพลาดในการสร้างความเสี่ยงองค์กร', [
+                'error' => $e->getMessage(),
+                'input_data' => $request->except(['attachments']),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()
+                ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 
     /**
      * แสดงรายละเอียดเต็มของความเสี่ยงระดับองค์กร
-     * 
-     * @param \App\Models\OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการแสดง
-     * @return \Inertia\Response หน้า Vue พร้อมข้อมูลความเสี่ยงและความสัมพันธ์
      */
     public function show(OrganizationalRisk $organizationalRisk)
     {
-        // โหลดข้อมูลความเสี่ยงพร้อมความสัมพันธ์
-        $risk = OrganizationalRisk::with(['divisionRisks', 'attachments'])
-            ->findOrFail($organizationalRisk->id);
-        
-        // บันทึก log การเข้าถึงรายละเอียดความเสี่ยง
-        Log::info('เข้าถึงรายละเอียดความเสี่ยงระดับองค์กร', [
-            'risk_id' => $risk->id,
-            'risk_name' => $risk->risk_name,
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
+        try {
+            // โหลดข้อมูลความเสี่ยงพร้อมความสัมพันธ์และเอกสารแนบ
+            $risk = OrganizationalRisk::with(['divisionRisks', 'attachments'])
+                ->findOrFail($organizationalRisk->id);
 
-        // ส่งข้อมูลไปยังหน้า Vue
-        return Inertia::render('organizational_risk/OrganizationalRiskShow', [
-            'risk' => $risk
-        ]);
+            // เพิ่ม URL สำหรับเอกสารแนบ
+            if ($risk->attachments) {
+                $risk->attachments->transform(function ($attachment) {
+                    $attachment->url = route('organizational-risks.attachments.view', [
+                        'organizationalRisk' => $attachment->organizational_risk_id,
+                        'attachmentId' => $attachment->id
+                    ]);
+                    return $attachment;
+                });
+            }
+            
+            Log::info('เข้าถึงรายละเอียดความเสี่ยงระดับองค์กร', [
+                'risk_id' => $risk->id,
+                'risk_name' => $risk->risk_name,
+                'division_risks_count' => $risk->divisionRisks->count(),
+                'attachments_count' => $risk->attachments->count(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
+
+            return Inertia::render('organizational_risk/OrganizationalRiskShow', [
+                'risk' => $risk
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('เกิดข้อผิดพลาดในการแสดงรายละเอียดความเสี่ยงระดับองค์กร', [
+                'risk_id' => $organizationalRisk->id,
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการโหลดข้อมูล: ' . $e->getMessage());
+        }
     }
 
     /**
      * แสดงฟอร์มแก้ไขข้อมูลความเสี่ยงระดับองค์กร
-     * 
-     * @param \App\Models\OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการแก้ไข
-     * @return \Inertia\Response หน้า Vue สำหรับแก้ไขข้อมูลความเสี่ยง
      */
     public function edit(OrganizationalRisk $organizationalRisk)
     {
-        // โหลดข้อมูลพร้อมเอกสารแนบ
-        $risk = OrganizationalRisk::with(['attachments', 'divisionRisks'])
-            ->findOrFail($organizationalRisk->id);
+        try {
+            // โหลดข้อมูลพร้อมเอกสารแนบและความสัมพันธ์
+            $risk = OrganizationalRisk::with(['attachments', 'divisionRisks'])
+                ->findOrFail($organizationalRisk->id);
 
-        // เพิ่ม URL สำหรับเอกสารแนบ
-        if ($risk->attachments) {
-            $risk->attachments->transform(function ($attachment) {
-                // แก้ไข parameter จาก 'attachment' => $attachment->id เป็น 'attachmentId' => $attachment->id
-                $attachment->url = route('organizational-risks.attachments.view', [
-                    'organizationalRisk' => $attachment->organizational_risk_id,
-                    'attachmentId' => $attachment->id
-                ]);
-                return $attachment;
-            });
+            // เพิ่ม URL สำหรับเอกสารแนบ
+            if ($risk->attachments) {
+                $risk->attachments->transform(function ($attachment) {
+                    $attachment->url = route('organizational-risks.attachments.view', [
+                        'organizationalRisk' => $attachment->organizational_risk_id,
+                        'attachmentId' => $attachment->id
+                    ]);
+                    return $attachment;
+                });
+            }
+
+            Log::info('เข้าถึงฟอร์มแก้ไขความเสี่ยงระดับองค์กร', [
+                'risk_id' => $risk->id,
+                'risk_name' => $risk->risk_name,
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
+
+            return Inertia::render('organizational_risk/OrganizationalRiskForm', [
+                'risk' => $risk
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('เกิดข้อผิดพลาดในการเข้าถึงฟอร์มแก้ไขความเสี่ยงระดับองค์กร', [
+                'risk_id' => $organizationalRisk->id,
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการโหลดข้อมูล: ' . $e->getMessage());
         }
-
-        Log::info('เข้าถึงฟอร์มแก้ไขความเสี่ยงระดับองค์กร', [
-            'risk_id' => $risk->id,
-            'risk_name' => $risk->risk_name,
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-
-        return Inertia::render('organizational_risk/OrganizationalRiskForm', [
-            'risk' => $risk
-        ]);
     }
 
     /**
      * อัปเดตข้อมูลความเสี่ยงระดับองค์กรที่มีอยู่
-     * 
-     * @param \App\Http\Requests\UpdateOrganizationalRiskRequest $request คำขออัปเดตที่ผ่านการตรวจสอบแล้ว
-     * @param \App\Models\OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการอัปเดต
-     * @return \Illuminate\Http\RedirectResponse Redirect กลับพร้อมข้อความแจ้งผล
      */
     public function update(UpdateOrganizationalRiskRequest $request, OrganizationalRisk $organizationalRisk)
     {
+        DB::beginTransaction();
+        
         try {
             // อัปเดตข้อมูลพื้นฐาน
-            $organizationalRisk->update([
-                'risk_name' => $request->risk_name,
-                'description' => $request->description,
-            ]);
+            $organizationalRisk->update($request->validated());
             
-            // จัดการไฟล์แนบเสมอ โดยไม่ต้องตรวจสอบว่ามีไฟล์หรือไม่
+            // จัดการไฟล์แนบใหม่ (ถ้ามี)
             $this->handleAttachments($request, $organizationalRisk);
             
             // จัดการไฟล์ที่ต้องการลบ
-            if ($request->has('attachments_to_delete') && is_array($request->attachments_to_delete)) {
-                foreach ($request->attachments_to_delete as $attachmentId) {
-                    $attachment = OrganizationalRiskAttachment::find($attachmentId);
-                    if ($attachment && $attachment->organizational_risk_id == $organizationalRisk->id) {
-                        // ลบไฟล์จริงจาก storage
-                        if (Storage::exists('public/' . $attachment->file_path)) {
-                            Storage::delete('public/' . $attachment->file_path);
-                        }
-                        // ลบข้อมูลจากฐานข้อมูล
-                        $attachment->delete();
-                    }
-                }
-            }
+            $this->handleAttachmentsToDelete($request, $organizationalRisk);
+            
+            DB::commit();
             
             // ดึงข้อมูลที่อัปเดตเรียบร้อยแล้วพร้อมเอกสารแนบ
-            $updatedRisk = OrganizationalRisk::with('attachments')->find($organizationalRisk->id);
+            $updatedRisk = OrganizationalRisk::with(['attachments', 'divisionRisks'])
+                ->find($organizationalRisk->id);
+            
+            Log::info('อัปเดตความเสี่ยงระดับองค์กรเรียบร้อย', [
+                'risk_id' => $organizationalRisk->id,
+                'risk_name' => $organizationalRisk->risk_name,
+                'attachments_count' => $updatedRisk->attachments->count(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
+            ]);
             
             return redirect()->back()->with([
-                'message' => 'อัปเดตข้อมูลความเสี่ยงเรียบร้อยแล้ว',
-                'updatedRisk' => $updatedRisk  // ส่งข้อมูลที่อัปเดตแล้วกลับไป
+                'success' => 'อัปเดตข้อมูลความเสี่ยงเรียบร้อยแล้ว',
+                'updatedRisk' => $updatedRisk
             ]);
+
         } catch (\Exception $e) {
-            Log::error('การอัปเดตความเสี่ยงล้มเหลว: ' . $e->getMessage(), [
+            DB::rollBack();
+            
+            Log::error('เกิดข้อผิดพลาดในการอัปเดตความเสี่ยงระดับองค์กร', [
                 'risk_id' => $organizationalRisk->id,
-                'user' => Auth::user()->name ?? 'ไม่ระบุ',
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
                 'trace' => $e->getTraceAsString()
             ]);
             
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล: ' . $e->getMessage())
+                ->withInput();
         }
     }
 
     /**
      * ลบข้อมูลความเสี่ยงระดับองค์กร (Soft Delete)
-     * ตรวจสอบเงื่อนไขที่ไม่อนุญาตให้ลบก่อนดำเนินการ
-     * 
-     * @param \App\Models\OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการลบ
-     * @return \Illuminate\Http\RedirectResponse Redirect กลับพร้อมข้อความแจ้งผล
      */
     public function destroy(OrganizationalRisk $organizationalRisk)
     {
+        DB::beginTransaction();
+        
         try {
-            // เก็บข้อมูลเก่าไว้สำหรับการตรวจสอบและบันทึก log
             $oldData = $organizationalRisk->toArray();
             
-            // ตรวจสอบว่ามีความเสี่ยงระดับฝ่ายที่เชื่อมโยงกับความเสี่ยงนี้หรือไม่
+            // ตรวจสอบว่ามีความเสี่ยงระดับฝ่ายที่เชื่อมโยงหรือไม่
             $hasDivisionRisks = $organizationalRisk->divisionRisks()->exists();
             
-            // ป้องกันการลบข้อมูลที่มีการเชื่อมโยงกับข้อมูลอื่น
             if ($hasDivisionRisks) {
-                return redirect()->back()->with('error', 'ไม่สามารถลบความเสี่ยงนี้ได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่');
+                Log::warning('พยายามลบความเสี่ยงที่มีการเชื่อมโยงกับความเสี่ยงระดับฝ่าย', [
+                    'risk_id' => $organizationalRisk->id,
+                    'risk_name' => $organizationalRisk->risk_name,
+                    'division_risks_count' => $organizationalRisk->divisionRisks()->count(),
+                    'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ'
+                ]);
+                
+                return redirect()->back()
+                    ->with('error', 'ไม่สามารถลบความเสี่ยงนี้ได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่');
             }
             
-            // ดำเนินการลบข้อมูล (Soft Delete)
+            // ลบเอกสารแนบที่เกี่ยวข้อง
+            foreach ($organizationalRisk->attachments as $attachment) {
+                $this->deleteAttachmentFile($attachment);
+                $attachment->delete();
+            }
+            
+            // ลบข้อมูลความเสี่ยง
             $organizationalRisk->delete();
             
-            // บันทึก log สำหรับการตรวจสอบ
-            Log::info('ลบความเสี่ยงระดับองค์กร', [
+            DB::commit();
+            
+            Log::info('ลบความเสี่ยงระดับองค์กรเรียบร้อย', [
                 'id' => $oldData['id'],
-                'name' => $oldData['risk_name'],
+                'risk_name' => $oldData['risk_name'],
                 'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
                 'timestamp' => now()->format('Y-m-d H:i:s')
             ]);
             
-            // แก้ไขตรงนี้ - เปลี่ยนจาก redirect()->back() เป็น redirect ไปหน้า index
             return redirect()->route('organizational-risks.index')
                 ->with('success', 'ลบความเสี่ยงระดับองค์กรเรียบร้อยแล้ว');
-                
+
         } catch (\Exception $e) {
-            // บันทึกล็อกกรณีเกิดข้อผิดพลาด
-            Log::error('ลบความเสี่ยงระดับองค์กรล้มเหลว', [
-                'id' => $organizationalRisk->id,
+            DB::rollBack();
+            
+            Log::error('เกิดข้อผิดพลาดในการลบความเสี่ยงระดับองค์กร', [
+                'risk_id' => $organizationalRisk->id,
                 'error' => $e->getMessage(),
                 'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
                 'trace' => $e->getTraceAsString()
             ]);
             
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการลบข้อมูล: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'เกิดข้อผิดพลาดในการลบข้อมูล: ' . $e->getMessage());
         }
     }
 
     /**
      * ลบข้อมูลความเสี่ยงระดับองค์กรหลายรายการพร้อมกัน (Bulk Delete)
-     * ตรวจสอบเงื่อนไขที่ไม่อนุญาตให้ลบก่อนดำเนินการแต่ละรายการ
-     * 
-     * @param \Illuminate\Http\Request $request คำขอพร้อมรายการ ID ที่ต้องการลบ
-     * @return \Illuminate\Http\Response ผลลัพธ์การดำเนินการพร้อมข้อความแจ้งผล
      */
     public function bulkDestroy(Request $request)
     {
-        // ตรวจสอบความถูกต้องของข้อมูล ID ที่ส่งมา
         $validated = $request->validate([
-            'ids' => 'required|array',  // ต้องเป็น array ไม่เป็นค่าว่าง
-            'ids.*' => 'integer|exists:organizational_risks,id'  // แต่ละ ID ต้องเป็นตัวเลขและมีอยู่ในฐานข้อมูล
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:organizational_risks,id'
         ]);
         
-        // ดึง IDs ที่ต้องการลบจากข้อมูลที่ตรวจสอบแล้ว
         $ids = $validated['ids'];
         
-        // ตรวจสอบว่ามีความเสี่ยงใดบ้างที่มีความเสี่ยงระดับฝ่ายเชื่อมโยงอยู่
-        $risksWithDependencies = OrganizationalRisk::whereIn('id', $ids)
-            ->whereHas('divisionRisks')  // มีความสัมพันธ์กับตาราง division_risks
-            ->pluck('id')  // ดึงเฉพาะ id
-            ->toArray();  // แปลงเป็น array
+        DB::beginTransaction();
         
-        // ถ้ามีความเสี่ยงที่ไม่สามารถลบได้เนื่องจากมีการเชื่อมโยง
-        if (!empty($risksWithDependencies)) {
+        try {
+            // ตรวจสอบว่ามีความเสี่ยงใดที่มีความเสี่ยงระดับฝ่ายเชื่อมโยงอยู่
+            $risksWithDependencies = OrganizationalRisk::whereIn('id', $ids)
+                ->whereHas('divisionRisks')
+                ->pluck('id')
+                ->toArray();
+            
             // กรองเอาเฉพาะ ID ที่สามารถลบได้
             $idsToDelete = array_diff($ids, $risksWithDependencies);
             
-            // สร้างข้อความแจ้งเตือนตามสถานการณ์
-            $errorMessage = count($risksWithDependencies) === count($ids)
-                ? 'ไม่สามารถลบความเสี่ยงที่เลือกได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่'
-                : 'ไม่สามารถลบบางรายการได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่';
-            
-            // ถ้าไม่มีรายการที่สามารถลบได้เลย
             if (empty($idsToDelete)) {
-                return response()->json(['error' => $errorMessage], 422);
+                Log::warning('ไม่สามารถลบความเสี่ยงระดับองค์กรได้เนื่องจากมีการเชื่อมโยงทั้งหมด', [
+                    'requested_ids' => $ids,
+                    'dependencies' => $risksWithDependencies,
+                    'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ'
+                ]);
+                
+                return response()->json([
+                    'error' => 'ไม่สามารถลบความเสี่ยงที่เลือกได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่'
+                ], 422);
             }
             
-            // อัปเดตรายการที่จะลบให้เหลือเฉพาะรายการที่สามารถลบได้
-            $ids = $idsToDelete;
-        }
-        
-        // ลบข้อมูลตามรายการที่สามารถลบได้
-        $deletedCount = OrganizationalRisk::whereIn('id', $ids)->delete();
-        
-        // บันทึก log สำหรับการตรวจสอบ
-        Log::info('ลบความเสี่ยงระดับองค์กรหลายรายการ', [
-            'deleted_count' => $deletedCount,
-            'requested_ids' => $validated['ids'],
-            'actual_deleted_ids' => $ids,
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-        
-        // สร้างข้อความแจ้งผลลัพธ์
-        $successMessage = 'ลบความเสี่ยงระดับองค์กรจำนวน ' . $deletedCount . ' รายการเรียบร้อยแล้ว';
-        
-        // กรณีมีบางรายการที่ไม่สามารถลบได้
-        if (isset($errorMessage)) {
-            return response()->json([
-                'message' => $successMessage,
-                'warning' => $errorMessage,
+            // ลบข้อมูลตามรายการที่สามารถลบได้
+            $risks = OrganizationalRisk::whereIn('id', $idsToDelete)->get();
+            
+            foreach ($risks as $risk) {
+                // ลบเอกสารแนบ
+                foreach ($risk->attachments as $attachment) {
+                    $this->deleteAttachmentFile($attachment);
+                    $attachment->delete();
+                }
+                // ลบความเสี่ยง
+                $risk->delete();
+            }
+            
+            DB::commit();
+            
+            $deletedCount = $risks->count();
+            
+            Log::info('ลบความเสี่ยงระดับองค์กรหลายรายการเรียบร้อย', [
                 'deleted_count' => $deletedCount,
-                'failed_ids' => $risksWithDependencies
+                'requested_ids' => $ids,
+                'actual_deleted_ids' => $idsToDelete,
+                'failed_ids' => $risksWithDependencies,
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'timestamp' => now()->format('Y-m-d H:i:s')
             ]);
+            
+            $successMessage = 'ลบความเสี่ยงระดับองค์กรจำนวน ' . $deletedCount . ' รายการเรียบร้อยแล้ว';
+            
+            // กรณีมีบางรายการที่ไม่สามารถลบได้
+            if (!empty($risksWithDependencies)) {
+                $errorMessage = 'ไม่สามารถลบบางรายการได้เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่';
+                
+                return response()->json([
+                    'success' => $successMessage,
+                    'warning' => $errorMessage,
+                    'deleted_count' => $deletedCount,
+                    'failed_ids' => $risksWithDependencies
+                ]);
+            }
+            
+            return redirect()->back()
+                ->with('success', $successMessage)
+                ->with('deleted_count', $deletedCount);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('เกิดข้อผิดพลาดในการลบความเสี่ยงระดับองค์กรหลายรายการ', [
+                'requested_ids' => $ids,
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'เกิดข้อผิดพลาดในการลบข้อมูล: ' . $e->getMessage()
+            ], 500);
         }
-
-        // ดึงข้อมูลความเสี่ยงทั้งหมดมาใหม่หลังจากลบข้อมูล
-        $risks = OrganizationalRisk::orderBy('risk_name')
-            ->get();
-        
-        // กรณีลบได้ทั้งหมด ส่งข้อมูลกลับไปยังหน้าเดิม
-        return redirect()->back()
-            ->with('success', $successMessage)
-            ->with('risks', $risks)
-            ->with('deleted_count', $deletedCount);
-    }
-
-    /**
-     * ประมวลผลไฟล์เอกสารแนบเดี่ยว
-     * 
-     * @param \Illuminate\Http\UploadedFile $file ไฟล์ที่อัปโหลด
-     * @param \App\Models\OrganizationalRisk $risk ความเสี่ยงที่เชื่อมโยงกับไฟล์
-     * @param string $storagePath พาธสำหรับจัดเก็บไฟล์ (ค่าเริ่มต้น: organizational_risk_attachments/{risk_id})
-     * @return array ข้อมูลเอกสารแนบที่บันทึกแล้ว
-     */
-    private function processAttachmentFile($file, $risk, $storagePath = null)
-    {
-        // กำหนด path หลักสำหรับไฟล์แนบ
-        $storagePath = $storagePath ?? ('organizational_risk/' . $risk->id);
-
-        // เก็บไฟล์ในพื้นที่จัดเก็บสาธารณะ
-        $path = $file->store($storagePath, 'public');
-        
-        // สร้างเอกสารแนบในฐานข้อมูล
-        $attachment = $risk->attachments()->create([
-            'file_name' => $file->getClientOriginalName(),
-            'file_path' => $storagePath . '/' . basename($path),
-            'file_type' => $file->getClientMimeType(),
-            'file_size' => $file->getSize()
-        ]);
-        
-        return $attachment->toArray();
     }
 
     /**
      * จัดการเอกสารแนบหลายไฟล์สำหรับความเสี่ยงองค์กร
-     * 
-     * @param mixed $request คำขอที่มีไฟล์แนบหลายไฟล์
-     * @param OrganizationalRisk $risk ข้อมูลความเสี่ยง
-     * @return void
-     * @throws \Exception กรณีเกิดข้อผิดพลาด
      */
     private function handleAttachments($request, $risk)
     {
-        // กำหนด path หลักสำหรับไฟล์แนบ
-        $filePath = 'organizational_risk/' . $risk->id;
+        if (!$request->hasFile('attachments')) {
+            return;
+        }
 
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
+        $filePath = 'organizational-risks/' . $risk->id;
+
+        foreach ($request->file('attachments') as $file) {
+            try {
                 $fileName = time() . '_' . $file->getClientOriginalName();
-                // เก็บไฟล์ใน storage/app/public/organizational_risk/{risk_id}
                 $path = $file->storeAs($filePath, $fileName, 'public');
                 
                 if ($path) {
                     OrganizationalRiskAttachment::create([
                         'organizational_risk_id' => $risk->id,
-                        'file_name' => $fileName,
-                        'file_path' => $filePath . '/' . $fileName,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_path' => $path,
                         'file_type' => $file->getClientMimeType(),
                         'file_size' => $file->getSize()
                     ]);
+                    
+                    Log::info('อัปโหลดเอกสารแนบเรียบร้อย', [
+                        'risk_id' => $risk->id,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_size' => $file->getSize()
+                    ]);
                 }
+            } catch (\Exception $e) {
+                Log::error('เกิดข้อผิดพลาดในการอัปโหลดเอกสารแนบ', [
+                    'risk_id' => $risk->id,
+                    'file_name' => $file->getClientOriginalName(),
+                    'error' => $e->getMessage()
+                ]);
             }
         }
     }
-    
+
+    /**
+     * จัดการการลบเอกสารแนบ
+     */
+    private function handleAttachmentsToDelete($request, $organizationalRisk)
+    {
+        if (!$request->has('attachments_to_delete') || !is_array($request->attachments_to_delete)) {
+            return;
+        }
+
+        foreach ($request->attachments_to_delete as $attachmentId) {
+            try {
+                $attachment = OrganizationalRiskAttachment::where('id', $attachmentId)
+                    ->where('organizational_risk_id', $organizationalRisk->id)
+                    ->first();
+                
+                if ($attachment) {
+                    $this->deleteAttachmentFile($attachment);
+                    $attachment->delete();
+                    
+                    Log::info('ลบเอกสารแนบเรียบร้อย', [
+                        'risk_id' => $organizationalRisk->id,
+                        'attachment_id' => $attachmentId,
+                        'file_name' => $attachment->file_name
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('เกิดข้อผิดพลาดในการลบเอกสารแนบ', [
+                    'risk_id' => $organizationalRisk->id,
+                    'attachment_id' => $attachmentId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+    }
+
+    /**
+     * ลบไฟล์เอกสารแนบจาก Storage อย่างปลอดภัย
+     */
+    private function deleteAttachmentFile($attachment)
+    {
+        if (!empty($attachment->file_path) && Storage::disk('public')->exists($attachment->file_path)) {
+            Storage::disk('public')->delete($attachment->file_path);
+        }
+    }
+
     /**
      * เพิ่มเอกสารแนบเดี่ยวสำหรับความเสี่ยงองค์กร (API endpoint)
-     * 
-     * @param Request $request คำขอที่มีไฟล์แนบเดียว
-     * @param OrganizationalRisk $risk ข้อมูลความเสี่ยง
-     * @return \Illuminate\Http\JsonResponse ผลลัพธ์การดำเนินการในรูปแบบ JSON
      */
-    public function storeAttachment(Request $request, OrganizationalRisk $risk)
+    public function storeAttachment(Request $request, OrganizationalRisk $organizationalRisk)
     {
         try {
-            // ตรวจสอบว่ามีไฟล์ที่อัปโหลดหรือไม่
             if (!$request->hasFile('attachment')) {
                 return response()->json(['error' => 'ไม่พบไฟล์ที่อัปโหลด'], 400);
             }
 
-            // ตรวจสอบความถูกต้องของไฟล์
             $request->validate([
-                'attachment' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240'
+                'attachment' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif|max:10240'
             ]);
 
-            // ดึงไฟล์จากคำขอ
             $file = $request->file('attachment');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = 'organizational-risks/' . $organizationalRisk->id;
+            $path = $file->storeAs($filePath, $fileName, 'public');
             
-            // ประมวลผลไฟล์โดยใช้เมธอดกลาง
-            $attachment = $this->processAttachmentFile(
-                $file,
-                $risk,
-                'organizational_risk/' . $risk->id
-            );
+            $attachment = OrganizationalRiskAttachment::create([
+                'organizational_risk_id' => $organizationalRisk->id,
+                'file_name' => $file->getClientOriginalName(),
+                'file_path' => $path,
+                'file_type' => $file->getClientMimeType(),
+                'file_size' => $file->getSize()
+            ]);
             
-            // บันทึก log สำหรับติดตาม
             Log::info('เพิ่มเอกสารแนบสำหรับความเสี่ยงองค์กร', [
-                'risk_id' => $risk->id,
+                'risk_id' => $organizationalRisk->id,
                 'file_name' => $file->getClientOriginalName(),
                 'user' => Auth::check() ? Auth::user()->name : null,
                 'timestamp' => now()->format('Y-m-d H:i:s')
             ]);
             
-            // ส่งข้อมูลกลับไปยัง client
             return response()->json([
                 'success' => true,
                 'message' => 'อัปโหลดเอกสารแนบเรียบร้อยแล้ว',
                 'attachment' => $attachment
             ]);
+            
         } catch (\Exception $e) {
-            // บันทึกล็อกกรณีเกิดข้อผิดพลาด
             Log::error('เกิดข้อผิดพลาดในการอัปโหลดเอกสารแนบ', [
-                'risk_id' => $risk->id,
+                'risk_id' => $organizationalRisk->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'user' => Auth::check() ? Auth::user()->name : null,
             ]);
             
-            // ส่งข้อความผิดพลาดกลับไปยัง client
             return response()->json([
                 'error' => 'เกิดข้อผิดพลาดในการอัปโหลดเอกสารแนบ: ' . $e->getMessage()
             ], 500);
@@ -456,19 +574,15 @@ class OrganizationalRiskController extends Controller
 
     /**
      * ลบเอกสารแนบของความเสี่ยงองค์กร
-     * 
-     * @param OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการลบเอกสารแนบ
-     * @param int $attachmentId ID ของเอกสารแนบที่ต้องการลบ
-     * @return \Illuminate\Http\JsonResponse ผลลัพธ์การดำเนินการในรูปแบบ JSON
      */
     public function destroyAttachment(OrganizationalRisk $organizationalRisk, $attachmentId)
     {
         try {
             $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
-            Storage::disk('public')->delete($attachment->file_path);
+            
+            $this->deleteAttachmentFile($attachment);
             $attachment->delete();
             
-            // บันทึกล็อกสำหรับการตรวจสอบ
             Log::info('ลบเอกสารแนบสำหรับความเสี่ยงองค์กร', [
                 'risk_id' => $organizationalRisk->id,
                 'attachment_id' => $attachmentId,
@@ -477,13 +591,12 @@ class OrganizationalRiskController extends Controller
                 'timestamp' => now()->format('Y-m-d H:i:s')
             ]);
             
-            // ส่งข้อความสำเร็จกลับไปยัง client
             return response()->json([
                 'success' => true,
                 'message' => 'ลบเอกสารแนบเรียบร้อยแล้ว'
             ]);
+            
         } catch (\Exception $e) {
-            // บันทึกล็อกกรณีเกิดข้อผิดพลาด
             Log::error('เกิดข้อผิดพลาดในการลบเอกสารแนบ', [
                 'risk_id' => $organizationalRisk->id,
                 'attachment_id' => $attachmentId,
@@ -491,7 +604,6 @@ class OrganizationalRiskController extends Controller
                 'user' => Auth::check() ? Auth::user()->name : null,
             ]);
             
-            // ส่งข้อความผิดพลาดกลับไปยัง client
             return response()->json([
                 'error' => 'เกิดข้อผิดพลาดในการลบเอกสารแนบ: ' . $e->getMessage()
             ], 500);
@@ -499,53 +611,23 @@ class OrganizationalRiskController extends Controller
     }
 
     /**
-     * จัดการการลบเอกสารแนบในขณะอัปเดตข้อมูลความเสี่ยง
-     * 
-     * @param mixed $request คำขอที่มีรายการ ID ของเอกสารแนบที่ต้องการลบ
-     * @param OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการลบเอกสารแนบ
-     * @return void
-     */
-    private function handleAttachmentsToDelete($request, $organizationalRisk)
-    {
-        if ($request->has('attachments_to_delete') && is_array($request->attachments_to_delete)) {
-            foreach ($request->attachments_to_delete as $attachmentId) {
-                try {
-                    $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
-                    Storage::disk('public')->delete($attachment->file_path);
-                    $attachment->delete();
-                    // บันทึกล็อกสำหรับการตรวจสอบ
-                    Log::info('ลบเอกสารแนบสำหรับความเสี่ยงองค์กรขณะอัปเดต', [
-                        'risk_id' => $organizationalRisk->id,
-                        'attachment_id' => $attachmentId,
-                        'file_name' => $attachment->file_name,
-                        'user' => Auth::check() ? Auth::user()->name : null,
-                        'timestamp' => now()->format('Y-m-d H:i:s')
-                    ]);
-                } catch (\Exception $e) {
-                    // บันทึกล็อกกรณีเกิดข้อผิดพลาด แต่ไม่หยุดการทำงาน
-                    Log::error('เกิดข้อผิดพลาดในการลบเอกสารแนบขณะอัปเดต', [
-                        'risk_id' => $organizationalRisk->id,
-                        'attachment_id' => $attachmentId,
-                        'error' => $e->getMessage(),
-                        'user' => Auth::check() ? Auth::user()->name : null,
-                    ]);
-                    // ในกรณีนี้เราไม่ throw exception เพื่อให้สามารถลบรายการอื่นต่อไปได้
-                }
-            }
-        }
-    }
-
-    /**
      * ดาวน์โหลดเอกสารแนบของความเสี่ยงองค์กร
-     * 
-     * @param OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการดาวน์โหลดเอกสารแนบ
-     * @param int $attachmentId ID ของเอกสารแนบที่ต้องการดาวน์โหลด
-     * @return \Illuminate\Http\Response ไฟล์ดาวน์โหลด
      */
     public function downloadAttachment(OrganizationalRisk $organizationalRisk, $attachmentId)
     {
         try {
             $attachment = $organizationalRisk->attachments()->findOrFail($attachmentId);
+            
+            if (empty($attachment->file_path)) {
+                Log::error('file_path ของเอกสารแนบเป็น null', [
+                    'risk_id' => $organizationalRisk->id,
+                    'attachment_id' => $attachmentId,
+                    'user' => Auth::check() ? Auth::user()->name : null
+                ]);
+                
+                return response()->json(['error' => 'ไม่พบ path ของไฟล์เอกสารแนบ'], 404);
+            }
+            
             if (!Storage::disk('public')->exists($attachment->file_path)) {
                 Log::error('ไม่พบไฟล์เอกสารแนบในระบบ', [
                     'risk_id' => $organizationalRisk->id,
@@ -553,10 +635,10 @@ class OrganizationalRiskController extends Controller
                     'file_path' => $attachment->file_path,
                     'user' => Auth::check() ? Auth::user()->name : null
                 ]);
-                return response()->json([
-                    'error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'
-                ], 404);
+                
+                return response()->json(['error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'], 404);
             }
+            
             Log::info('ดาวน์โหลดเอกสารแนบ', [
                 'risk_id' => $organizationalRisk->id,
                 'attachment_id' => $attachmentId,
@@ -564,12 +646,13 @@ class OrganizationalRiskController extends Controller
                 'user' => Auth::check() ? Auth::user()->name : null,
                 'timestamp' => now()->format('Y-m-d H:i:s')
             ]);
+            
             return Storage::disk('public')->download(
                 $attachment->file_path, 
                 $attachment->file_name
             );
+            
         } catch (\Exception $e) {
-            // บันทึกล็อกกรณีเกิดข้อผิดพลาด
             Log::error('เกิดข้อผิดพลาดในการดาวน์โหลดเอกสารแนบ', [
                 'risk_id' => $organizationalRisk->id,
                 'attachment_id' => $attachmentId,
@@ -585,32 +668,47 @@ class OrganizationalRiskController extends Controller
     
     /**
      * แสดงเอกสารแนบของความเสี่ยงองค์กรในเบราว์เซอร์
-     * 
-     * @param OrganizationalRisk $organizationalRisk ข้อมูลความเสี่ยงที่ต้องการแสดงเอกสารแนบ
-     * @param int $attachmentId ID ของเอกสารแนบที่ต้องการแสดง
-     * @return \Illuminate\Http\Response ไฟล์สำหรับแสดงในเบราว์เซอร์
      */
     public function viewAttachment(OrganizationalRisk $organizationalRisk, $attachmentId)
     {
-        // ค้นหาเอกสารแนบที่ต้องการดู
-        $attachment = OrganizationalRiskAttachment::where('id', $attachmentId)
-            ->where('organizational_risk_id', $organizationalRisk->id)
-            ->firstOrFail();
+        try {
+            $attachment = OrganizationalRiskAttachment::where('id', $attachmentId)
+                ->where('organizational_risk_id', $organizationalRisk->id)
+                ->firstOrFail();
 
-        // ใช้ path ตรงจากฟิลด์ file_path (ไม่ต้องเติม public/)
-        $path = $attachment->file_path;
+            if (empty($attachment->file_path)) {
+                Log::error('file_path ของเอกสารแนบเป็น null', [
+                    'risk_id' => $organizationalRisk->id,
+                    'attachment_id' => $attachmentId,
+                    'user' => Auth::check() ? Auth::user()->name : null
+                ]);
+                
+                return response()->json(['error' => 'ไม่พบ path ของไฟล์เอกสารแนบ'], 404);
+            }
 
-        Log::info('ตรวจสอบไฟล์', [
-            'file_path' => $attachment->file_path,
-            'exists' => Storage::disk('public')->exists($path),
-            'real_path' => Storage::disk('public')->path($path)
-        ]);
+            Log::info('ตรวจสอบไฟล์เอกสารแนบ', [
+                'file_path' => $attachment->file_path,
+                'exists' => Storage::disk('public')->exists($attachment->file_path),
+                'real_path' => Storage::disk('public')->path($attachment->file_path)
+            ]);
 
-        if (!Storage::disk('public')->exists($path)) {
-            return response()->json(['error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'], 404);
+            if (!Storage::disk('public')->exists($attachment->file_path)) {
+                return response()->json(['error' => 'ไม่พบไฟล์เอกสารแนบในระบบ'], 404);
+            }
+
+            return response()->file(Storage::disk('public')->path($attachment->file_path));
+            
+        } catch (\Exception $e) {
+            Log::error('เกิดข้อผิดพลาดในการแสดงเอกสารแนบ', [
+                'risk_id' => $organizationalRisk->id,
+                'attachment_id' => $attachmentId,
+                'error' => $e->getMessage(),
+                'user' => Auth::check() ? Auth::user()->name : null
+            ]);
+            
+            return response()->json([
+                'error' => 'เกิดข้อผิดพลาดในการแสดงเอกสารแนบ: ' . $e->getMessage()
+            ], 500);
         }
-
-        // ส่งไฟล์กลับไปแสดงในเบราว์เซอร์ (inline)
-        return response()->file(Storage::disk('public')->path($path));
     }
 }

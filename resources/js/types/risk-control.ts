@@ -171,10 +171,10 @@ export interface RiskAssessment {
 export interface RiskAssessmentAttachment {
   id: number;
   risk_assessment_id: number;
-  filename: string;
-  filepath: string;
-  filetype?: string;
-  filesize?: number;
+  file_name: string;
+  file_path: string;
+  file_type?: string;
+  file_size?: number;
   created_at: string;
   updated_at: string;
   deleted_at?: string;

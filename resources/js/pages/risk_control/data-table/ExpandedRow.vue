@@ -415,7 +415,7 @@ onMounted(() => {
                   <div class="flex flex-col sm:flex-row items-start sm:justify-between gap-2">
                     <div class="flex items-start space-x-2 min-w-0 overflow-hidden">
                       <component 
-                        :is="getFileIcon(attachment.filetype || '')" 
+                        :is="getFileIcon(attachment.file_type || '')" 
                         class="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" 
                       />
                       <div class="min-w-0 overflow-hidden">
@@ -423,10 +423,10 @@ onMounted(() => {
                           class="font-medium truncate cursor-pointer hover:text-primary transition-colors" 
                           @click="viewAttachmentFullScreen(attachment)"
                         >
-                          {{ attachment.filename }}
+                          {{ attachment.file_name }}
                         </p>
                         <p class="text-xs text-muted-foreground mt-1">
-                          {{ formatFileSize(attachment.filesize) }} • 
+                          {{ formatFileSize(attachment.file_size) }} • 
                           อัปโหลดเมื่อ {{ new Date(attachment.created_at).toLocaleDateString('th-TH') }}
                         </p>
                       </div>
@@ -435,12 +435,12 @@ onMounted(() => {
                     <!-- ปุ่มดาวน์โหลด -->
                     <div class="flex gap-1 flex-shrink-0">
                       <button 
+                        v-if="attachment.file_type && attachment.file_type.includes('pdf')"
                         @click="viewAttachmentFullScreen(attachment)"
                         class="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
                         title="ดูไฟล์"
                       >
                         <Eye class="h-3 w-3" />
-                        ดู
                       </button>
                       <button 
                         @click="downloadAttachment(attachment)"
@@ -448,7 +448,6 @@ onMounted(() => {
                         title="ดาวน์โหลดไฟล์"
                       >
                         <Download class="h-3 w-3" />
-                        ดาวน์โหลด
                       </button>
                     </div>
                   </div>
