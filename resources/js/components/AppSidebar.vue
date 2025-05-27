@@ -44,6 +44,11 @@ const mainNavItems: NavItem[] = [
         href: '/risk-assessments',
         icon: List, // ไอคอนรายการเหมาะสำหรับการประเมินความเสี่ยง
     },
+    {
+        title: 'Risk Control',
+        href: '/risk-controls',
+        icon: List, // ไอคอนรายการเหมาะสำหรับการจัดการทะเบียนความเสี่ยง
+    },
 ];
 
 // กำหนดรายการเมนูส่วนล่างของ sidebar (ปัจจุบันถูก comment ไว้ไม่ได้ใช้งาน)
