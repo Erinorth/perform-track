@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
             LikelihoodCriterionSeeder::class,
             ImpactCriterionSeeder::class,
             RiskAssessmentSeeder::class,
-            ControlAssessmentSeeder::class,
+            RiskControlSeeder::class,
         ]);
     }
 }
