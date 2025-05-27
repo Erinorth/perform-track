@@ -10,7 +10,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DivisionRiskController;
 use App\Http\Controllers\OrganizationalRiskController;
 use App\Http\Controllers\RiskAssessmentController;
-use App\Http\Controllers\RiskAssessmentController2;
+use App\Http\Controllers\RiskControlController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -77,6 +77,23 @@ Route::middleware('auth')->group(function () {
         Route::get('/criteria', [DivisionRiskController::class, 'manageCriteria'])->name('criteria');
         Route::post('/likelihood-criteria', [DivisionRiskController::class, 'storeLikelihoodCriteria'])->name('likelihood-criteria.store');
         Route::post('/impact-criteria', [DivisionRiskController::class, 'storeImpactCriteria'])->name('impact-criteria.store');
+    });
+
+    /**
+     * จัดการการควบคุมความเสี่ยง - ใช้ resource routes
+     */
+    Route::resource('risk-controls', RiskControlController::class);
+    
+    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
+    Route::delete('risk-controls/bulk-destroy', [RiskControlController::class, 'bulkDestroy'])
+        ->name('risk-controls.bulk-destroy');
+    
+    // กลุ่มเส้นทางสำหรับจัดการไฟล์แนบของการประเมินความเสี่ยง
+    Route::prefix('risk-controls/{riskControl}/attachments')->name('risk-controls.attachments.')->group(function () {
+        Route::post('/', [RiskControlController::class, 'storeAttachment'])->name('store');
+        Route::delete('/{attachmentId}', [RiskControlController::class, 'destroyAttachment'])->name('destroy');
+        Route::get('/{attachmentId}/download', [RiskControlController::class, 'downloadAttachment'])->name('download');
+        Route::get('/{attachmentId}/view', [RiskControlController::class, 'viewAttachment'])->name('view');
     });
 
     /**
