@@ -1,78 +1,109 @@
 <?php
-/**
- * ไฟล์: app\Http\Requests\StoreOrganizationalRiskRequest.php
- * คลาสสำหรับตรวจสอบข้อมูลคำขอในการเพิ่มความเสี่ยงระดับองค์กรใหม่
- * ใช้เพื่อแยกกฎการตรวจสอบข้อมูล (validation rules) ออกจาก Controller
- */
+// ไฟล์: app\Http\Requests\StoreOrganizationalRiskRequest.php
+// Request สำหรับตรวจสอบข้อมูลการสร้างความเสี่ยงระดับองค์กร
+// ใช้เพื่อแยกกฎการตรวจสอบข้อมูล (validation rules) ออกจาก Controller
 
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Log;  // นำเข้า Log facade สำหรับบันทึก log
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 class StoreOrganizationalRiskRequest extends FormRequest
 {
     /**
      * ตรวจสอบว่าผู้ใช้มีสิทธิ์ที่จะทำคำขอนี้หรือไม่
-     * 
-     * @return bool true หากผู้ใช้มีสิทธิ์, false หากไม่มีสิทธิ์
      */
     public function authorize(): bool
     {
-        // ควรแก้ไขเป็น true หรือใส่ตรรกะการตรวจสอบสิทธิ์ที่เหมาะสม
-        // เช่น ตรวจสอบว่าผู้ใช้เป็นแอดมินหรือไม่
-        // return auth()->user()->hasRole('admin');
-        return true; // อนุญาตให้ทุกคนสามารถส่งคำขอนี้ได้
+        return Auth::check(); // ตรวจสอบว่าผู้ใช้ล็อกอินแล้วหรือไม่
     }
 
     /**
-     * กำหนดกฎการตรวจสอบความถูกต้องของข้อมูลที่ใช้กับคำขอนี้
-     * 
-     * @return array กฎการตรวจสอบสำหรับแต่ละฟิลด์
+     * กำหนดกฎการตรวจสอบความถูกต้องของข้อมูล
      */
-    public function rules()
+    public function rules(): array
     {
         return [
-            'risk_name' => 'required|string|max:255',
-            'description' => 'required|string',
-            'attachments' => 'nullable|array',
-            'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240',
+            'risk_name' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:organizational_risks,risk_name'
+            ],
+            'description' => [
+                'required',
+                'string',
+                'max:2000'
+            ],
+            'attachments' => 'nullable|array|max:10',
+            'attachments.*' => [
+                'file',
+                'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif',
+                'max:10240' // 10MB
+            ],
         ];
     }
 
     /**
-     * กำหนดข้อความแจ้งเตือนที่กำหนดเองเมื่อการตรวจสอบล้มเหลว
-     * ช่วยให้ข้อความที่แสดงต่อผู้ใช้เป็นภาษาไทยที่อ่านเข้าใจง่าย
-     * 
-     * @return array ข้อความแจ้งเตือนสำหรับแต่ละกฎการตรวจสอบ
+     * กำหนดข้อความแจ้งเตือนที่กำหนดเอง
      */
-    public function messages()
+    public function messages(): array
     {
         return [
             'risk_name.required' => 'กรุณาระบุชื่อความเสี่ยง',
+            'risk_name.string' => 'ชื่อความเสี่ยงต้องเป็นข้อความ',
+            'risk_name.max' => 'ชื่อความเสี่ยงต้องไม่เกิน 255 ตัวอักษร',
+            'risk_name.unique' => 'ชื่อความเสี่ยงนี้มีอยู่แล้วในระบบ',
             'description.required' => 'กรุณาระบุรายละเอียดความเสี่ยง',
+            'description.string' => 'รายละเอียดความเสี่ยงต้องเป็นข้อความ',
+            'description.max' => 'รายละเอียดความเสี่ยงต้องไม่เกิน 2,000 ตัวอักษร',
+            'attachments.array' => 'ไฟล์แนบต้องเป็นรูปแบบ array',
+            'attachments.max' => 'สามารถแนบไฟล์ได้สูงสุด 10 ไฟล์',
             'attachments.*.file' => 'ไฟล์แนบไม่ถูกต้อง',
             'attachments.*.mimes' => 'รองรับเฉพาะไฟล์ PDF, Word, Excel และรูปภาพเท่านั้น',
             'attachments.*.max' => 'ขนาดไฟล์ต้องไม่เกิน 10MB',
         ];
     }
-    
+
+    /**
+     * กำหนดชื่อฟิลด์ที่ใช้ในข้อความแสดงข้อผิดพลาด
+     */
+    public function attributes(): array
+    {
+        return [
+            'risk_name' => 'ชื่อความเสี่ยง',
+            'description' => 'รายละเอียดความเสี่ยง',
+            'attachments' => 'ไฟล์แนบ',
+        ];
+    }
+
+    /**
+     * เตรียมข้อมูลก่อนการตรวจสอบ
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'risk_name' => $this->risk_name ? trim($this->risk_name) : null,
+            'description' => $this->description ? trim($this->description) : null,
+        ]);
+    }
+
     /**
      * บันทึกข้อมูลเพิ่มเติมลง log เมื่อการตรวจสอบเกิดข้อผิดพลาด
-     * ช่วยในการติดตามและแก้ไขปัญหาการกรอกข้อมูลของผู้ใช้
      */
-    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator): void
     {
-        // บันทึก log เมื่อการตรวจสอบล้มเหลว
-        Log::info('การตรวจสอบข้อมูลความเสี่ยงระดับองค์กรล้มเหลว', [
+        Log::warning('การตรวจสอบข้อมูลความเสี่ยงระดับองค์กรล้มเหลว', [
             'errors' => $validator->errors()->toArray(),
-            'input' => $this->input(), // ข้อมูลที่ผู้ใช้ส่งมา
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'ip' => $this->ip()
+            'input' => $this->except(['attachments']), // ไม่บันทึกข้อมูลไฟล์
+            'user_id' => Auth::id(),
+            'user_name' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
+            'ip_address' => $this->ip(),
+            'user_agent' => $this->userAgent(),
+            'timestamp' => now()->format('Y-m-d H:i:s')
         ]);
         
-        // เรียกใช้ parent method ตามปกติเพื่อให้การทำงานอื่นๆ ดำเนินต่อไป
         parent::failedValidation($validator);
     }
 }

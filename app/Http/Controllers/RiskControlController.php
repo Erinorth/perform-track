@@ -171,7 +171,7 @@ class RiskControlController extends Controller
         // ดึงข้อมูลที่จำเป็นสำหรับฟอร์มแก้ไข
         $divisionRisks = DivisionRisk::with('organizationalRisk')->get();
         
-        return Inertia::render('risk_control/RiskControlEdit', [
+        return Inertia::render('risk_control/RiskControlForm', [
             'riskControl' => $riskControl,
             'divisionRisks' => $divisionRisks,
             'controlTypes' => [

@@ -32,4 +32,10 @@ class RiskControlAttachment extends Model
     {
         return $this->belongsTo(RiskControl::class);
     }
+
+    // สร้าง accessor สำหรับ URL ของไฟล์
+    public function getUrlAttribute()
+    {
+        return asset('storage/' . $this->file_path);
+    }
 }

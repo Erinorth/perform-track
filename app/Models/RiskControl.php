@@ -150,4 +150,9 @@ class RiskControl extends Model
         // ตรวจสอบว่ามีการประเมินที่เกี่ยวข้องหรือไม่
         return $this->assessments()->count() === 0;
     }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(RiskControlAttachment::class);
+    }
 }
