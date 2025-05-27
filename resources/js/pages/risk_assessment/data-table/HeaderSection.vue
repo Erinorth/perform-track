@@ -1,5 +1,5 @@
 <!--
-  ไฟล์: resources/js/components/PageHeaderCompact.vue
+  ไฟล์: resources\js\pages\risk_assessment\data-table\HeaderSection.vue
   คำอธิบาย: ส่วนหัวของหน้าแบบกะทัดรัด
   ทำหน้าที่: แสดงชื่อหน้าและปุ่มเพิ่มข้อมูลแบบประหยัดพื้นที่
 -->
