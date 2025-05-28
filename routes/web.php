@@ -80,23 +80,6 @@ Route::middleware('auth')->group(function () {
     });
 
     /**
-     * จัดการการควบคุมความเสี่ยง - ใช้ resource routes
-     */
-    Route::resource('risk-controls', RiskControlController::class);
-    
-    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
-    Route::delete('risk-controls/bulk-destroy', [RiskControlController::class, 'bulkDestroy'])
-        ->name('risk-controls.bulk-destroy');
-    
-    // กลุ่มเส้นทางสำหรับจัดการไฟล์แนบของการประเมินความเสี่ยง
-    Route::prefix('risk-controls/{riskControl}/attachments')->name('risk-controls.attachments.')->group(function () {
-        Route::post('/', [RiskControlController::class, 'storeAttachment'])->name('store');
-        Route::delete('/{attachmentId}', [RiskControlController::class, 'destroyAttachment'])->name('destroy');
-        Route::get('/{attachmentId}/download', [RiskControlController::class, 'downloadAttachment'])->name('download');
-        Route::get('/{attachmentId}/view', [RiskControlController::class, 'viewAttachment'])->name('view');
-    });
-
-    /**
      * จัดการการประเมินความเสี่ยง - ใช้ resource routes
      */
     Route::resource('risk-assessments', RiskAssessmentController::class);
@@ -111,6 +94,23 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{attachmentId}', [RiskAssessmentController::class, 'destroyAttachment'])->name('destroy');
         Route::get('/{attachmentId}/download', [RiskAssessmentController::class, 'downloadAttachment'])->name('download');
         Route::get('/{attachmentId}/view', [RiskAssessmentController::class, 'viewAttachment'])->name('view');
+    });
+
+    /**
+     * จัดการการควบคุมความเสี่ยง - ใช้ resource routes
+     */
+    Route::resource('risk-controls', RiskControlController::class);
+    
+    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
+    Route::delete('risk-controls/bulk-destroy', [RiskControlController::class, 'bulkDestroy'])
+        ->name('risk-controls.bulk-destroy');
+    
+    // กลุ่มเส้นทางสำหรับจัดการไฟล์แนบของการประเมินความเสี่ยง
+    Route::prefix('risk-controls/{riskControl}/attachments')->name('risk-controls.attachments.')->group(function () {
+        Route::post('/', [RiskControlController::class, 'storeAttachment'])->name('store');
+        Route::delete('/{attachmentId}', [RiskControlController::class, 'destroyAttachment'])->name('destroy');
+        Route::get('/{attachmentId}/download', [RiskControlController::class, 'downloadAttachment'])->name('download');
+        Route::get('/{attachmentId}/view', [RiskControlController::class, 'viewAttachment'])->name('view');
     });
 });
 
