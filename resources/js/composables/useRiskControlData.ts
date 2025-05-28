@@ -16,14 +16,7 @@ import {
   ShieldIcon,
   ShieldCheckIcon
 } from 'lucide-vue-next';
-import type { 
-  RiskControl, 
-  RiskControlAttachment, 
-  RiskControlFormData,
-  ControlType,
-  ControlStatus,
-  FileValidationResult
-} from '@/types/risk-control';
+import type { RiskControl, RiskControlAttachment, RiskControlFormData, ControlType, ControlStatus, FileValidationResult } from '@/types/types';
 
 // ฟังก์ชัน composable สำหรับจัดการข้อมูลการควบคุมความเสี่ยง
 export function useRiskControlData(initialControls: RiskControl[] = [], triggerProp?: any) {
