@@ -88,14 +88,12 @@ export const columns: ColumnDef<DivisionRisk>[] = [
       // ตรวจสอบว่ามีข้อมูล organizational risk หรือไม่
       if (!organizational_risk) {
         return h('div', { class: 'flex items-center gap-2 text-muted-foreground' }, [
-          h(Building2, { class: 'h-4 w-4' }),
           h('span', { class: 'text-sm' }, 'ไม่ระบุ')
         ])
       }
 
       // แสดงชื่อ organizational risk พร้อม badge สำหรับระดับความเสี่ยง (ถ้ามี)
       return h('div', { class: 'flex items-center gap-2' }, [
-        h(Building2, { class: 'h-4 w-4 text-blue-600 shrink-0' }),
         h('div', { class: 'flex flex-col gap-1 min-w-0' }, [
           // ชื่อ organizational risk
           h('span', { 
