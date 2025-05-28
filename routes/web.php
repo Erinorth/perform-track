@@ -37,15 +37,15 @@ Route::get('dashboard', [DashboardController::class, 'index'])
  */
 Route::middleware('auth')->group(function () {
 
+    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
+    Route::delete('organizational-risks/bulk-destroy', [OrganizationalRiskController::class, 'bulkDestroy'])
+        ->name('organizational-risks.bulk-destroy');
+
     /**
      * จัดการความเสี่ยงระดับองค์กร - ใช้ resource routes
      * สร้างเส้นทาง index, create, store, show, edit, update, destroy อัตโนมัติ
      */
     Route::resource('organizational-risks', OrganizationalRiskController::class);
-    
-    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
-    Route::delete('organizational-risks/bulk-destroy', [OrganizationalRiskController::class, 'bulkDestroy'])
-        ->name('organizational-risks.bulk-destroy');
     
     // กลุ่มเส้นทางสำหรับจัดการไฟล์แนบของความเสี่ยงระดับองค์กร
     Route::prefix('organizational-risks/{organizationalRisk}/attachments')->name('organizational-risks.attachments.')->group(function () {
@@ -55,14 +55,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/{attachmentId}/view', [OrganizationalRiskController::class, 'viewAttachment'])->name('view');
     });
 
+    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
+    Route::delete('division-risks/bulk-destroy', [DivisionRiskController::class, 'bulkDestroy'])
+        ->name('division-risks.bulk-destroy');
+
     /**
      * จัดการความเสี่ยงระดับฝ่าย - ใช้ resource routes
      */
     Route::resource('division-risks', DivisionRiskController::class);
-    
-    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
-    Route::delete('division-risks/bulk-destroy', [DivisionRiskController::class, 'bulkDestroy'])
-        ->name('division-risks.bulk-destroy');
     
     // กลุ่มเส้นทางสำหรับจัดการไฟล์แนบของความเสี่ยงระดับฝ่าย
     Route::prefix('division-risks/{divisionRisk}/attachments')->name('division-risks.attachments.')->group(function () {
@@ -79,14 +79,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/impact-criteria', [DivisionRiskController::class, 'storeImpactCriteria'])->name('impact-criteria.store');
     });
 
+    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
+    Route::delete('risk-assessments/bulk-destroy', [RiskAssessmentController::class, 'bulkDestroy'])
+        ->name('risk-assessments.bulk-destroy');
+
     /**
      * จัดการการประเมินความเสี่ยง - ใช้ resource routes
      */
     Route::resource('risk-assessments', RiskAssessmentController::class);
-    
-    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
-    Route::delete('risk-assessments/bulk-destroy', [RiskAssessmentController::class, 'bulkDestroy'])
-        ->name('risk-assessments.bulk-destroy');
     
     // กลุ่มเส้นทางสำหรับจัดการไฟล์แนบของการประเมินความเสี่ยง
     Route::prefix('risk-assessments/{riskAssessment}/attachments')->name('risk-assessments.attachments.')->group(function () {
@@ -96,14 +96,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/{attachmentId}/view', [RiskAssessmentController::class, 'viewAttachment'])->name('view');
     });
 
+    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
+    Route::delete('risk-controls/bulk-destroy', [RiskControlController::class, 'bulkDestroy'])
+        ->name('risk-controls.bulk-destroy');
+
     /**
      * จัดการการควบคุมความเสี่ยง - ใช้ resource routes
      */
     Route::resource('risk-controls', RiskControlController::class);
-    
-    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
-    Route::delete('risk-controls/bulk-destroy', [RiskControlController::class, 'bulkDestroy'])
-        ->name('risk-controls.bulk-destroy');
     
     // กลุ่มเส้นทางสำหรับจัดการไฟล์แนบของการประเมินความเสี่ยง
     Route::prefix('risk-controls/{riskControl}/attachments')->name('risk-controls.attachments.')->group(function () {

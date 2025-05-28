@@ -9,7 +9,7 @@
 import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
-import type { RiskControl } from '@/types/risk-control';
+import type { RiskControl } from '@/types/types';
 import { useRiskControlData } from '@/composables/useRiskControlData';
 import { useDeleteConfirmation } from '@/composables/useDeleteConfirmation';
 
