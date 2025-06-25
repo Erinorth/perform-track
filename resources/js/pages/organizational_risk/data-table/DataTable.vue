@@ -7,7 +7,6 @@
   - การเรียงลำดับข้อมูลในแต่ละคอลัมน์
   - การแบ่งหน้าเพื่อแสดงผล
   - การขยายแถวเพื่อดูรายละเอียดเพิ่มเติม
-  - การเลือกแถวหลายรายการเพื่อลบพร้อมกัน
   - รองรับการแสดงผลแบบ Responsive บนทุกขนาดหน้าจอ
 -->
 
@@ -44,8 +43,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
   DataTablePagination, 
-  DataTableViewOptions,
-  BulkActionMenu 
+  DataTableViewOptions
 } from '@/components/custom/data-table'
 
 // ==================== นำเข้า Utilities และ Composables ====================
@@ -93,14 +91,10 @@ const columnVisibility = ref<VisibilityState>({
   created_at: false,
   updated_at: false,
 })
-// สถานะการเลือกแถวสำหรับทำการลบหลายรายการ
-const rowSelection = ref({})
 // สถานะการขยายแถวเพื่อดูรายละเอียดเพิ่มเติม
 const expanded = ref<ExpandedState>({})
 // คำค้นหาสำหรับค้นหาทั้งตาราง
 const searchQuery = ref('')
-// สถานะกำลังลบข้อมูล
-const isDeleting = ref(false)
 
 // ==================== Watch Effects ====================
 // เมื่อ searchQuery เปลี่ยน ให้อัปเดตการกรองข้อมูลทันที
@@ -142,7 +136,6 @@ const table = useVueTable({
   onSortingChange: updaterOrValue => valueUpdater(updaterOrValue, sorting),
   onColumnFiltersChange: updaterOrValue => valueUpdater(updaterOrValue, columnFilters),
   onColumnVisibilityChange: updaterOrValue => valueUpdater(updaterOrValue, columnVisibility),
-  onRowSelectionChange: updaterOrValue => valueUpdater(updaterOrValue, rowSelection),
   onExpandedChange: updaterOrValue => valueUpdater(updaterOrValue, expanded),
   
   // กำหนดสถานะปัจจุบันของตาราง
@@ -150,7 +143,6 @@ const table = useVueTable({
     get sorting() { return sorting.value },
     get columnFilters() { return columnFilters.value },
     get columnVisibility() { return columnVisibility.value },
-    get rowSelection() { return rowSelection.value },
     get expanded() { return expanded.value },
     get globalFilter() { return searchQuery.value }
   },
@@ -169,64 +161,11 @@ const table = useVueTable({
   meta: props.meta,
 })
 
-// ==================== Computed Properties ====================
-// คำนวณจำนวนแถวที่ถูกเลือกสำหรับ bulk actions
-const selectedRowsCount = computed(() => {
-  return Object.keys(rowSelection.value).length
-})
-
-// คำนวณรายการ ID ที่ถูกเลือกทั้งหมดสำหรับการลบหลายรายการ
-const selectedRowIds = computed(() => {
-  return Object.keys(rowSelection.value).map(rowIndex => {
-    const row = table.getRowModel().rows[parseInt(rowIndex)]
-    return row?.original?.id
-  }).filter(Boolean) // กรอง null/undefined ออก
-})
-
 // ==================== Methods ====================
 // ฟังก์ชันล้างตัวกรองทั้งหมด
 const clearAllFilters = () => {
   // ล้าง search query
   searchQuery.value = ''
-}
-
-// ฟังก์ชันสำหรับลบข้อมูลที่เลือกทั้งหมด
-const handleBulkDelete = async () => {
-  // ตรวจสอบว่ามีรายการที่เลือกหรือไม่
-  if (!selectedRowIds.value.length) {
-    toast.error('ไม่มีรายการที่เลือก')
-    return
-  }
-  
-  // ตรวจสอบว่ามีเมธอด onBulkDelete ที่ส่งมาจาก parent component หรือไม่
-  if (!props.meta?.onBulkDelete) {
-    console.error('ไม่พบเมธอด onBulkDelete ใน meta')
-    toast.error('เกิดข้อผิดพลาด: ไม่สามารถดำเนินการลบข้อมูลพร้อมกันได้')
-    return
-  }
-  
-  try {
-    // กำหนดสถานะกำลังลบข้อมูล
-    isDeleting.value = true
-    
-    // เรียกใช้ onBulkDelete จาก meta
-    await props.meta.onBulkDelete(selectedRowIds.value)
-    
-    // รีเซ็ตการเลือกหลังจากลบสำเร็จ
-    rowSelection.value = {}
-  } catch (error) {
-    // บันทึก log และแสดง toast error เมื่อเกิดข้อผิดพลาด
-    console.error('เกิดข้อผิดพลาดในการลบข้อมูล:', error)
-    toast.error('เกิดข้อผิดพลาดในการลบข้อมูล โปรดลองอีกครั้ง')
-  } finally {
-    // รีเซ็ตสถานะการลบข้อมูล
-    isDeleting.value = false
-  }
-}
-
-// ฟังก์ชันสำหรับยกเลิกการเลือกทั้งหมด
-const clearRowSelection = () => {
-  rowSelection.value = {}
 }
 </script>
 
@@ -236,7 +175,7 @@ const clearRowSelection = () => {
     <!-- ช่องค้นหา -->
     <Input
       class="max-w-xs sm:max-w-sm"
-      placeholder="Search Risk Name or Description..."
+      placeholder="ค้นหาชื่อความเสี่ยงหรือรายละเอียด..."
       v-model="searchQuery"
     />
 
@@ -248,22 +187,12 @@ const clearRowSelection = () => {
       @click="clearAllFilters"
       size="sm"
     >
-      Clear
+      ล้างการค้นหา
     </Button>
 
-    <!-- กลุ่มด้านขวา: จัดให้ปุ่ม View และปุ่มตัวเลือกอยู่ด้วยกัน -->
+    <!-- กลุ่มด้านขวา: ปุ่ม View Options -->
     <div class="flex items-center gap-2 ml-auto">
-      <!-- BulkActionMenu (ตัวเลือก) -->
-      <BulkActionMenu 
-        v-if="selectedRowsCount > 0"
-        :count="selectedRowsCount"
-        :loading="isDeleting"
-        @delete="handleBulkDelete"
-        @clear="clearRowSelection"
-        @export="() => {}"
-      />
-
-      <!-- ปุ่ม View อยู่ซ้าย ถัดมาเป็นปุ่มตัวเลือก -->
+      <!-- ปุ่ม View Options -->
       <DataTableViewOptions :table="table" />
     </div>
   </div>
@@ -289,7 +218,7 @@ const clearRowSelection = () => {
         <template v-if="table.getRowModel().rows?.length">
           <template v-for="row in table.getRowModel().rows" :key="row.id">
             <!-- แถวข้อมูลปกติ -->
-            <TableRow :data-state="row.getIsSelected() ? 'selected' : undefined">
+            <TableRow>
               <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
                 <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
               </TableCell>
@@ -308,7 +237,7 @@ const clearRowSelection = () => {
         <template v-else>
           <TableRow>
             <TableCell :colspan="columns.length" class="h-24 text-center">
-              No results.
+              ไม่พบข้อมูล
             </TableCell>
           </TableRow>
         </template>
