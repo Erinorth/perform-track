@@ -5,94 +5,94 @@
 -->
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 
 // UI Components
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import AddDataButton from '@/components/custom/AddDataButton.vue'
 
-// Icons
-import { 
-  PlusIcon, 
-  SparklesIcon,
-  FileTextIcon
-} from 'lucide-vue-next'
-
-// Props และ Events (เหมือนเดิม)
-defineProps<{
+// Props สำหรับกำหนดข้อมูลหัวข้อ
+interface Props {
   title: string
   description?: string
-}>()
+  createRoute?: string // route สำหรับการเพิ่มข้อมูลแบบเต็ม
+  showAddButton?: boolean // ควบคุมการแสดงปุ่มเพิ่มข้อมูล
+}
 
+const props = withDefaults(defineProps<Props>(), {
+  createRoute: 'organizational-risks.create',
+  showAddButton: true
+})
+
+// Events ที่ component นี้จะส่งออกไป
 const emit = defineEmits<{
-  (e: 'create'): void
   (e: 'quickCreate'): void
 }>()
 
-const isDropdownOpen = ref<boolean>(false)
-
-const handleQuickCreate = () => {
+// Handler สำหรับการเพิ่มแบบด่วน
+const handleQuickCreate = (): void => {
+  console.log('PageHeaderCompact: Quick create requested')
   emit('quickCreate')
-  isDropdownOpen.value = false
 }
 
-const handleCreate = () => {
-  // ไปยังหน้า OrganizationalRiskForm (route: organizational-risks.create)
-  router.visit(route('organizational-risks.create'))
-  isDropdownOpen.value = false
+// Handler สำหรับการเพิ่มแบบเต็ม
+const handleFullCreate = (): void => {
+  console.log(`PageHeaderCompact: Navigating to ${props.createRoute}`)
+  
+  try {
+    // ตรวจสอบว่า route มีอยู่จริงหรือไม่
+    const url = route(props.createRoute)
+    router.visit(url)
+  } catch (error) {
+    console.error('PageHeaderCompact: Route not found:', props.createRoute, error)
+    
+    // Fallback: ใช้ route แบบ hardcode
+    router.visit(route('organizational-risks.create'))
+  }
 }
 </script>
 
 <template>
-  <!-- Compact Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-    <!-- Title (Compact) -->
+  <!-- Compact Header Container -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 p-4 sm:p-0">
+    <!-- Title Section -->
     <div class="flex-1 min-w-0">
-      <h1 class="text-xl font-bold text-gray-900 truncate">{{ title }}</h1>
-      <p v-if="description" class="text-sm text-gray-500 truncate mt-1">{{ description }}</p>
+      <!-- หัวข้อหลัก -->
+      <h1 class="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+        {{ title }}
+      </h1>
+      
+      <!-- คำอธิบาย (ถ้ามี) -->
+      <p 
+        v-if="description" 
+        class="text-sm text-gray-500 truncate mt-1 leading-relaxed"
+      >
+        {{ description }}
+      </p>
     </div>
     
-    <!-- Single Add Button with Dropdown -->
-    <DropdownMenu v-model:open="isDropdownOpen">
-      <DropdownMenuTrigger as-child>
-        <Button class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md">
-          <PlusIcon class="h-4 w-4" />
-          <span class="hidden sm:inline">เพิ่มข้อมูล</span>
-        </Button>
-      </DropdownMenuTrigger>
-      
-      <DropdownMenuContent align="end" class="w-64">
-        <!-- Quick Create -->
-        <DropdownMenuItem @click="handleQuickCreate" class="cursor-pointer p-3">
-          <div class="flex items-center gap-3">
-            <SparklesIcon class="h-4 w-4 text-green-600" />
-            <div>
-              <div class="font-medium">เพิ่มด่วน</div>
-              <div class="text-xs text-gray-500">Modal ในหน้าปัจจุบัน</div>
-            </div>
-          </div>
-        </DropdownMenuItem>
-        
-        <DropdownMenuSeparator />
-        
-        <!-- Full Create -->
-        <DropdownMenuItem @click="handleCreate" class="cursor-pointer p-3">
-          <div class="flex items-center gap-3">
-            <FileTextIcon class="h-4 w-4 text-blue-600" />
-            <div>
-              <div class="font-medium">เพิ่มแบบเต็ม</div>
-              <div class="text-xs text-gray-500">หน้าใหม่แบบละเอียด</div>
-            </div>
-          </div>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <!-- Add Button Section -->
+    <div v-if="showAddButton" class="flex-shrink-0">
+      <AddDataButton
+        button-text="เพิ่มข้อมูล"
+        variant="default"
+        size="default"
+        compact
+        quick-create-label="เพิ่มด่วน"
+        quick-create-description="Modal ในหน้าปัจจุบัน"
+        full-create-label="เพิ่มแบบเต็ม"
+        full-create-description="หน้าใหม่แบบละเอียด"
+        @quick-create="handleQuickCreate"
+        @full-create="handleFullCreate"
+      />
+    </div>
   </div>
 </template>
+
+<style scoped>
+/* สำหรับการปรับแต่ง responsive ถ้าจำเป็น */
+@media (max-width: 640px) {
+  .flex-col {
+    gap: 1rem;
+  }
+}
+</style>
