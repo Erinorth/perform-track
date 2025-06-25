@@ -13,7 +13,7 @@
 <script setup lang="ts">
 // ==================== นำเข้า Types และ Interfaces ====================
 // นำเข้า types สำหรับโมเดลข้อมูลความเสี่ยง
-import type { OrganizationalRisk, DivisionRisk, OrganizationalRiskAttachment } from '@/types/types';
+import type { OrganizationalRisk, DivisionRisk, OrganizationalRiskAttachment } from '@/types';
 
 // ==================== นำเข้า Vue Composition API ====================
 import { computed, onMounted, ref } from 'vue';

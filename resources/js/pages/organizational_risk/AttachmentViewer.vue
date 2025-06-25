@@ -6,9 +6,9 @@ import { Head } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 
 // นำเข้า components ที่สร้างไว้
-import FileViewerHeader from '@/components/FileViewer/FileViewerHeader.vue';
-import FileViewerControls from '@/components/FileViewer/FileViewerControls.vue';
-import FileViewerContent from '@/components/FileViewer/FileViewerContent.vue';
+import FileViewerHeader from '@/components/custom/FileViewer/FileViewerHeader.vue';
+import FileViewerControls from '@/components/custom/FileViewer/FileViewerControls.vue';
+import FileViewerContent from '@/components/custom/FileViewer/FileViewerContent.vue';
 
 // กำหนด Props สำหรับรับข้อมูลไฟล์แนบ
 const props = defineProps<{

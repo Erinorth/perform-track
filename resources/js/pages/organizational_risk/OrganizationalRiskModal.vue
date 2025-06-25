@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
 import { SaveIcon, XIcon, UploadIcon, XCircleIcon, InfoIcon, Trash2Icon, HelpCircleIcon, Loader2Icon } from 'lucide-vue-next'
-import type { OrganizationalRisk } from '@/types/types'
+import type { OrganizationalRisk } from '@/types'
 import { useOrganizationalRiskData } from '@/composables/useOrganizationalRiskData'
 
 // ---------------------------------------------------
