@@ -2,6 +2,7 @@
   ไฟล์: resources/js/pages/organizational_risk/OrganizationalRisk.vue
   
   คำอธิบาย: หน้าหลักสำหรับแสดงและจัดการข้อมูลความเสี่ยงระดับองค์กร
+  อัปเดต: ใช้ HeaderWithTitle component ใหม่แทน HeaderSection
   ฟีเจอร์หลัก:
   - แสดงรายการความเสี่ยงระดับองค์กรในรูปแบบตาราง
   - สามารถเพิ่ม แก้ไข และลบข้อมูลความเสี่ยง
@@ -11,25 +12,23 @@
 
 <script setup lang="ts">
 // ==================== นำเข้า Layout และ Navigation ====================
-import AppLayout from '@/layouts/AppLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import AppLayout from '@/layouts/AppLayout.vue'
+import { Head } from '@inertiajs/vue3'
 
 // ==================== นำเข้า Types และ Data ====================
-import { type BreadcrumbItem } from '@/types';
-import type { OrganizationalRisk } from '@/types/types';
+import { type BreadcrumbItem } from '@/types'
+import type { OrganizationalRisk } from '@/types'
 
 // ==================== นำเข้า Components ====================
-import DataTable from './data-table/DataTable.vue';
-import OrganizationalRiskModal from './OrganizationalRiskModal.vue';
-import HeaderSection from './data-table/HeaderSection.vue';
-// นำเข้า component สำหรับแสดง alert dialog ยืนยันการทำงานต่างๆ เช่น การลบข้อมูล
-import AlertConfirmDialog from '@/components/AlertConfirmDialog.vue';
-// นำเข้า composable สำหรับจัดการสถานะและการทำงานของ confirm dialog
-import { useConfirm } from '@/composables/useConfirm';
+import DataTable from './data-table/DataTable.vue'
+import OrganizationalRiskModal from './OrganizationalRiskModal.vue'
+import HeaderWithTitle from '@/components/custom/HeaderWithTitle.vue'
+import AlertConfirmDialog from '@/components/AlertConfirmDialog.vue'
 
 // ==================== นำเข้า Composables และ Utilities ====================
-import { columns } from './data-table/columns';
-import { useOrganizationalRiskActions } from '@/composables/useOrganizationalRiskActions';
+import { columns } from './data-table/columns'
+import { useOrganizationalRiskActions } from '@/composables/useOrganizationalRiskActions'
+import { useConfirm } from '@/composables/useConfirm'
 
 // ==================== กำหนด Breadcrumbs ====================
 const breadcrumbs: BreadcrumbItem[] = [
@@ -37,12 +36,12 @@ const breadcrumbs: BreadcrumbItem[] = [
     title: 'จัดการความเสี่ยงองค์กร',
     href: '/organizational-risks',
   },
-];
+]
 
 // ==================== กำหนด Props ====================
 const props = defineProps<{
-  risks: OrganizationalRisk[];
-}>();
+  risks: OrganizationalRisk[]
+}>()
 
 // ==================== ใช้ Composable สำหรับจัดการ Actions ต่างๆ ====================
 const {
@@ -54,10 +53,13 @@ const {
   handleSaved,
   handleDelete,
   handleBulkDelete
-} = useOrganizationalRiskActions(props.risks);
+} = useOrganizationalRiskActions(props.risks)
 
 // ใช้ composable useConfirm เพื่อจัดการกับการแสดง confirm dialog และการตอบสนองต่อการกระทำของผู้ใช้
-const { isOpen, options, isProcessing, handleConfirm, handleCancel } = useConfirm();
+const { isOpen, options, isProcessing, handleConfirm, handleCancel } = useConfirm()
+
+// Log สำหรับการตรวจสอบการโหลดหน้า
+console.log('OrganizationalRisk: Component loaded with', props.risks?.length || 0, 'risks')
 </script>
 
 <template>
@@ -67,13 +69,23 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel } = useConfir
   <!-- ใช้ Layout หลักของแอปพลิเคชัน -->
   <AppLayout :breadcrumbs="breadcrumbs">
     <!-- พื้นที่หลักของหน้า -->
-    <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-      <!-- ส่วนหัวที่แยกเป็น Component ต่างหาก -->
-      <HeaderSection 
+    <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 md:p-6">
+      <!-- ใช้ HeaderWithTitle component ใหม่ที่รวม Title และ HeaderSection เข้าด้วยกัน -->
+      <HeaderWithTitle
         title="จัดการความเสี่ยงองค์กร"
-        description="รายการความเสี่ยงองค์กรทั้งหมดในระบบ"
-        @quickCreate="openCreateModal"
-      />
+        description="รายการความเสี่ยงองค์กรทั้งหมดในระบบ พร้อมเครื่องมือในการจัดการและประเมินความเสี่ยง"
+        size="lg"
+        create-route="organizational-risks.create"
+        :show-add-button="true"
+        :show-separator="true"
+        @quick-create="openCreateModal"
+      >
+        <!-- Slot สำหรับ Badge หรือข้อมูลสถิติ (ถ้าต้องการ) -->
+        <template #actions>
+          <!-- สามารถเพิ่ม Badge แสดงจำนวนข้อมูลได้ -->
+          <!-- <Badge variant="secondary">{{ data.length }} รายการ</Badge> -->
+        </template>
+      </HeaderWithTitle>
       
       <!-- แสดงตารางข้อมูลความเสี่ยงองค์กร -->
       <DataTable 
@@ -93,7 +105,7 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel } = useConfir
         @saved="handleSaved"
       />
       
-      <!-- AlertConfirmDialog สำหรับการยืนยันการทำงานที่สำคัญ แทนที่ ConfirmDialog เดิม -->
+      <!-- AlertConfirmDialog สำหรับการยืนยันการทำงานที่สำคัญ -->
       <AlertConfirmDialog
         v-model:show="isOpen"
         :title="options?.title || ''"
@@ -107,3 +119,17 @@ const { isOpen, options, isProcessing, handleConfirm, handleCancel } = useConfir
     </div>
   </AppLayout>
 </template>
+
+<style scoped>
+/* การปรับแต่งเพิ่มเติมสำหรับหน้านี้ */
+.rounded-xl {
+  border-radius: 0.75rem;
+}
+
+/* ปรับ padding สำหรับ mobile */
+@media (max-width: 768px) {
+  .p-4 {
+    padding: 1rem;
+  }
+}
+</style>
