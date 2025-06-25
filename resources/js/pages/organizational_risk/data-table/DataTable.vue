@@ -13,7 +13,7 @@
 <script setup lang="ts" generic="TData extends OrganizationalRisk, TValue">
 // ==================== นำเข้า Types และ Interfaces ====================
 // นำเข้า types สำหรับโมเดลข้อมูลความเสี่ยง
-import type { OrganizationalRisk, DivisionRisk } from '@/types/types';
+import type { OrganizationalRisk, DivisionRisk } from '@/types';
 
 // นำเข้า Vue Composition API
 import { ref, watch, computed } from 'vue'
