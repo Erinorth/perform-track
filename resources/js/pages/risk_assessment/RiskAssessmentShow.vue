@@ -26,7 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import AlertConfirmDialog from '@/components/AlertConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
-import RiskMatrix from '@/components/RiskMatrix.vue'
+import RiskMatrix from '@/components/custom/RiskMatrix.vue'
 
 // ==================== นำเข้า Utilities ====================
 import { toast } from 'vue-sonner'

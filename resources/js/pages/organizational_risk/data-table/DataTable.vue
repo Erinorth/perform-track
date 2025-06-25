@@ -44,10 +44,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
   DataTablePagination, 
-  DataTableViewOptions, 
-  TagFilter, 
+  DataTableViewOptions,
   BulkActionMenu 
-} from '@/components/ui/data-table'
+} from '@/components/custom/data-table'
 
 // ==================== นำเข้า Utilities และ Composables ====================
 // นำเข้าฟังก์ชันสำหรับจัดการตารางจาก @tanstack/vue-table

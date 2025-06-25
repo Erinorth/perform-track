@@ -48,7 +48,7 @@ import {
   DataTableViewOptions, 
   TagFilter, 
   BulkActionMenu 
-} from '@/components/ui/data-table';
+} from '@/components/custom/data-table';
 
 // ==================== นำเข้า Utilities และ Composables ====================
 // นำเข้าฟังก์ชันสำหรับจัดการตารางจาก @tanstack/vue-table

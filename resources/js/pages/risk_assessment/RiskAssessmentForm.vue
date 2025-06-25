@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import RiskMatrix from '@/components/RiskMatrix.vue'
+import RiskMatrix from '@/components/custom/RiskMatrix.vue'
 
 // เพิ่ม import DivisionRiskCombobox
 import DivisionRiskCombobox from '@/components/forms/DivisionRiskCombobox.vue'

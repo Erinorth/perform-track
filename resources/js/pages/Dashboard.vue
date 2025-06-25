@@ -12,8 +12,8 @@ import HeaderSection from './HeaderSection.vue'
 
 // นำเข้า component ที่สร้างเอง
 import SummaryCard from '@/components/SummaryCard.vue'
-import RiskMatrixBubble from '@/components/RiskMatrixBubble.vue'
-import RiskTrendChart from '@/components/RiskTrendChart.vue'
+import RiskMatrixBubble from '@/components/custom/RiskMatrixBubble.vue'
+import RiskTrendChart from '@/components/custom/RiskTrendChart.vue'
 
 // นำเข้า toast สำหรับแจ้งเตือน
 import { toast } from 'vue-sonner'

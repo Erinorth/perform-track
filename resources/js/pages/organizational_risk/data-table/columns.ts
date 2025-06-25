@@ -7,7 +7,7 @@
 import { h } from 'vue'
 import { router } from '@inertiajs/vue3' // เพิ่มการนำเข้า router จาก inertiajs
 import { ColumnDef, TableMeta, RowData } from '@tanstack/vue-table'
-import { DataTableColumnHeader, DataTableDropDown } from '@/components/ui/data-table'
+import { DataTableColumnHeader, DataTableDropDown } from '@/components/custom/data-table'
 import type { OrganizationalRisk } from '@/types/types'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'

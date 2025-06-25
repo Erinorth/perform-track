@@ -34,7 +34,7 @@ class PermissionController extends Controller
             return $result;
         });
 
-        return Inertia::render('settings/Permission', [
+        return Inertia::render('settings/permission/Permission', [
             'users' => $pivotData, // ส่งข้อมูล users ไปยัง Vue Component
         ]);
     }

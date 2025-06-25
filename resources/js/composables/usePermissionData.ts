@@ -1,6 +1,6 @@
 import { ref, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
-import type { UserPermission } from '@/pages/settings/permission/data-table/types/permission';
+import type { UserPermission } from '@/types/permission';
 
 export function usePermissionData(initialUsers: UserPermission[]) {
     // สร้าง reactive reference สำหรับเก็บข้อมูลผู้ใช้
