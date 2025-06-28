@@ -64,6 +64,14 @@ class CenSus extends Model
         return CenSusFactory::getDivisionStructure();
     }
 
+    /**
+     * รับรายการตำแหน่งผู้ปฏิบัติงาน
+     */
+    public static function getWorkerPositions(): array
+    {
+        return CenSusFactory::getWorkerPositions();
+    }
+
     // === Accessor Methods ===
 
     /**
@@ -83,19 +91,30 @@ class CenSus extends Model
     }
 
     /**
-     * ระดับตำแหน่ง
+     * ระดับตำแหน่ง (แก้ไขเพื่อป้องกันการ match ผิด)
      */
     public function getPositionLevelAttribute(): string
     {
-        return match (true) {
-            str_contains($this->a_position, 'อ') && !str_contains($this->a_position, 'ช.อ') => 'ผู้อำนวยการฝ่าย',
-            str_contains($this->a_position, 'ช.อ') => 'ผู้ช่วยผู้อำนวยการฝ่าย',
-            str_contains($this->a_position, 'ก') => 'หัวหน้ากอง',
-            str_contains($this->a_position, 'ห') => 'หัวหน้าแผนก',
-            str_contains($this->a_position, 'วศ.') => 'วิศวกร',
-            str_contains($this->a_position, 'ช.') => 'ช่าง',
-            str_contains($this->a_position, 'ชก.') => 'ช่างชำนาญการ',
-            str_contains($this->a_position, 'พช.') => 'พนักงานวิชาชีพ',
+        return match ($this->a_position) {
+            // ✅ ตรวจสอบแบบเจาะจง - ตำแหน่งผู้บริหาร
+            'อ' => 'ผู้อำนวยการฝ่าย',
+            'ช.อ' => 'ผู้ช่วยผู้อำนวยการฝ่าย',
+            'ก' => 'หัวหน้ากอง',
+            'ห' => 'หัวหน้าแผนก',
+            
+            // ✅ ตรวจสอบแบบเจาะจง - ช่างชำนาญการ (ก่อนช่างทั่วไป)
+            'ชก.1', 'ชก.2', 'ชก.3' => 'ช่างชำนาญการ',
+            
+            // ✅ ตรวจสอบแบบเจาะจง - วิศวกร
+            'วศ.7', 'วศ.8', 'วศ.9' => 'วิศวกร',
+            
+            // ✅ ตรวจสอบแบบเจาะจง - ช่าง
+            'ช.6', 'ช.7', 'ช.8' => 'ช่าง',
+            
+            // ✅ ตรวจสอบแบบเจาะจง - พนักงานวิชาชีพ
+            'พช.4', 'พช.5', 'พช.6' => 'พนักงานวิชาชีพ',
+            
+            // ✅ กรณีอื่นๆ
             default => 'ไม่ระบุ',
         };
     }

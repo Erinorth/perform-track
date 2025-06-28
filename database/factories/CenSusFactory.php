@@ -27,7 +27,7 @@ class CenSusFactory extends Factory
                 'กสร-ธ.' => ['หสร1-ธ.', 'หสร2-ธ.', 'หสร3-ธ.'],
             ]
         ],
-        'ผลก.' => [
+        'อลก.' => [
             'departments' => ['กผล1-ธ.', 'กผล2-ธ.', 'กผล3-ธ.', 'กผล4-ธ.', 'กคผล-ธ.'],
             'sections_map' => [
                 'กผล1-ธ.' => ['หผล11-ธ.', 'หผล12-ธ.', 'หผล13-ธ.'],
@@ -37,7 +37,7 @@ class CenSusFactory extends Factory
                 'กคผล-ธ.' => ['หคผล1-ธ.', 'หคผล2-ธ.', 'หคผล3-ธ.'],
             ]
         ],
-        'วศก.' => [
+        'อศก.' => [
             'departments' => ['กวศ1-ธ.', 'กวศ2-ธ.', 'กวศ3-ธ.', 'กวศ4-ธ.', 'กวศส-ธ.'],
             'sections_map' => [
                 'กวศ1-ธ.' => ['หวศ11-ธ.', 'หวศ12-ธ.', 'หวศ13-ธ.'],
@@ -47,7 +47,7 @@ class CenSusFactory extends Factory
                 'กวศส-ธ.' => ['หวศส1-ธ.', 'หวศส2-ธ.', 'หวศส3-ธ.'],
             ]
         ],
-        'บคจ.' => [
+        'อคจ.' => [
             'departments' => ['กบค-ธ.', 'กบจ-ธ.', 'กสท-ธ.', 'กคจ-ธ.', 'กวจ-ธ.'],
             'sections_map' => [
                 'กบค-ธ.' => ['หบค1-ธ.', 'หบค2-ธ.', 'หบค3-ธ.'],
@@ -57,6 +57,16 @@ class CenSusFactory extends Factory
                 'กวจ-ธ.' => ['หวจ1-ธ.', 'หวจ2-ธ.', 'หวจ3-ธ.'],
             ]
         ]
+    ];
+
+    /**
+     * ตำแหน่งสำหรับผู้ปฏิบัติงาน (ไม่รวมตำแหน่งหัวหน้า)
+     */
+    private static array $workerPositions = [
+        'วศ.9', 'วศ.8', 'วศ.7', // วิศวกร
+        'ช.8', 'ช.7', 'ช.6',   // ช่าง
+        'ชก.3', 'ชก.2', 'ชก.1', // ช่างชำนาญการ
+        'พช.6', 'พช.5', 'พช.4'  // พนักงานวิชาชีพ
     ];
 
     /**
@@ -78,7 +88,7 @@ class CenSusFactory extends Factory
             'fay' => $this->getRandomDivision(),
             'gong' => $this->getRandomDepartment(),
             'pnang' => $this->getRandomSection(),
-            'a_position' => $this->getRandomPosition(),
+            'a_position' => $this->getRandomWorkerPosition(),
         ];
     }
 
@@ -110,8 +120,8 @@ class CenSusFactory extends Factory
         $director = self::new()->make([
             'a_position' => 'อ',
             'fay' => $division,
-            'gong' => '', // ผู้อำนวยการไม่มีกอง
-            'pnang' => '', // ผู้อำนวยการไม่มีแผนก
+            'gong' => '', 
+            'pnang' => '', 
         ]);
         $employees->push($director);
         
@@ -120,8 +130,8 @@ class CenSusFactory extends Factory
             $assistantDirector = self::new()->make([
                 'a_position' => 'ช.อ',
                 'fay' => $division,
-                'gong' => '', // ผู้ช่วยผู้อำนวยการไม่มีกอง
-                'pnang' => '', // ผู้ช่วยผู้อำนวยการไม่มีแผนก
+                'gong' => '', 
+                'pnang' => '', 
             ]);
             $employees->push($assistantDirector);
         }
@@ -132,7 +142,7 @@ class CenSusFactory extends Factory
                 'a_position' => 'ก',
                 'fay' => $division,
                 'gong' => $department,
-                'pnang' => '', // หัวหน้ากองไม่มีแผนก
+                'pnang' => '', 
             ]);
             $employees->push($departmentHead);
             
@@ -149,8 +159,9 @@ class CenSusFactory extends Factory
                 
                 // 5. สร้างผู้ปฏิบัติงาน แผนกละ 5 คน
                 for ($i = 0; $i < 5; $i++) {
+                    $workerPosition = self::getRandomWorkerPositionStatic(); // ✅ ใช้ static method ที่แก้ไขแล้ว
                     $worker = self::new()->make([
-                        'a_position' => fake()->randomElement(['วศ.8', 'วศ.7', 'ช.7', 'ช.6', 'ชก.3', 'พช.6']),
+                        'a_position' => $workerPosition,
                         'fay' => $division,
                         'gong' => $department,
                         'pnang' => $section,
@@ -232,8 +243,9 @@ class CenSusFactory extends Factory
                 
                 // ผู้ปฏิบัติงาน
                 for ($workerIndex = 0; $workerIndex < $workersPerSection; $workerIndex++) {
+                    $workerPosition = self::getRandomWorkerPositionStatic(); // ✅ ใช้ static method ที่แก้ไขแล้ว
                     $worker = self::new()->make([
-                        'a_position' => fake()->randomElement(['วศ.8', 'วศ.7', 'ช.7', 'ช.6', 'ชก.3', 'พช.6']),
+                        'a_position' => $workerPosition,
                         'fay' => $division,
                         'gong' => $department,
                         'pnang' => $section,
@@ -267,13 +279,17 @@ class CenSusFactory extends Factory
         $maleNames = [
             'สมชาย ใจดี', 'วิชัย สุขสันต์', 'ธนวัฒน์ รุ่งเรือง', 'ประเวศ มั่นคง', 
             'สมศักดิ์ เจริญรัตน์', 'อนุชา ทองดี', 'ธีระวัฒน์ แสงทอง', 'ชัยพร บุญมาก',
-            'วิทยา พันธุ์ดี', 'สุเทพ ศรีสุข', 'ปิยะ เพชรเงิน', 'ธนากร อินทร์แท้'
+            'วิทยา พันธุ์ดี', 'สุเทพ ศรีสุข', 'ปิยะ เพชรเงิน', 'ธนากร อินทร์แท้',
+            'เสกสรรค์ วงศ์ทอง', 'ยุทธนา นาคคำ', 'เทวัญ ศรีมูล', 'พิษณุ ไทยรัตน์',
+            'กิตติศักดิ์ แก้วใส', 'อรรถวิทย์ บุญศรี', 'ศิริชัย มังกรทอง', 'ธนพล สุขเกษม'
         ];
         
         $femaleNames = [
             'สมใส ใจดี', 'วิภาวี สุขสันต์', 'ธนิดา รุ่งเรือง', 'ประภัสสร มั่นคง',
             'สุดาพร เจริญรัตน์', 'อรุณี ทองดี', 'ธีรดา แสงทอง', 'ชวีวรรณ บุญมาก',
-            'วิมลพร พันธุ์ดี', 'สุธีรา ศรีสุข', 'ปิยนุช เพชรเงิน', 'ธนัญญา อินทร์แท้'
+            'วิมลพร พันธุ์ดี', 'สุธีรา ศรีสุข', 'ปิยนุช เพชรเงิน', 'ธนัญญา อินทร์แท้',
+            'ปริยากร วงศ์ทอง', 'สุภาวดี นาคคำ', 'นิรมล ศรีมูล', 'ปรียาภรณ์ ไทยรัตน์',
+            'ศิริรัตน์ แก้วใส', 'อรพิณ บุญศรี', 'ฉัตรสุดา มังกรทอง', 'นภาพร สุขเกษม'
         ];
         
         return $isMale 
@@ -305,9 +321,29 @@ class CenSusFactory extends Factory
         return $this->faker->randomElement(self::$divisionStructure[$division]['sections_map'][$department]);
     }
 
+    /**
+     * รับตำแหน่งแบบสุ่มสำหรับผู้ปฏิบัติงาน (instance method)
+     */
+    private function getRandomWorkerPosition(): string
+    {
+        return $this->faker->randomElement(self::$workerPositions);
+    }
+
+    /**
+     * รับตำแหน่งแบบสุ่มสำหรับผู้ปฏิบัติงาน (static method)
+     * ✅ แก้ไข: ใช้ fake() helper แทน app('faker')
+     */
+    private static function getRandomWorkerPositionStatic(): string
+    {
+        return fake()->randomElement(self::$workerPositions);
+    }
+
+    /**
+     * รับตำแหน่งแบบสุ่มทั่วไป
+     */
     private function getRandomPosition(): string
     {
-        return $this->faker->randomElement(['วศ.8', 'วศ.7', 'ช.7', 'ช.6', 'ชก.3', 'พช.6']);
+        return $this->faker->randomElement(self::$workerPositions);
     }
 
     // === State Methods ===
@@ -337,6 +373,11 @@ class CenSusFactory extends Factory
         return $this->state(['a_position' => $this->faker->randomElement(['ช.8', 'ช.7', 'ช.6'])]);
     }
 
+    public function worker(): static
+    {
+        return $this->state(['a_position' => $this->getRandomWorkerPosition()]);
+    }
+
     public function male(): static
     {
         return $this->state([
@@ -361,5 +402,13 @@ class CenSusFactory extends Factory
     public static function getDivisionStructure(): array
     {
         return self::$divisionStructure;
+    }
+
+    /**
+     * รับรายการตำแหน่งผู้ปฏิบัติงาน
+     */
+    public static function getWorkerPositions(): array
+    {
+        return self::$workerPositions;
     }
 }

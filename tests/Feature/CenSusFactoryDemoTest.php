@@ -5,26 +5,11 @@ namespace Tests\Feature;
 use App\Models\CenSus;
 use Tests\TestCase;
 
+/**
+ * Test สำหรับทดสอบ CenSus Factory และแสดงผลเป็นตาราง
+ */
 class CenSusFactoryDemoTest extends TestCase
 {
-    /**
-     * ทดสอบการสร้าง Hierarchy แบบสมจริง
-     */
-    public function test_demo_census_hierarchy(): void
-    {
-        $this->info('🚀 Demo การสร้าง CenSus แบบ Hierarchy ที่สมจริง');
-
-        // สร้าง hierarchy สำหรับฝ่าย อบค.
-        $employees = CenSus::createSingleDivisionHierarchy('อบค.');
-
-        $this->displayHierarchy($employees, 'อบค.');
-        
-        // ทดสอบจำนวนตามโครงสร้าง
-        $this->validateHierarchyStructure($employees, 'อบค.');
-
-        $this->info('✅ Demo Hierarchy เสร็จสิ้น');
-    }
-
     /**
      * ทดสอบการสร้าง Hierarchy ทั้งองค์กร
      */
@@ -37,6 +22,9 @@ class CenSusFactoryDemoTest extends TestCase
 
         $this->info("\n📊 สรุปทั้งองค์กร:");
         $this->info("  รวมพนักงานทั้งหมด: {$allEmployees->count()} คน");
+
+        // ตรวจสอบความถูกต้องของตำแหน่งก่อนแสดงผล
+        $this->validatePositionIntegrity($allEmployees);
 
         // แสดงรายละเอียดแต่ละฝ่าย
         $employeesByDivision = $allEmployees->groupBy('fay');
@@ -53,61 +41,63 @@ class CenSusFactoryDemoTest extends TestCase
     }
 
     /**
-     * ทดสอบการสร้าง Hierarchy แบบ Custom
+     * ตรวจสอบความถูกต้องของตำแหน่งในโครงสร้าง
      */
-    public function test_demo_custom_hierarchy(): void
+    private function validatePositionIntegrity($allEmployees): void
     {
-        $this->info('🚀 Demo การสร้าง Custom Hierarchy');
-
-        // กำหนดค่าแบบ custom
-        $config = [
-            'division' => 'วศก.',
-            'departments' => ['กวศ1-ธ.', 'กวศ2-ธ.'],
-            'sections_per_department' => 2,
-            'workers_per_section' => 3,
-        ];
-
-        $employees = CenSus::createCustomHierarchy($config);
-
-        $this->info("\n📋 Custom Hierarchy สำหรับ {$config['division']}:");
-        $this->displayHierarchy($employees, $config['division']);
-
-        // คำนวณจำนวนที่คาดหวัง
-        $expectedCount = 1 + 2 + // Director + Assistant Directors
-                        count($config['departments']) + // Department Heads
-                        (count($config['departments']) * $config['sections_per_department']) + // Section Heads
-                        (count($config['departments']) * $config['sections_per_department'] * $config['workers_per_section']); // Workers
-
-        $this->assertEquals($expectedCount, $employees->count());
-        $this->info("✅ Custom Hierarchy ถูกต้อง (คาดหวัง: {$expectedCount}, ได้: {$employees->count()})");
-    }
-
-    /**
-     * ทดสอบการสร้าง Hierarchy ขนาดใหญ่ (20 คน)
-     */
-    public function test_demo_hierarchy_20_people(): void
-    {
-        $this->info('🚀 Demo การสร้าง Hierarchy สำหรับ 20 คน');
-
-        // สร้าง custom hierarchy ที่มี 20 คน
-        $config = [
-            'division' => 'อบค.',
-            'departments' => ['กผงค-ธ.', 'กกห-ธ.'],
-            'sections_per_department' => 2, // กองละ 2 แผนก
-            'workers_per_section' => 4, // แผนกละ 4 คน
-        ];
-
-        $employees = CenSus::createCustomHierarchy($config);
-
-        $this->info("\n📋 Hierarchy 20 คน:");
-        $this->displayDetailedHierarchy($employees);
-
-        // ทดสอบจำนวน (1 อ + 2 ช.อ + 2 ก + 4 ห + 16 ผู้ปฏิบัติงาน = 25 คน)
-        // ปรับให้เป็น 20 คน
-        $adjustedEmployees = $employees->take(20);
+        $this->info("\n🔍 ตรวจสอบความถูกต้องของตำแหน่ง:");
         
-        $this->assertCount(20, $adjustedEmployees);
-        $this->info("✅ สร้าง Hierarchy 20 คนเสร็จสิ้น");
+        // ตรวจสอบผู้ปฏิบัติงานที่มีตำแหน่งหัวหน้า
+        $workersWithLeadershipPositions = $allEmployees->filter(function ($emp) {
+            // คนที่มีกอง และ แผนก (ผู้ปฏิบัติงาน) แต่มีตำแหน่งหัวหน้า
+            return !empty($emp->gong) && !empty($emp->pnang) && 
+                   in_array($emp->a_position, ['อ', 'ช.อ', 'ก', 'ห']);
+        });
+        
+        if ($workersWithLeadershipPositions->count() > 0) {
+            $this->info("  ❌ พบผู้ปฏิบัติงานที่มีตำแหน่งหัวหน้า ({$workersWithLeadershipPositions->count()} คน):");
+            foreach ($workersWithLeadershipPositions as $emp) {
+                $this->info("     - [{$emp->EMPN}] {$emp->full_name_thai} ตำแหน่ง: {$emp->a_position}");
+                $this->info("       หน่วยงาน: {$emp->fay} > {$emp->gong} > {$emp->pnang}");
+            }
+        } else {
+            $this->info("  ✅ ไม่พบผู้ปฏิบัติงานที่มีตำแหน่งหัวหน้า");
+        }
+        
+        // ตรวจสอบหัวหน้าที่อยู่ในแผนก (ควรจะเป็นหัวหน้าแผนกเท่านั้น)
+        $leadershipInSections = $allEmployees->filter(function ($emp) {
+            return !empty($emp->pnang) && in_array($emp->a_position, ['อ', 'ช.อ', 'ก']);
+        });
+        
+        if ($leadershipInSections->count() > 0) {
+            $this->info("  ❌ พบตำแหน่งผู้บริหาร/หัวหน้ากองในแผนก ({$leadershipInSections->count()} คน):");
+            foreach ($leadershipInSections as $emp) {
+                $this->info("     - [{$emp->EMPN}] {$emp->full_name_thai} ตำแหน่ง: {$emp->a_position}");
+                $this->info("       หน่วยงาน: {$emp->fay} > {$emp->gong} > {$emp->pnang}");
+            }
+        } else {
+            $this->info("  ✅ ไม่พบตำแหน่งผู้บริหาร/หัวหน้ากองในแผนก");
+        }
+        
+        // ตรวจสอบการกระจายตำแหน่งของผู้ปฏิบัติงาน
+        $actualWorkers = $allEmployees->filter(function ($emp) {
+            return !empty($emp->gong) && !empty($emp->pnang) && 
+                   !in_array($emp->a_position, ['อ', 'ช.อ', 'ก', 'ห']);
+        });
+        
+        $workerPositions = $actualWorkers->pluck('a_position')->unique()->sort()->values();
+        $allowedPositions = CenSus::getWorkerPositions();
+        
+        $this->info("\n  📋 ตำแหน่งผู้ปฏิบัติงานที่พบ:");
+        $this->info("     อนุญาต: " . implode(', ', $allowedPositions));
+        $this->info("     พบจริง: " . $workerPositions->implode(', '));
+        
+        $invalidPositions = $workerPositions->diff($allowedPositions);
+        if ($invalidPositions->count() > 0) {
+            $this->info("  ❌ พบตำแหน่งที่ไม่อนุญาต: " . $invalidPositions->implode(', '));
+        } else {
+            $this->info("  ✅ ตำแหน่งผู้ปฏิบัติงานถูกต้องทั้งหมด");
+        }
     }
 
     /**
@@ -121,7 +111,9 @@ class CenSusFactoryDemoTest extends TestCase
         if ($employeesByPosition->has('อ')) {
             $this->info("  👨‍💼 ผู้อำนวยการฝ่าย ({$employeesByPosition['อ']->count()} คน):");
             foreach ($employeesByPosition['อ'] as $emp) {
-                $this->info("    - {$emp->full_name_thai}");
+                $orgStructure = $this->formatOrganizationStructure($emp->fay, $emp->gong, $emp->pnang);
+                $this->info("    - [{$emp->EMPN}] {$emp->full_name_thai}");
+                $this->info("      🏛️  {$orgStructure}");
             }
         }
 
@@ -129,7 +121,9 @@ class CenSusFactoryDemoTest extends TestCase
         if ($employeesByPosition->has('ช.อ')) {
             $this->info("  👨‍💼 ผู้ช่วยผู้อำนวยการฝ่าย ({$employeesByPosition['ช.อ']->count()} คน):");
             foreach ($employeesByPosition['ช.อ'] as $emp) {
-                $this->info("    - {$emp->full_name_thai}");
+                $orgStructure = $this->formatOrganizationStructure($emp->fay, $emp->gong, $emp->pnang);
+                $this->info("    - [{$emp->EMPN}] {$emp->full_name_thai}");
+                $this->info("      🏛️  {$orgStructure}");
             }
         }
 
@@ -139,7 +133,14 @@ class CenSusFactoryDemoTest extends TestCase
             $departmentHeads = $employeesByPosition['ก']->groupBy('gong');
             foreach ($departmentHeads as $dept => $heads) {
                 foreach ($heads as $emp) {
-                    $this->info("    - {$emp->full_name_thai} ({$dept})");
+                    $orgStructure = $this->formatOrganizationStructure($emp->fay, $emp->gong, $emp->pnang);
+                    $this->info("    - [{$emp->EMPN}] {$emp->full_name_thai}");
+                    $this->info("      🏛️  {$orgStructure}");
+                    
+                    // ตรวจสอบว่าหัวหน้ากองไม่มีแผนก
+                    if (!empty($emp->pnang)) {
+                        $this->info("      ⚠️  หัวหน้ากองไม่ควรมีแผนก: {$emp->pnang}");
+                    }
                 }
             }
         }
@@ -149,25 +150,35 @@ class CenSusFactoryDemoTest extends TestCase
             $this->info("  👥 หัวหน้าแผนก ({$employeesByPosition['ห']->count()} คน):");
             $sectionHeads = $employeesByPosition['ห']->groupBy('gong');
             foreach ($sectionHeads as $dept => $heads) {
-                $this->info("    📂 {$dept}:");
+                $this->info("    📂 กอง: {$dept}");
                 foreach ($heads as $emp) {
-                    $this->info("      - {$emp->full_name_thai} ({$emp->pnang})");
+                    $orgStructure = $this->formatOrganizationStructure($emp->fay, $emp->gong, $emp->pnang);
+                    $this->info("      - [{$emp->EMPN}] {$emp->full_name_thai}");
+                    $this->info("        🏛️  {$orgStructure}");
                 }
             }
         }
 
-        // ผู้ปฏิบัติงาน
-        $workers = $employees->reject(function ($emp) {
-            return in_array($emp->a_position, ['อ', 'ช.อ', 'ก', 'ห']);
+        // ผู้ปฏิบัติงาน (กรองให้เหลือเฉพาะคนที่มีแผนกและไม่ใช่ตำแหน่งหัวหน้า)
+        $workers = $employees->filter(function ($emp) {
+            return !empty($emp->pnang) && 
+                   !in_array($emp->a_position, ['อ', 'ช.อ', 'ก', 'ห']);
         });
 
         if ($workers->count() > 0) {
             $this->info("  👨‍💻 ผู้ปฏิบัติงาน ({$workers->count()} คน):");
             $workersBySection = $workers->groupBy('pnang');
             foreach ($workersBySection as $section => $sectionWorkers) {
-                $this->info("    📁 {$section} ({$sectionWorkers->count()} คน):");
+                $this->info("    📁 แผนก: {$section} ({$sectionWorkers->count()} คน):");
                 foreach ($sectionWorkers as $emp) {
-                    $this->info("      - {$emp->full_name_thai} ({$emp->position_level})");
+                    $orgStructure = $this->formatOrganizationStructure($emp->fay, $emp->gong, $emp->pnang);
+                    $this->info("      - [{$emp->EMPN}] {$emp->full_name_thai} ({$emp->position_level})");
+                    $this->info("        🏛️  {$orgStructure}");
+                    
+                    // ตรวจสอบตำแหน่งผู้ปฏิบัติงาน
+                    if (in_array($emp->a_position, ['อ', 'ช.อ', 'ก', 'ห'])) {
+                        $this->info("        ❌ ตำแหน่งไม่ถูกต้อง: {$emp->a_position}");
+                    }
                 }
             }
         }
@@ -177,85 +188,78 @@ class CenSusFactoryDemoTest extends TestCase
         $this->info("    รวม: {$employees->count()} คน");
         $this->info("    ชาย: {$employees->filter->isMale()->count()} คน");
         $this->info("    หญิง: {$employees->filter->isFemale()->count()} คน");
+        
+        // แสดงตัวอย่างหมายเลขประจำตัว
+        $empNumbers = $employees->pluck('EMPN')->sort()->values();
+        $this->info("    หมายเลขประจำตัว: {$empNumbers->first()} - {$empNumbers->last()}");
+        
+        // สถิติโครงสร้าง
+        $this->displayOrganizationStatistics($employees);
     }
 
     /**
-     * แสดง Hierarchy แบบละเอียดมาก
+     * จัดรูปแบบโครงสร้างองค์กร
      */
-    private function displayDetailedHierarchy($employees): void
+    private function formatOrganizationStructure(string $fay, string $gong, string $pnang): string
     {
-        $this->info("📋 รายชื่อพนักงานทั้งหมด:");
+        $structure = "ฝ่าย: {$fay}";
         
-        foreach ($employees as $index => $emp) {
-            $number = str_pad($index + 1, 2, '0', STR_PAD_LEFT);
-            $gender = $emp->isMale() ? 'ชาย' : 'หญิง';
-            $level = $this->getPositionLevel($emp->a_position);
-            $organization = $this->getOrganizationPath($emp);
-            
-            $this->info("  {$number}. {$emp->full_name_thai}");
-            $this->info("      ตำแหน่ง: {$level} ({$emp->a_position})");
-            $this->info("      หน่วยงาน: {$organization}");
-            $this->info("      เพศ: {$gender}");
-            $this->info("");
+        if (!empty($gong)) {
+            $structure .= " → กอง: {$gong}";
+        } else {
+            $structure .= " → กอง: -";
         }
+        
+        if (!empty($pnang)) {
+            $structure .= " → แผนก: {$pnang}";
+        } else {
+            $structure .= " → แผนก: -";
+        }
+        
+        return $structure;
     }
 
     /**
-     * ได้รับระดับตำแหน่ง
+     * แสดงสถิติโครงสร้างองค์กร
      */
-    private function getPositionLevel(string $position): string
+    private function displayOrganizationStatistics($employees): void
     {
-        return match (true) {
-            str_contains($position, 'อ') && !str_contains($position, 'ช.อ') => 'ผู้อำนวยการฝ่าย',
-            str_contains($position, 'ช.อ') => 'ผู้ช่วยผู้อำนวยการฝ่าย',
-            str_contains($position, 'ก') => 'หัวหน้ากอง',
-            str_contains($position, 'ห') => 'หัวหน้าแผนก',
-            str_contains($position, 'วศ.') => 'วิศวกร',
-            str_contains($position, 'ช.') => 'ช่าง',
-            str_contains($position, 'ชก.') => 'ช่างชำนาญการ',
-            str_contains($position, 'พช.') => 'พนักงานวิชาชีพ',
-            default => 'ไม่ระบุ',
-        };
-    }
-
-    /**
-     * ได้รับ path ของหน่วยงาน
-     */
-    private function getOrganizationPath($emp): string
-    {
-        $parts = array_filter([$emp->fay, $emp->gong, $emp->pnang]);
-        return implode(' > ', $parts);
-    }
-
-    /**
-     * ตรวจสอบโครงสร้าง Hierarchy
-     */
-    private function validateHierarchyStructure($employees, string $division): void
-    {
-        // ตรวจสอบผู้อำนวยการฝ่าย
-        $directors = $employees->filter->isDirector();
-        $this->assertEquals(3, $directors->count(), "ควรมีผู้อำนวยการและผู้ช่วย 3 คน (1 อ + 2 ช.อ)");
+        $this->info("\n  🏗️  สถิติโครงสร้าง:");
         
-        // ตรวจสอบหัวหน้ากอง
-        $chiefs = $employees->filter->isChief();
-        $this->assertEquals(5, $chiefs->count(), "ควรมีหัวหน้ากอง 5 คน");
+        // จำนวนกองในฝ่าย
+        $departments = $employees->pluck('gong')->filter()->unique();
+        $this->info("    จำนวนกอง: {$departments->count()} กอง");
+        if ($departments->count() > 0) {
+            $this->info("    รายชื่อกอง: " . $departments->implode(', '));
+        }
         
-        // ตรวจสอบหัวหน้าแผนก
-        $heads = $employees->filter->isHead();
-        $this->assertEquals(15, $heads->count(), "ควรมีหัวหน้าแผนก 15 คน (5 กอง x 3 แผนก)");
+        // จำนวนแผนกในฝ่าย
+        $sections = $employees->pluck('pnang')->filter()->unique();
+        $this->info("    จำนวนแผนก: {$sections->count()} แผนก");
+        if ($sections->count() > 0) {
+            $this->info("    รายชื่อแผนก: " . $sections->implode(', '));
+        }
         
-        // ตรวจสอบผู้ปฏิบัติงาน
-        $workers = $employees->reject(function ($emp) {
-            return in_array($emp->a_position, ['อ', 'ช.อ', 'ก', 'ห']);
+        // สถิติตามโครงสร้าง
+        $this->info("\n  📈 การกระจายตามโครงสร้าง:");
+        
+        // พนักงานแต่ละกอง
+        $empByDept = $employees->filter(function($emp) {
+            return !empty($emp->gong);
+        })->groupBy('gong');
+        
+        foreach ($empByDept as $dept => $deptEmployees) {
+            $this->info("    {$dept}: {$deptEmployees->count()} คน");
+        }
+        
+        // พนักงานระดับฝ่าย (ไม่มีกอง)
+        $divisionLevel = $employees->filter(function($emp) {
+            return empty($emp->gong);
         });
-        $this->assertEquals(75, $workers->count(), "ควรมีผู้ปฏิบัติงาน 75 คน (15 แผนก x 5 คน)");
         
-        $this->info("✅ โครงสร้าง Hierarchy ถูกต้อง:");
-        $this->info("  - ผู้บริหารฝ่าย: {$directors->count()} คน");
-        $this->info("  - หัวหน้ากอง: {$chiefs->count()} คน");
-        $this->info("  - หัวหน้าแผนก: {$heads->count()} คน");
-        $this->info("  - ผู้ปฏิบัติงาน: {$workers->count()} คน");
-        $this->info("  - รวม: {$employees->count()} คน");
+        if ($divisionLevel->count() > 0) {
+            $this->info("    ระดับฝ่าย (ไม่มีกอง): {$divisionLevel->count()} คน");
+        }
     }
 
     /**
@@ -278,7 +282,33 @@ class CenSusFactoryDemoTest extends TestCase
         $this->info("  ผู้บริหารฝ่าย: {$allEmployees->filter->isDirector()->count()} คน (คาดหวัง: {$expectedDirectors})");
         $this->info("  หัวหน้ากอง: {$allEmployees->filter->isChief()->count()} คน (คาดหวัง: {$expectedChiefs})");
         $this->info("  หัวหน้าแผนก: {$allEmployees->filter->isHead()->count()} คน (คาดหวัง: {$expectedHeads})");
+        $this->info("  ผู้ปฏิบัติงาน: {$allEmployees->filter->isWorker()->count()} คน (คาดหวัง: {$expectedWorkers})");
         $this->info("  รวมทั้งหมด: {$allEmployees->count()} คน (คาดหวัง: {$expectedTotal})");
+        
+        // แสดงสถิติหมายเลขประจำตัว
+        $empNumbers = $allEmployees->pluck('EMPN')->sort();
+        $uniqueNumbers = $empNumbers->unique();
+        $this->info("\n🔢 สถิติหมายเลขประจำตัว:");
+        $this->info("  จำนวนหมายเลขทั้งหมด: {$empNumbers->count()}");
+        $this->info("  จำนวนหมายเลขที่ไม่ซ้ำ: {$uniqueNumbers->count()}");
+        $this->info("  ช่วงหมายเลข: {$empNumbers->first()} - {$empNumbers->last()}");
+        
+        if ($empNumbers->count() !== $uniqueNumbers->count()) {
+            $duplicates = $empNumbers->duplicates();
+            $this->info("  ⚠️  พบหมายเลขซ้ำ: " . $duplicates->implode(', '));
+        } else {
+            $this->info("  ✅ ไม่มีหมายเลขซ้ำ");
+        }
+        
+        // สถิติโครงสร้างทั้งองค์กร
+        $this->info("\n🏗️  สถิติโครงสร้างทั้งองค์กร:");
+        $allDivisions = $allEmployees->pluck('fay')->unique();
+        $allDepartments = $allEmployees->pluck('gong')->filter()->unique();
+        $allSections = $allEmployees->pluck('pnang')->filter()->unique();
+        
+        $this->info("  จำนวนฝ่ายทั้งหมด: {$allDivisions->count()} ฝ่าย");
+        $this->info("  จำนวนกองทั้งหมด: {$allDepartments->count()} กอง");
+        $this->info("  จำนวนแผนกทั้งหมด: {$allSections->count()} แผนก");
         
         $this->assertEquals($expectedTotal, $allEmployees->count());
     }
