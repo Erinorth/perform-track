@@ -23,6 +23,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'company',    // บริษัท
+        'department', // หน่วยงาน
+        'position',   // ตำแหน่ง
     ];
 
     /**
@@ -48,8 +51,37 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * ความสัมพันธ์กับตาราง census
+     */
     public function census()
     {
         return $this->hasOne(CenSus::class, 'EMPN', 'egat_id');
+    }
+
+    /**
+     * ดึงชื่อเต็มพร้อมตำแหน่ง
+     */
+    public function getFullNameWithPositionAttribute(): string
+    {
+        return $this->position ? "{$this->name} ({$this->position})" : $this->name;
+    }
+
+    /**
+     * ดึงข้อมูลองค์กรเต็ม
+     */
+    public function getOrganizationInfoAttribute(): string
+    {
+        $info = [];
+        
+        if ($this->company) {
+            $info[] = $this->company;
+        }
+        
+        if ($this->department) {
+            $info[] = $this->department;
+        }
+        
+        return implode(' - ', $info);
     }
 }
