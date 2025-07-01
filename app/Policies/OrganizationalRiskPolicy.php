@@ -1,146 +1,168 @@
 <?php
-/**
- * ไฟล์: app\Policies\OrganizationalRiskPolicy.php
- * กำหนดนโยบายการเข้าถึงและจัดการความเสี่ยงระดับองค์กร
- * ใช้ในระบบ Role-based Access Control สำหรับจัดการสิทธิ์ในแอปพลิเคชัน Risk Assessment
- */
 
 namespace App\Policies;
 
 use App\Models\OrganizationalRisk;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+use Illuminate\Support\Facades\Log;
 
 class OrganizationalRiskPolicy
 {
     /**
-     * กำหนดว่าผู้ใช้สามารถดูรายการความเสี่ยงระดับองค์กรทั้งหมดได้หรือไม่
-     * 
-     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
-     * @return bool อนุญาตหรือไม่อนุญาต
+     * ตรวจสอบสิทธิ์ก่อนการดำเนินการอื่นๆ
+     */
+    public function before(User $user, string $ability): ?bool
+    {
+        // Super Admin มีสิทธิ์ทั้งหมด
+        if ($user->hasRole('super_admin')) {
+            Log::info("User ID: {$user->id} เป็น Super Admin - อนุญาตทุกการกระทำ");
+            return true;
+        }
+
+        return null; // ให้ตรวจสอบสิทธิ์ต่อ
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การดูรายการความเสี่ยงระดับองค์กร
      */
     public function viewAny(User $user): bool
     {
-        // อนุญาตให้ผู้ใช้ทุกคนสามารถดูรายการความเสี่ยงระดับองค์กรได้
-        // หากต้องการจำกัดสิทธิ์ ควรตรวจสอบบทบาทผู้ใช้ เช่น
-        // return $user->hasRole(['admin', 'risk_manager', 'viewer']);
-        return true;
+        Log::info('ตรวจสอบสิทธิ์ viewAny OrganizationalRisk สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('organizational_risk.view');
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถดูข้อมูลความเสี่ยงระดับองค์กรเฉพาะรายการได้หรือไม่
-     * 
-     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
-     * @param OrganizationalRisk $organizationalRisk ความเสี่ยงที่ต้องการดู
-     * @return bool อนุญาตหรือไม่อนุญาต
+     * ตรวจสอบสิทธิ์การดูความเสี่ยงระดับองค์กรเฉพาะรายการ
      */
     public function view(User $user, OrganizationalRisk $organizationalRisk): bool
     {
-        // อนุญาตให้ผู้ใช้ทุกคนสามารถดูข้อมูลความเสี่ยงระดับองค์กรได้
+        Log::info('ตรวจสอบสิทธิ์ view OrganizationalRisk ID: ' . $organizationalRisk->id);
+        
+        return $user->hasPermissionTo('organizational_risk.view');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การสร้างความเสี่ยงระดับองค์กร
+     */
+    public function create(User $user): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ create OrganizationalRisk สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('organizational_risk.create');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การแก้ไขความเสี่ยงระดับองค์กร
+     */
+    public function update(User $user, OrganizationalRisk $organizationalRisk): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ update OrganizationalRisk ID: ' . $organizationalRisk->id);
+        
+        return $user->hasPermissionTo('organizational_risk.update');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การลบความเสี่ยงระดับองค์กร
+     */
+    public function delete(User $user, OrganizationalRisk $organizationalRisk): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ delete OrganizationalRisk ID: ' . $organizationalRisk->id);
+        
+        if (!$user->hasPermissionTo('organizational_risk.delete')) {
+            return false;
+        }
+
+        // ตรวจสอบว่ามีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่หรือไม่
+        if ($organizationalRisk->divisionRisks()->exists()) {
+            Log::warning('ไม่สามารถลบความเสี่ยงระดับองค์กรได้ เนื่องจากมีความเสี่ยงระดับฝ่ายที่เชื่อมโยงอยู่');
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถสร้างความเสี่ยงระดับองค์กรใหม่ได้หรือไม่
-     * 
-     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
-     * @return bool อนุญาตหรือไม่อนุญาต
-     */
-    public function create(User $user): bool
-    {
-        // อนุญาตเฉพาะผู้ดูแลระบบหรือผู้จัดการความเสี่ยง
-        // ในที่นี้สมมติให้มีเมธอด hasRole() ที่ตรวจสอบบทบาทของผู้ใช้
-        return $user->hasRole(['admin', 'risk_manager']);
-    }
-
-    /**
-     * กำหนดว่าผู้ใช้สามารถแก้ไขข้อมูลความเสี่ยงระดับองค์กรได้หรือไม่
-     * 
-     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
-     * @param OrganizationalRisk $organizationalRisk ความเสี่ยงที่ต้องการแก้ไข
-     * @return bool อนุญาตหรือไม่อนุญาต
-     */
-    public function update(User $user, OrganizationalRisk $organizationalRisk): bool
-    {
-        // อนุญาตเฉพาะผู้ดูแลระบบหรือผู้จัดการความเสี่ยง
-        return $user->hasRole(['admin', 'risk_manager']);
-    }
-
-    /**
-     * กำหนดว่าผู้ใช้สามารถลบข้อมูลความเสี่ยงระดับองค์กรได้หรือไม่
-     * 
-     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
-     * @param OrganizationalRisk $organizationalRisk ความเสี่ยงที่ต้องการลบ
-     * @return bool อนุญาตหรือไม่อนุญาต
-     */
-    public function delete(User $user, OrganizationalRisk $organizationalRisk): bool
-    {
-        // อนุญาตเฉพาะผู้ดูแลระบบเท่านั้น
-        // การลบเป็นการดำเนินการที่สำคัญและอาจส่งผลกระทบต่อข้อมูลอื่นๆ ที่เกี่ยวข้อง
-        return $user->hasRole('admin');
-    }
-
-    /**
-     * กำหนดว่าผู้ใช้สามารถกู้คืนข้อมูลความเสี่ยงระดับองค์กรที่ถูกลบได้หรือไม่
-     * (ใช้กรณีที่มีการใช้ Soft Delete)
-     * 
-     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
-     * @param OrganizationalRisk $organizationalRisk ความเสี่ยงที่ต้องการกู้คืน
-     * @return bool อนุญาตหรือไม่อนุญาต
+     * ตรวจสอบสิทธิ์การกู้คืนความเสี่ยงระดับองค์กร
      */
     public function restore(User $user, OrganizationalRisk $organizationalRisk): bool
     {
-        // อนุญาตเฉพาะผู้ดูแลระบบเท่านั้น
-        return $user->hasRole('admin');
+        Log::info('ตรวจสอบสิทธิ์ restore OrganizationalRisk ID: ' . $organizationalRisk->id);
+        
+        return $user->hasPermissionTo('organizational_risk.create');
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถลบข้อมูลความเสี่ยงระดับองค์กรอย่างถาวรได้หรือไม่
-     * (ใช้กรณีที่มีการใช้ Soft Delete และต้องการลบข้อมูลออกจากฐานข้อมูลจริงๆ)
-     * 
-     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
-     * @param OrganizationalRisk $organizationalRisk ความเสี่ยงที่ต้องการลบถาวร
-     * @return bool อนุญาตหรือไม่อนุญาต
+     * ตรวจสอบสิทธิ์การลบถาวร
      */
     public function forceDelete(User $user, OrganizationalRisk $organizationalRisk): bool
     {
-        // อนุญาตเฉพาะผู้ดูแลระบบที่มีสิทธิ์สูงสุดเท่านั้น
-        // การลบถาวรเป็นการดำเนินการที่ไม่สามารถย้อนกลับได้และอาจส่งผลกระทบรุนแรง
+        Log::info('ตรวจสอบสิทธิ์ forceDelete OrganizationalRisk ID: ' . $organizationalRisk->id);
+        
+        // เฉพาะ Super Admin เท่านั้น
         return $user->hasRole('super_admin');
-    }
-    
-    /**
-     * ตรวจสอบสิทธิ์การเปลี่ยนสถานะของความเสี่ยง (เปิด/ปิดการใช้งาน)
-     * 
-     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
-     * @param OrganizationalRisk $organizationalRisk ความเสี่ยงที่ต้องการเปลี่ยนสถานะ
-     * @return bool อนุญาตหรือไม่อนุญาต
-     */
-    public function toggleActive(User $user, OrganizationalRisk $organizationalRisk): bool
-    {
-        // อนุญาตเฉพาะผู้ดูแลระบบหรือผู้จัดการความเสี่ยง
-        return $user->hasRole(['admin', 'risk_manager']);
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถดูเอกสารแนบของความเสี่ยงระดับองค์กรได้หรือไม่
-     * 
-     * @param User $user ผู้ใช้ที่ต้องการตรวจสอบสิทธิ์
-     * @param OrganizationalRisk $organizationalRisk ความเสี่ยงที่ต้องการดูเอกสารแนบ
-     * @return bool อนุญาตหรือไม่อนุญาต
+     * ตรวจสอบสิทธิ์การเปิด/ปิดใช้งาน
+     */
+    public function toggleActive(User $user, OrganizationalRisk $organizationalRisk): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ toggleActive OrganizationalRisk ID: ' . $organizationalRisk->id);
+        
+        return $user->hasPermissionTo('organizational_risk.update');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การดูเอกสารแนบ
      */
     public function viewAttachment(User $user, OrganizationalRisk $organizationalRisk): bool
     {
-        // บันทึกล็อกการตรวจสอบสิทธิ์การดูเอกสารแนบ
-        \Illuminate\Support\Facades\Log::info('ตรวจสอบสิทธิ์การดูเอกสารแนบ', [
-            'user_id' => $user->id,
-            'user_name' => $user->name,
-            'risk_id' => $organizationalRisk->id,
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
+        Log::info('ตรวจสอบสิทธิ์ viewAttachment OrganizationalRisk ID: ' . $organizationalRisk->id);
         
-        // กำหนดว่าผู้ใช้ทั้งหมดที่มีสิทธิ์ดูความเสี่ยงสามารถดูเอกสารแนบได้
-        // หากต้องการจำกัดสิทธิ์เพิ่มเติม สามารถปรับเงื่อนไขได้ตามความเหมาะสม
-        return $this->view($user, $organizationalRisk);
+        return $user->hasPermissionTo('attachment.view') && 
+               $user->hasPermissionTo('organizational_risk.view');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การอัปโหลดเอกสารแนบ
+     */
+    public function uploadAttachment(User $user, OrganizationalRisk $organizationalRisk): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ uploadAttachment OrganizationalRisk ID: ' . $organizationalRisk->id);
+        
+        return $user->hasPermissionTo('attachment.upload') && 
+               $user->hasPermissionTo('organizational_risk.update');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การลบเอกสารแนบ
+     */
+    public function deleteAttachment(User $user, OrganizationalRisk $organizationalRisk): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ deleteAttachment OrganizationalRisk ID: ' . $organizationalRisk->id);
+        
+        return $user->hasPermissionTo('attachment.delete') && 
+               $user->hasPermissionTo('organizational_risk.update');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การส่งออกข้อมูล
+     */
+    public function export(User $user): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ export OrganizationalRisk สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('organizational_risk.export');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การนำเข้าข้อมูล
+     */
+    public function import(User $user): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ import OrganizationalRisk สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('organizational_risk.import');
     }
 }

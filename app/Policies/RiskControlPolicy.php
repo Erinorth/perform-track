@@ -1,151 +1,210 @@
 <?php
-// ไฟล์: app\Policies\RiskControlPolicy.php
-// Policy สำหรับควบคุมสิทธิ์การเข้าถึง RiskControl
-// เพิ่ม Super Admin ที่สามารถทำทุกอย่างได้โดยไม่ต้องตรวจสอบ Permission
 
 namespace App\Policies;
 
 use App\Models\User;
 use App\Models\RiskControl;
-use App\Models\DivisionRisk;
 use Illuminate\Support\Facades\Log;
 
 class RiskControlPolicy
 {
     /**
-     * ตรวจสอบสิทธิ์ก่อนการตรวจสอบอื่นๆ (Super Admin)
+     * ตรวจสอบสิทธิ์ก่อนการดำเนินการอื่นๆ
      */
     public function before(User $user, string $ability): ?bool
     {
-        // Super Admin สามารถทำทุกอย่างได้
+        // Super Admin และ Admin มีสิทธิ์ทั้งหมด
         if ($user->hasRole(['super_admin', 'admin'])) {
             Log::info("User ID: {$user->id} เป็น Super Admin/Admin - อนุญาตทุกการกระทำ");
             return true;
         }
 
-        // คืนค่า null เพื่อให้ตรวจสอบต่อไปตามปกติ
-        return null;
+        return null; // ให้ตรวจสอบสิทธิ์ต่อ
     }
 
     /**
-     * ดูรายการการควบคุมความเสี่ยงทั้งหมด
+     * ตรวจสอบสิทธิ์การดูรายการการควบคุมความเสี่ยง
      */
     public function viewAny(User $user): bool
     {
-        Log::info('ตรวจสอบสิทธิ์ viewAny สำหรับ User ID: ' . $user->id);
+        Log::info('ตรวจสอบสิทธิ์ viewAny RiskControl สำหรับ User ID: ' . $user->id);
         
-        // อนุญาตให้ทุกคนที่ล็อกอินดูได้ (เนื่องจากเป็นระบบภายใน)
-        return true;
+        return $user->hasPermissionTo('risk_control.view') || 
+               $user->hasPermissionTo('risk_control.view_own');
     }
 
     /**
-     * ดูรายละเอียดการควบคุมความเสี่ยง
+     * ตรวจสอบสิทธิ์การดูการควบคุมความเสี่ยงเฉพาะรายการ
      */
     public function view(User $user, RiskControl $riskControl): bool
     {
-        Log::info('ตรวจสอบสิทธิ์ view Risk Control ID: ' . $riskControl->id);
+        Log::info('ตรวจสอบสิทธิ์ view RiskControl ID: ' . $riskControl->id);
         
-        // อนุญาตให้ทุกคนที่ล็อกอินดูได้
-        return true;
+        // ดูได้ทั้งหมด
+        if ($user->hasPermissionTo('risk_control.view')) {
+            return true;
+        }
+
+        // ดูเฉพาะของตนเอง
+        if ($user->hasPermissionTo('risk_control.view_own')) {
+            // TODO: เพิ่มการตรวจสอบความเป็นเจ้าของ
+            return true; // ชั่วคราว
+        }
+
+        return false;
     }
 
     /**
-     * สร้างการควบคุมความเสี่ยงใหม่
+     * ตรวจสอบสิทธิ์การสร้างการควบคุมความเสี่ยง
      */
     public function create(User $user): bool
     {
-        Log::info('ตรวจสอบสิทธิ์ create สำหรับ User ID: ' . $user->id);
+        Log::info('ตรวจสอบสิทธิ์ create RiskControl สำหรับ User ID: ' . $user->id);
         
-        // อนุญาตให้ทุกคนที่ล็อกอินสร้างได้ (เพื่อความสะดวกในการใช้งาน)
-        return true;
+        return $user->hasPermissionTo('risk_control.create') || 
+               $user->hasPermissionTo('risk_control.manage_own');
     }
 
     /**
-     * แก้ไขการควบคุมความเสี่ยง
+     * ตรวจสอบสิทธิ์การแก้ไขการควบคุมความเสี่ยง
      */
     public function update(User $user, RiskControl $riskControl): bool
     {
-        Log::info('ตรวจสอบสิทธิ์ update Risk Control ID: ' . $riskControl->id);
+        Log::info('ตรวจสอบสิทธิ์ update RiskControl ID: ' . $riskControl->id);
         
-        // อนุญาตให้ทุกคนที่ล็อกอินแก้ไขได้
-        return true;
+        // แก้ไขได้ทั้งหมด
+        if ($user->hasPermissionTo('risk_control.update')) {
+            return true;
+        }
+
+        // แก้ไขเฉพาะของตนเอง
+        if ($user->hasPermissionTo('risk_control.manage_own')) {
+            // TODO: เพิ่มการตรวจสอบความเป็นเจ้าของ
+            return true; // ชั่วคราว
+        }
+
+        return false;
     }
 
     /**
-     * ลบการควบคุมความเสี่ยง
+     * ตรวจสอบสิทธิ์การลบการควบคุมความเสี่ยง
      */
     public function delete(User $user, RiskControl $riskControl): bool
     {
-        Log::info('ตรวจสอบสิทธิ์ delete Risk Control ID: ' . $riskControl->id);
+        Log::info('ตรวจสอบสิทธิ์ delete RiskControl ID: ' . $riskControl->id);
         
-        // ตรวจสอบว่าสามารถลบได้หรือไม่ (ตามเงื่อนไขของ Model)
+        // ตรวจสอบสิทธิ์พื้นฐาน
+        $hasDeletePermission = $user->hasPermissionTo('risk_control.delete') || 
+                              ($user->hasPermissionTo('risk_control.manage_own') /* && เป็นของตนเอง */);
+        
+        if (!$hasDeletePermission) {
+            return false;
+        }
+
+        // ตรวจสอบว่าสามารถลบได้หรือไม่ตามเงื่อนไขของ Model
         if (method_exists($riskControl, 'canBeDeleted') && !$riskControl->canBeDeleted()) {
             Log::warning('Risk Control ไม่สามารถลบได้ตามเงื่อนไขของ Model');
             return false;
         }
 
-        // อนุญาตให้ทุกคนที่ล็อกอินลบได้
         return true;
     }
 
     /**
-     * กู้คืนการควบคุมความเสี่ยง
+     * ตรวจสอบสิทธิ์การกู้คืน
      */
     public function restore(User $user, RiskControl $riskControl): bool
     {
-        // อนุญาตให้ทุกคนที่ล็อกอินกู้คืนได้
-        return true;
+        Log::info('ตรวจสอบสิทธิ์ restore RiskControl ID: ' . $riskControl->id);
+        
+        return $user->hasPermissionTo('risk_control.create');
     }
 
     /**
-     * ลบถาวร
+     * ตรวจสอบสิทธิ์การลบถาวร
      */
     public function forceDelete(User $user, RiskControl $riskControl): bool
     {
-        // เฉพาะ Admin เท่านั้นที่สามารถลบถาวรได้
-        if ($user->hasRole(['super_admin', 'admin'])) {
-            return true;
-        }
-
-        // อนุญาตให้ทุกคนลบถาวรได้ (สำหรับการทดสอบ)
-        return true;
+        Log::info('ตรวจสอบสิทธิ์ forceDelete RiskControl ID: ' . $riskControl->id);
+        
+        // เฉพาะ Super Admin และ Admin เท่านั้น
+        return $user->hasRole(['super_admin', 'admin']);
     }
 
     /**
-     * เปลี่ยนสถานะการควบคุมความเสี่ยง
+     * ตรวจสอบสิทธิ์การเปิด/ปิดใช้งาน
      */
     public function toggleStatus(User $user, RiskControl $riskControl): bool
     {
-        Log::info('ตรวจสอบสิทธิ์ toggleStatus Risk Control ID: ' . $riskControl->id);
+        Log::info('ตรวจสอบสิทธิ์ toggleStatus RiskControl ID: ' . $riskControl->id);
         
-        // อนุญาตให้ทุกคนที่ล็อกอินเปลี่ยนสถานะได้
-        return true;
+        return $user->hasPermissionTo('risk_control.activate') || 
+               $user->hasPermissionTo('risk_control.deactivate') ||
+               ($user->hasPermissionTo('risk_control.manage_own') /* && เป็นของตนเอง */);
     }
 
     /**
-     * ส่งออกข้อมูล
+     * ตรวจสอบสิทธิ์การอัปโหลดเอกสารแนบ
+     */
+    public function uploadAttachment(User $user, RiskControl $riskControl): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ uploadAttachment RiskControl ID: ' . $riskControl->id);
+        
+        return $user->hasPermissionTo('attachment.upload') && 
+               ($user->hasPermissionTo('risk_control.update') || 
+                $user->hasPermissionTo('risk_control.manage_own'));
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การลบเอกสารแนบ
+     */
+    public function deleteAttachment(User $user, RiskControl $riskControl): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ deleteAttachment RiskControl ID: ' . $riskControl->id);
+        
+        return $user->hasPermissionTo('attachment.delete') && 
+               ($user->hasPermissionTo('risk_control.update') || 
+                $user->hasPermissionTo('risk_control.manage_own'));
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การส่งออกข้อมูล
      */
     public function export(User $user): bool
     {
-        // อนุญาตให้ทุกคนที่ล็อกอินส่งออกข้อมูลได้
-        return true;
+        Log::info('ตรวจสอบสิทธิ์ export RiskControl สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('risk_control.export');
     }
 
     /**
-     * นำเข้าข้อมูล
+     * ตรวจสอบสิทธิ์การนำเข้าข้อมูล
      */
     public function import(User $user): bool
     {
-        // อนุญาตให้ทุกคนที่ล็อกอินนำเข้าข้อมูลได้
-        return true;
+        Log::info('ตรวจสอบสิทธิ์ import RiskControl สำหรับ User ID: ' . $user->id);
+        
+        // ใช้สิทธิ์เดียวกับการสร้าง
+        return $user->hasPermissionTo('risk_control.create');
     }
 
     /**
-     * ดูรายงาน
+     * ตรวจสอบสิทธิ์การดูรายงาน
      */
     public function viewReports(User $user): bool
     {
-        // อนุญาตให้ทุกคนที่ล็อกอินดูรายงานได้
-        return true;
+        Log::info('ตรวจสอบสิทธิ์ viewReports RiskControl สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('report.view');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การลบหลายรายการ
+     */
+    public function bulkDelete(User $user): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ bulkDelete RiskControl สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('risk_control.delete');
     }
 }

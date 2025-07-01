@@ -4,85 +4,172 @@ namespace App\Policies;
 
 use App\Models\RiskAssessment;
 use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Support\Facades\Log;
 
 class RiskAssessmentPolicy
 {
-    use HandlesAuthorization;
+    /**
+     * ตรวจสอบสิทธิ์ก่อนการดำเนินการอื่นๆ
+     */
+    public function before(User $user, string $ability): ?bool
+    {
+        // Super Admin และ Admin มีสิทธิ์ทั้งหมด
+        if ($user->hasRole(['super_admin', 'admin'])) {
+            Log::info("User ID: {$user->id} เป็น Super Admin/Admin - อนุญาตทุกการกระทำ");
+            return true;
+        }
+
+        return null; // ให้ตรวจสอบสิทธิ์ต่อ
+    }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถดูรายการการประเมินความเสี่ยงทั้งหมดได้หรือไม่
+     * ตรวจสอบสิทธิ์การดูรายการการประเมินความเสี่ยง
      */
     public function viewAny(User $user): bool
     {
-        return true; // ผู้ใช้ที่ล็อกอินทุกคนสามารถดูรายการได้
+        Log::info('ตรวจสอบสิทธิ์ viewAny RiskAssessment สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('risk_assessment.view') || 
+               $user->hasPermissionTo('risk_assessment.view_own');
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถดูรายละเอียดการประเมินความเสี่ยงได้หรือไม่
+     * ตรวจสอบสิทธิ์การดูการประเมินความเสี่ยงเฉพาะรายการ
      */
     public function view(User $user, RiskAssessment $riskAssessment): bool
     {
-        return true; // ผู้ใช้ที่ล็อกอินทุกคนสามารถดูรายละเอียดได้
+        Log::info('ตรวจสอบสิทธิ์ view RiskAssessment ID: ' . $riskAssessment->id);
+        
+        // ดูได้ทั้งหมด
+        if ($user->hasPermissionTo('risk_assessment.view')) {
+            return true;
+        }
+
+        // ดูเฉพาะของตนเอง
+        if ($user->hasPermissionTo('risk_assessment.view_own')) {
+            // TODO: เพิ่มการตรวจสอบความเป็นเจ้าของ
+            return true; // ชั่วคราว
+        }
+
+        return false;
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถสร้างการประเมินความเสี่ยงใหม่ได้หรือไม่
+     * ตรวจสอบสิทธิ์การสร้างการประเมินความเสี่ยง
      */
     public function create(User $user): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('create_risk_assessment');
+        Log::info('ตรวจสอบสิทธิ์ create RiskAssessment สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('risk_assessment.create') || 
+               $user->hasPermissionTo('risk_assessment.manage_own');
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถแก้ไขการประเมินความเสี่ยงได้หรือไม่
+     * ตรวจสอบสิทธิ์การแก้ไขการประเมินความเสี่ยง
      */
     public function update(User $user, RiskAssessment $riskAssessment): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('update_risk_assessment');
+        Log::info('ตรวจสอบสิทธิ์ update RiskAssessment ID: ' . $riskAssessment->id);
+        
+        // แก้ไขได้ทั้งหมด
+        if ($user->hasPermissionTo('risk_assessment.update')) {
+            return true;
+        }
+
+        // แก้ไขเฉพาะของตนเอง
+        if ($user->hasPermissionTo('risk_assessment.manage_own')) {
+            // TODO: เพิ่มการตรวจสอบความเป็นเจ้าของ
+            return true; // ชั่วคราว
+        }
+
+        return false;
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถลบการประเมินความเสี่ยงได้หรือไม่
+     * ตรวจสอบสิทธิ์การลบการประเมินความเสี่ยง
      */
     public function delete(User $user, RiskAssessment $riskAssessment): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        if (!$user->hasPermission('delete_risk_assessment')) {
+        Log::info('ตรวจสอบสิทธิ์ delete RiskAssessment ID: ' . $riskAssessment->id);
+        
+        // ตรวจสอบสิทธิ์พื้นฐาน
+        $hasDeletePermission = $user->hasPermissionTo('risk_assessment.delete') || 
+                              ($user->hasPermissionTo('risk_assessment.manage_own') /* && เป็นของตนเอง */);
+        
+        if (!$hasDeletePermission) {
             return false;
         }
 
-        // สามารถลบได้เสมอ เนื่องจากการประเมินความเสี่ยงไม่มีความสัมพันธ์กับข้อมูลอื่น
-        // ที่จะถูกกระทบเมื่อลบ (นอกจากเอกสารแนบที่จะลบอัตโนมัติผ่าน cascadeOnDelete)
+        // ตรวจสอบว่าอนุมัติแล้วหรือไม่
+        if ($riskAssessment->status === 'approved') {
+            Log::warning('ไม่สามารถลบการประเมินความเสี่ยงที่อนุมัติแล้วได้');
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถลบการประเมินความเสี่ยงหลายรายการพร้อมกันได้หรือไม่
+     * ตรวจสอบสิทธิ์การอนุมัติการประเมินความเสี่ยง
      */
-    public function bulkDelete(User $user): bool
+    public function approve(User $user, RiskAssessment $riskAssessment): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('delete_risk_assessment');
+        Log::info('ตรวจสอบสิทธิ์ approve RiskAssessment ID: ' . $riskAssessment->id);
+        
+        // ตรวจสอบระดับความเสี่ยง
+        $riskLevel = $riskAssessment->risk_level ?? 'medium';
+        
+        // ความเสี่ยงระดับสูงต้องใช้สิทธิ์พิเศษ
+        if (in_array($riskLevel, ['high', 'very_high'])) {
+            return $user->hasPermissionTo('risk_assessment.approve_high');
+        }
+
+        // ความเสี่ยงระดับปกติ
+        return $user->hasPermissionTo('risk_assessment.approve');
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถอัปโหลดไฟล์แนบได้หรือไม่
+     * ตรวจสอบสิทธิ์การอัpโหลดเอกสารแนบ
      */
     public function uploadAttachment(User $user, RiskAssessment $riskAssessment): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('update_risk_assessment');
+        Log::info('ตรวจสอบสิทธิ์ uploadAttachment RiskAssessment ID: ' . $riskAssessment->id);
+        
+        return $user->hasPermissionTo('attachment.upload') && 
+               ($user->hasPermissionTo('risk_assessment.update') || 
+                $user->hasPermissionTo('risk_assessment.manage_own'));
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถลบไฟล์แนบได้หรือไม่
+     * ตรวจสอบสิทธิ์การลบเอกสารแนบ
      */
     public function deleteAttachment(User $user, RiskAssessment $riskAssessment): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('update_risk_assessment');
+        Log::info('ตรวจสอบสิทธิ์ deleteAttachment RiskAssessment ID: ' . $riskAssessment->id);
+        
+        return $user->hasPermissionTo('attachment.delete') && 
+               ($user->hasPermissionTo('risk_assessment.update') || 
+                $user->hasPermissionTo('risk_assessment.manage_own'));
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การส่งออกข้อมูล
+     */
+    public function export(User $user): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ export RiskAssessment สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('risk_assessment.export');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การลบหลายรายการ
+     */
+    public function bulkDelete(User $user): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ bulkDelete RiskAssessment สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('risk_assessment.delete');
     }
 }

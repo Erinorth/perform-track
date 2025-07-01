@@ -4,84 +4,163 @@ namespace App\Policies;
 
 use App\Models\DivisionRisk;
 use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Support\Facades\Log;
 
 class DivisionRiskPolicy
 {
-    use HandlesAuthorization;
+    /**
+     * ตรวจสอบสิทธิ์ก่อนการดำเนินการอื่นๆ
+     */
+    public function before(User $user, string $ability): ?bool
+    {
+        // Super Admin และ Admin มีสิทธิ์ทั้งหมด
+        if ($user->hasRole(['super_admin', 'admin'])) {
+            Log::info("User ID: {$user->id} เป็น Super Admin/Admin - อนุญาตทุกการกระทำ");
+            return true;
+        }
+
+        return null; // ให้ตรวจสอบสิทธิ์ต่อ
+    }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถดูรายการความเสี่ยงทั้งหมดได้หรือไม่
+     * ตรวจสอบสิทธิ์การดูรายการความเสี่ยงระดับกอง
      */
     public function viewAny(User $user): bool
     {
-        return true; // ผู้ใช้ที่ล็อกอินทุกคนสามารถดูรายการได้
+        Log::info('ตรวจสอบสิทธิ์ viewAny DivisionRisk สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('division_risk.view') || 
+               $user->hasPermissionTo('division_risk.view_own');
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถดูรายละเอียดความเสี่ยงได้หรือไม่
+     * ตรวจสอบสิทธิ์การดูความเสี่ยงระดับกองเฉพาะรายการ
      */
     public function view(User $user, DivisionRisk $divisionRisk): bool
     {
-        return true; // ผู้ใช้ที่ล็อกอินทุกคนสามารถดูรายละเอียดได้
+        Log::info('ตรวจสอบสิทธิ์ view DivisionRisk ID: ' . $divisionRisk->id);
+        
+        // ดูได้ทั้งหมด
+        if ($user->hasPermissionTo('division_risk.view')) {
+            return true;
+        }
+
+        // ดูเฉพาะของตนเอง (ตรวจสอบตาม division_id ของ user)
+        if ($user->hasPermissionTo('division_risk.view_own')) {
+            // TODO: เพิ่มการตรวจสอบ division_id ของ user กับ division_risk
+            return true; // ชั่วคราว
+        }
+
+        return false;
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถสร้างความเสี่ยงใหม่ได้หรือไม่
+     * ตรวจสอบสิทธิ์การสร้างความเสี่ยงระดับกอง
      */
     public function create(User $user): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('create_division_risk');
+        Log::info('ตรวจสอบสิทธิ์ create DivisionRisk สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('division_risk.create') || 
+               $user->hasPermissionTo('division_risk.manage_own');
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถแก้ไขความเสี่ยงได้หรือไม่
+     * ตรวจสอบสิทธิ์การแก้ไขความเสี่ยงระดับกอง
      */
     public function update(User $user, DivisionRisk $divisionRisk): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('update_division_risk');
+        Log::info('ตรวจสอบสิทธิ์ update DivisionRisk ID: ' . $divisionRisk->id);
+        
+        // แก้ไขได้ทั้งหมด
+        if ($user->hasPermissionTo('division_risk.update')) {
+            return true;
+        }
+
+        // แก้ไขเฉพาะของตนเอง
+        if ($user->hasPermissionTo('division_risk.manage_own')) {
+            // TODO: เพิ่มการตรวจสอบ division_id
+            return true; // ชั่วคราว
+        }
+
+        return false;
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถลบความเสี่ยงได้หรือไม่
+     * ตรวจสอบสิทธิ์การลบความเสี่ยงระดับกอง
      */
     public function delete(User $user, DivisionRisk $divisionRisk): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        if (!$user->hasPermission('delete_division_risk')) {
+        Log::info('ตรวจสอบสิทธิ์ delete DivisionRisk ID: ' . $divisionRisk->id);
+        
+        // ตรวจสอบสิทธิ์พื้นฐาน
+        $hasDeletePermission = $user->hasPermissionTo('division_risk.delete') || 
+                              ($user->hasPermissionTo('division_risk.manage_own') /* && เป็นของตนเอง */);
+        
+        if (!$hasDeletePermission) {
             return false;
         }
 
-        // ตรวจสอบว่าความเสี่ยงนี้มีการประเมินความเสี่ยงที่เชื่อมโยงอยู่หรือไม่
-        return !$divisionRisk->riskAssessments()->exists();
+        // ตรวจสอบว่ามี risk assessments ที่เชื่อมโยงอยู่หรือไม่
+        if ($divisionRisk->riskAssessments()->exists()) {
+            Log::warning('ไม่สามารถลบความเสี่ยงระดับกองได้ เนื่องจากมีการประเมินความเสี่ยงที่เชื่อมโยงอยู่');
+            return false;
+        }
+
+        return true;
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถลบความเสี่ยงหลายรายการพร้อมกันได้หรือไม่
+     * ตรวจสอบสิทธิ์การอนุมัติความเสี่ยงระดับกอง
      */
-    public function bulkDelete(User $user): bool
+    public function approve(User $user, DivisionRisk $divisionRisk): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('delete_division_risk');
+        Log::info('ตรวจสอบสิทธิ์ approve DivisionRisk ID: ' . $divisionRisk->id);
+        
+        return $user->hasPermissionTo('division_risk.approve');
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถอัปโหลดไฟล์แนบได้หรือไม่
+     * ตรวจสอบสิทธิ์การอัปโหลดเอกสารแนบ
      */
     public function uploadAttachment(User $user, DivisionRisk $divisionRisk): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('update_division_risk');
+        Log::info('ตรวจสอบสิทธิ์ uploadAttachment DivisionRisk ID: ' . $divisionRisk->id);
+        
+        return $user->hasPermissionTo('attachment.upload') && 
+               ($user->hasPermissionTo('division_risk.update') || 
+                $user->hasPermissionTo('division_risk.manage_own'));
     }
 
     /**
-     * กำหนดว่าผู้ใช้สามารถลบไฟล์แนบได้หรือไม่
+     * ตรวจสอบสิทธิ์การลบเอกสารแนบ
      */
     public function deleteAttachment(User $user, DivisionRisk $divisionRisk): bool
     {
-        // ตรวจสอบบทบาทหรือสิทธิ์ของผู้ใช้ (สามารถปรับแต่งตามความเหมาะสม)
-        return $user->hasPermission('update_division_risk');
+        Log::info('ตรวจสอบสิทธิ์ deleteAttachment DivisionRisk ID: ' . $divisionRisk->id);
+        
+        return $user->hasPermissionTo('attachment.delete') && 
+               ($user->hasPermissionTo('division_risk.update') || 
+                $user->hasPermissionTo('division_risk.manage_own'));
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การส่งออกข้อมูล
+     */
+    public function export(User $user): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ export DivisionRisk สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('division_risk.export');
+    }
+
+    /**
+     * ตรวจสอบสิทธิ์การลบหลายรายการ
+     */
+    public function bulkDelete(User $user): bool
+    {
+        Log::info('ตรวจสอบสิทธิ์ bulkDelete DivisionRisk สำหรับ User ID: ' . $user->id);
+        
+        return $user->hasPermissionTo('division_risk.delete');
     }
 }
