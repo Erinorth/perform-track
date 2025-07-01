@@ -9,14 +9,18 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 use Database\Factories\CenSusFactory;
 
+/**
+ * Model สำหรับข้อมูลพนักงาน EGAT จากระบบ MMD Data
+ * ใช้ dynamic connection ตาม environment (testing/production)
+ */
 class CenSus extends Model
 {
     use HasFactory;
 
     /**
-     * ชื่อการเชื่อมต่อฐานข้อมูล
+     * กำหนด connection แบบ dynamic ตาม environment
      */
-    protected $connection = 'mmddata';
+    protected $connection;
 
     /**
      * ชื่อตาราง
@@ -24,27 +28,45 @@ class CenSus extends Model
     protected $table = 'view_census';
 
     /**
-     * Primary Key
+     * Primary key
      */
     protected $primaryKey = 'EMPN';
 
     /**
-     * ประเภทของ Primary Key
+     * ประเภท Primary key
      */
     protected $keyType = 'string';
 
     /**
-     * ไม่ใช่ auto-incrementing
+     * ไม่ใช้ auto increment
      */
     public $incrementing = false;
 
     /**
-     * ไม่มี timestamps (created_at, updated_at)
+     * ไม่ใช้ timestamps
      */
     public $timestamps = false;
 
     /**
-     * ฟิลด์ที่สามารถ mass assignment ได้
+     * Constructor - กำหนด connection ตาม environment
+     */
+    public function __construct(array $attributes = [])
+    {
+        parent::__construct($attributes);
+        
+        // ใช้ connection ตาม environment
+        $this->connection = app()->environment('testing') 
+            ? config('database.testing_mmddata_connection', 'testing_mmddata')
+            : 'mmddata';
+            
+        Log::debug('CenSus Model initialized', [
+            'environment' => app()->environment(),
+            'connection' => $this->connection
+        ]);
+    }
+
+    /**
+     * Fields ที่สามารถ mass assign ได้
      */
     protected $fillable = [
         'EMPN',
@@ -58,7 +80,7 @@ class CenSus extends Model
     ];
 
     /**
-     * กำหนดประเภทข้อมูลของ attributes
+     * Type casting
      */
     protected $casts = [
         'EMPN' => 'string',
@@ -72,220 +94,273 @@ class CenSus extends Model
     ];
 
     /**
-     * ความสัมพันธ์กับ User
+     * Relationship กับ User
      */
     public function user(): HasOne
     {
         return $this->hasOne(User::class, 'egat_id', 'EMPN');
     }
 
-    // === Static Factory Methods Wrappers ===
+    /**
+     * ค้นหาพนักงานตาม EGAT ID
+     */
+    public static function findByEgatId(string $egatId): ?self
+    {
+        Log::info('Searching employee by EGAT ID', ['egat_id' => $egatId]);
+        
+        try {
+            $employee = static::where('EMPN', $egatId)->first();
+            
+            if ($employee) {
+                Log::info('Employee found', [
+                    'egat_id' => $egatId,
+                    'name' => $employee->NAME,
+                    'position' => $employee->a_position
+                ]);
+            } else {
+                Log::warning('Employee not found', ['egat_id' => $egatId]);
+            }
+            
+            return $employee;
+        } catch (\Exception $e) {
+            Log::error('Error searching employee', [
+                'egat_id' => $egatId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return null;
+        }
+    }
 
     /**
-     * สร้าง hierarchy สำหรับทั้งองค์กร
+     * ได้รับ hierarchy ของพนักงานทั้งหมด
+     */
+    public static function getHierarchy(): Collection
+    {
+        Log::info('Getting employee hierarchy');
+        
+        try {
+            return static::all()->groupBy(['fay', 'gong', 'pnang']);
+        } catch (\Exception $e) {
+            Log::error('Error getting hierarchy', ['error' => $e->getMessage()]);
+            return collect();
+        }
+    }
+
+    /**
+     * ได้รับพนักงานในฝ่าย
+     */
+    public static function getByDivision(string $division): Collection
+    {
+        Log::info('Getting employees by division', ['division' => $division]);
+        
+        try {
+            return static::where('fay', $division)->get();
+        } catch (\Exception $e) {
+            Log::error('Error getting employees by division', [
+                'division' => $division,
+                'error' => $e->getMessage()
+            ]);
+            return collect();
+        }
+    }
+
+    /**
+     * ได้รับหัวหน้าของฝ่าย/กอง/แผนก
+     */
+    public static function getSupervisor(string $fay, ?string $gong = null, ?string $pnang = null): ?self
+    {
+        Log::info('Finding supervisor', [
+            'fay' => $fay,
+            'gong' => $gong,
+            'pnang' => $pnang
+        ]);
+        
+        try {
+            $query = static::where('fay', $fay);
+            
+            if ($pnang) {
+                // หาหัวหน้าแผนก
+                $supervisor = $query->where('gong', $gong)
+                                  ->where('pnang', $pnang)
+                                  ->where('a_position', 'ห')
+                                  ->first();
+                                  
+                if (!$supervisor && $gong) {
+                    // หาหัวหน้ากอง
+                    $supervisor = static::where('fay', $fay)
+                                       ->where('gong', $gong)
+                                       ->where('a_position', 'ก')
+                                       ->first();
+                }
+            } elseif ($gong) {
+                // หาหัวหน้ากอง
+                $supervisor = $query->where('gong', $gong)
+                                  ->where('a_position', 'ก')
+                                  ->first();
+            }
+            
+            // หาผู้อำนวยการฝ่าย
+            if (!isset($supervisor)) {
+                $supervisor = static::where('fay', $fay)
+                                   ->whereIn('a_position', ['อ', 'ช.อ'])
+                                   ->first();
+            }
+            
+            if ($supervisor) {
+                Log::info('Supervisor found', [
+                    'supervisor_id' => $supervisor->EMPN,
+                    'name' => $supervisor->NAME,
+                    'position' => $supervisor->a_position
+                ]);
+            } else {
+                Log::warning('No supervisor found');
+            }
+            
+            return $supervisor;
+        } catch (\Exception $e) {
+            Log::error('Error finding supervisor', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
+     * Factory methods สำหรับการทดสอบ
      */
     public static function createHierarchy(): Collection
     {
         return CenSusFactory::createHierarchy();
     }
 
-    /**
-     * สร้าง hierarchy สำหรับฝ่ายเดียว
-     */
     public static function createSingleDivisionHierarchy(string $division = 'อบค.'): Collection
     {
         return CenSusFactory::createSingleDivisionHierarchy($division);
     }
 
-    /**
-     * สร้าง hierarchy แบบปรับแต่งได้
-     */
     public static function createCustomHierarchy(array $config): Collection
     {
         return CenSusFactory::createCustomHierarchy($config);
     }
 
-    /**
-     * รับข้อมูลโครงสร้างฝ่าย
-     */
     public static function getDivisionStructure(): array
     {
         return CenSusFactory::getDivisionStructure();
     }
 
-    /**
-     * รับรายการตำแหน่งผู้ปฏิบัติงาน
-     */
     public static function getWorkerPositions(): array
     {
         return CenSusFactory::getWorkerPositions();
     }
 
-    // === Accessor Methods ===
-
     /**
-     * ชื่อเต็มภาษาไทย
+     * Accessors
      */
     public function getFullNameThaiAttribute(): string
     {
         return trim($this->TITLE . ' ' . $this->NAME);
     }
 
-    /**
-     * ชื่อเต็มภาษาอังกฤษ
-     */
     public function getFullNameEnglishAttribute(): string
     {
         return $this->emp_ename ?? '';
     }
 
     /**
-     * ระดับตำแหน่ง (แก้ไขเพื่อป้องกันการ match ผิด)
+     * ระดับตำแหน่ง
      */
     public function getPositionLevelAttribute(): string
     {
         return match ($this->a_position) {
-            // ✅ ตรวจสอบแบบเจาะจง - ตำแหน่งผู้บริหาร
             'อ' => 'ผู้อำนวยการฝ่าย',
             'ช.อ' => 'ผู้ช่วยผู้อำนวยการฝ่าย',
             'ก' => 'หัวหน้ากอง',
             'ห' => 'หัวหน้าแผนก',
-            
-            // ✅ ตรวจสอบแบบเจาะจง - ช่างชำนาญการ (ก่อนช่างทั่วไป)
             'ชก.1', 'ชก.2', 'ชก.3' => 'ช่างชำนาญการ',
-            
-            // ✅ ตรวจสอบแบบเจาะจง - วิศวกร
             'วศ.7', 'วศ.8', 'วศ.9' => 'วิศวกร',
-            
-            // ✅ ตรวจสอบแบบเจาะจง - ช่าง
             'ช.6', 'ช.7', 'ช.8' => 'ช่าง',
-            
-            // ✅ ตรวจสอบแบบเจาะจง - พนักงานวิชาชีพ
             'พช.4', 'พช.5', 'พช.6' => 'พนักงานวิชาชีพ',
-            
-            // ✅ กรณีอื่นๆ
             default => 'ไม่ระบุ',
         };
     }
 
-    // === Helper Methods ===
-
     /**
-     * ตรวจสอบว่าเป็นเพศชายหรือไม่
+     * Helper methods
      */
     public function isMale(): bool
     {
         return in_array($this->TITLE, ['นาย', 'Mr.', 'วาที่ ร.ต.']);
     }
 
-    /**
-     * ตรวจสอบว่าเป็นเพศหญิงหรือไม่
-     */
     public function isFemale(): bool
     {
         return !$this->isMale();
     }
 
-    /**
-     * ตรวจสอบว่าเป็นผู้อำนวยการหรือไม่
-     */
     public function isDirector(): bool
     {
         return in_array($this->a_position, ['อ', 'ช.อ']);
     }
 
-    /**
-     * ตรวจสอบว่าเป็นหัวหน้ากองหรือไม่
-     */
     public function isChief(): bool
     {
         return $this->a_position === 'ก';
     }
 
-    /**
-     * ตรวจสอบว่าเป็นหัวหน้าแผนกหรือไม่
-     */
     public function isHead(): bool
     {
         return $this->a_position === 'ห';
     }
 
-    /**
-     * ตรวจสอบว่าเป็นผู้ปฏิบัติงานหรือไม่
-     */
     public function isWorker(): bool
     {
         return !in_array($this->a_position, ['อ', 'ช.อ', 'ก', 'ห']);
     }
 
-    // === Scope Methods ===
-
     /**
-     * Filter ตามฝ่าย
+     * Scopes
      */
     public function scopeByDivision($query, string $division)
     {
         return $query->where('fay', $division);
     }
 
-    /**
-     * Filter ตามกอง
-     */
     public function scopeByDepartment($query, string $department)
     {
         return $query->where('gong', $department);
     }
 
-    /**
-     * Filter ตามแผนก
-     */
     public function scopeBySection($query, string $section)
     {
         return $query->where('pnang', $section);
     }
 
-    /**
-     * Filter ตามตำแหน่ง
-     */
     public function scopeByPosition($query, string $position)
     {
         return $query->where('a_position', $position);
     }
 
-    /**
-     * Filter ผู้บริหาร
-     */
     public function scopeDirectors($query)
     {
         return $query->whereIn('a_position', ['อ', 'ช.อ']);
     }
 
-    /**
-     * Filter หัวหน้ากอง
-     */
     public function scopeChiefs($query)
     {
         return $query->where('a_position', 'ก');
     }
 
-    /**
-     * Filter หัวหน้าแผนก
-     */
     public function scopeHeads($query)
     {
         return $query->where('a_position', 'ห');
     }
 
-    /**
-     * Filter ผู้ปฏิบัติงาน
-     */
     public function scopeWorkers($query)
     {
         return $query->whereNotIn('a_position', ['อ', 'ช.อ', 'ก', 'ห']);
     }
 
     /**
-     * กำหนด Factory ที่ใช้
+     * Factory
      */
     protected static function newFactory()
     {

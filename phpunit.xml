@@ -18,16 +18,45 @@
         </include>
     </source>
     <php>
+        <!-- Application Environment Settings -->
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        
+        <!-- Cache Settings -->
         <env name="CACHE_STORE" value="array"/>
+        <env name="CACHE_DRIVER" value="array"/>
+        
+        <!-- Database Settings -->
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
+        
+        <!-- MMD Data Connection for Testing -->
+        <env name="TESTING_MMDDATA_CONNECTION" value="testing_mmddata"/>
+        
+        <!-- Mail Settings -->
         <env name="MAIL_MAILER" value="array"/>
+        
+        <!-- Laravel Pulse -->
         <env name="PULSE_ENABLED" value="false"/>
+        
+        <!-- Queue Settings -->
         <env name="QUEUE_CONNECTION" value="sync"/>
+        
+        <!-- Session Settings -->
         <env name="SESSION_DRIVER" value="array"/>
+        
+        <!-- Laravel Telescope -->
         <env name="TELESCOPE_ENABLED" value="false"/>
+        
+        <!-- Log Settings -->
+        <env name="LOG_CHANNEL" value="single"/>
+        <env name="LOG_LEVEL" value="debug"/>
+        
+        <!-- Broadcasting -->
+        <env name="BROADCAST_DRIVER" value="log"/>
+        
+        <!-- Rate Limiting -->
+        <env name="RATE_LIMITER_STORE" value="array"/>
     </php>
 </phpunit>
