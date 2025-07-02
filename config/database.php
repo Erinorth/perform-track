@@ -133,6 +133,18 @@ return [
             ]) : [],
         ],
 
+        // การเชื่อมต่อฐานข้อมูล testing_mmddata สำหรับการทดสอบ
+        'testing_mmddata' => [
+            'driver' => 'sqlite',
+            'url' => env('TESTING_MMDDATA_DB_URL'),
+            'database' => env('TESTING_MMDDATA_DATABASE', ':memory:'),
+            'prefix' => '',
+            'foreign_key_constraints' => env('TESTING_MMDDATA_FOREIGN_KEYS', true),
+            'busy_timeout' => null,
+            'journal_mode' => null,
+            'synchronous' => null,
+        ],
+
     ],
 
     /*
