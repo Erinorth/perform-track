@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite name="Tests\Feature\MmddataConnectionTest" file="Mmddata Connection (Tests\Feature\MmddataConnection)" tests="4" assertions="11" errors="0" failures="0" skipped="0" time="0.506982">
-    <testcase name="It can create and retrieve data from testing mmddata" file="Mmddata Connection (Tests\Feature\MmddataConnection)::It can create and retrieve data from testing mmddata" class="Tests\Feature\MmddataConnectionTest" classname="Tests.Feature.MmddataConnectionTest" assertions="3" time="0.433240"/>
-    <testcase name="It can handle transactions in testing mmddata" file="Mmddata Connection (Tests\Feature\MmddataConnection)::It can handle transactions in testing mmddata" class="Tests\Feature\MmddataConnectionTest" classname="Tests.Feature.MmddataConnectionTest" assertions="2" time="0.025614"/>
-    <testcase name="It can connect to testing mmddata database" file="Mmddata Connection (Tests\Feature\MmddataConnection)::It can connect to testing mmddata database" class="Tests\Feature\MmddataConnectionTest" classname="Tests.Feature.MmddataConnectionTest" assertions="2" time="0.024630"/>
-    <testcase name="It can use mmddata connection helper" file="Mmddata Connection (Tests\Feature\MmddataConnection)::It can use mmddata connection helper" class="Tests\Feature\MmddataConnectionTest" classname="Tests.Feature.MmddataConnectionTest" assertions="4" time="0.023498"/>
+  <testsuite name="Tests\Feature\Auth\EgatAuthenticationTest" file="tests\Feature\Auth\EgatAuthenticationTest.php" tests="1" assertions="11" errors="0" failures="0" skipped="0" time="5.448805">
+    <testcase name="สามารถเข้าถึงหน้า loginEGAT ได้" file="tests\Feature\Auth\EgatAuthenticationTest.php::สามารถเข้าถึงหน้า loginEGAT ได้" class="Tests\Feature\Auth\EgatAuthenticationTest" classname="Tests.Feature.Auth.EgatAuthenticationTest" assertions="11" time="5.448805"/>
   </testsuite>
 </testsuites>

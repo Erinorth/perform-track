@@ -1,6 +1,3 @@
-Mmddata Connection (Tests\Feature\MmddataConnection)
- [x] It can connect to testing mmddata database
- [x] It can create and retrieve data from testing mmddata
- [x] It can use mmddata connection helper
- [x] It can handle transactions in testing mmddata
+D:\xampp\htdocs\perform-track\tests\Feature\Auth\EgatAuthenticationTest.php
+ [x] สามารถเข้าถึงหน้า loginEGAT ได้
 
