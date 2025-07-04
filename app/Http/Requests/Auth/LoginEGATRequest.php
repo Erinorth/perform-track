@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 class LoginEGATRequest extends FormRequest
 {
     /**
-     * กำหนดว่าผู้ใช้ได้รับอนุญาตให้ทำการร้องขอนี้หรือไม่
+     * กำหนดสิทธิ์ในการทำ request
      */
     public function authorize(): bool
     {
@@ -19,28 +19,29 @@ class LoginEGATRequest extends FormRequest
     }
 
     /**
-     * กำหนดกฎการตรวจสอบที่ใช้กับการร้องขอ
+     * กำหนดกฎการ validation
      */
     public function rules(): array
     {
         return [
-            'egatid' => ['required', 'numeric', 'digits:6'],
-            'password' => ['required', 'string', 'min:6'],
+            'egatid' => ['required', 'string', 'min:1', 'max:20'], // เปลี่ยนจาก numeric เป็น string
+            'password' => ['required', 'string', 'min:1'], // เปลี่ยน min จาก 6 เป็น 1
         ];
     }
 
     /**
-     * กำหนดข้อความแสดงข้อผิดพลาดแบบกำหนดเอง
+     * กำหนดข้อความ error แบบกำหนดเอง
      */
     public function messages(): array
     {
         return [
             'egatid.required' => 'กรุณากรอก EGAT ID',
-            'egatid.numeric' => 'EGAT ID ต้องเป็นตัวเลข',
-            'egatid.digits' => 'EGAT ID ต้องเป็นตัวเลข 6 ตัว',
+            'egatid.string' => 'EGAT ID ต้องเป็นข้อความ',
+            'egatid.min' => 'EGAT ID ต้องมีอย่างน้อย 1 ตัวอักษร',
+            'egatid.max' => 'EGAT ID ต้องไม่เกิน 20 ตัวอักษร',
             'password.required' => 'กรุณากรอกรหัสผ่าน',
             'password.string' => 'รหัสผ่านต้องเป็นข้อความ',
-            'password.min' => 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
+            'password.min' => 'รหัสผ่านต้องมีอย่างน้อย 1 ตัวอักษร',
         ];
     }
 
@@ -74,7 +75,7 @@ class LoginEGATRequest extends FormRequest
     }
 
     /**
-     * ล้าง rate limiting
+     * ล้างการนับ rate limiting
      */
     public function clearRateLimiting(): void
     {
