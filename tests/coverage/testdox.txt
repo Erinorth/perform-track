@@ -1,3 +1,11 @@
 D:\xampp\htdocs\perform-track\tests\Feature\Auth\EgatAuthenticationTest.php
  [x] สามารถเข้าถึงหน้า loginEGAT ได้
+ [x] สามารถเชื่อมต่อ testing_mmddata ได้
+ [x] สามารถสร้างตาราง view_census ใน testing_mmddata ได้
+ [x] สามารถสร้างข้อมูลทดสอบใน CenSus ได้
+ [x] สามารถค้นหาพนักงานด้วย findByEgatId ได้
+ [x] สามารถใช้ CenSus Factory สำหรับสร้างข้อมูลทดสอบได้
+ [x] สามารถสร้างโครงสร้างองค์กรด้วย Factory ได้
+ [x] CenSus model สามารถทำงานกับ testing_mmddata connection ได้
+ [x] CenSus model ใช้ connection ที่ถูกต้องตาม environment
 
