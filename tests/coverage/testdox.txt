@@ -1,7 +1,7 @@
 D:\xampp\htdocs\perform-track\tests\Feature\Auth\EgatAuthenticationTest.php
  [x] สามารถเข้าถึงหน้า loginEGAT ได้
  [x] สามารถล็อกอิน EGAT ได้สำเร็จ
- [ ] สามารถล็อกอิน EGAT กับผู้ใช้ที่มีอยู่แล้ว
+ [x] สามารถล็อกอิน EGAT กับผู้ใช้ที่มีอยู่แล้ว
  [x] การล็อกอิน EGAT ล้มเหลวเมื่อข้อมูลไม่ถูกต้อง
  [x] การล็อกอิน EGAT ถูก rate limit เมื่อพยายามล็อกอินผิดหลายครั้ง
  [x] การล็อกอิน EGAT สำเร็จโดยไม่มีข้อมูลใน Census

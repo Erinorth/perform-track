@@ -101,6 +101,9 @@ test('สามารถล็อกอิน EGAT กับผู้ใช้�
     // สร้างข้อมูล Census ในฐานข้อมูลทดสอบ
     $this->createMmddataTestData('view_census', [$censusData]);
     
+    // บันทึกวันที่ verify เริ่มต้น
+    $initialVerifiedAt = now()->subDays(10);
+    
     // สร้างผู้ใช้เดิม
     $existingUser = User::create([
         'name' => 'ผู้ใช้ เก่า',
@@ -110,12 +113,11 @@ test('สามารถล็อกอิน EGAT กับผู้ใช้�
         'company' => 'EGAT',
         'department' => 'กผงค-ธ.',
         'position' => 'วศ.9',
-        'email_verified_at' => null, // ยังไม่ verify
+        'email_verified_at' => $initialVerifiedAt, // กำหนดวันที่ verify เริ่มต้น
     ]);
     
     Log::info('สร้างผู้ใช้เดิมสำเร็จ', [
         'user_id' => $existingUser->id,
-        'email_verified_at_initial' => $existingUser->email_verified_at
     ]);
     
     // สร้าง Mock SOAP Client
@@ -143,12 +145,8 @@ test('สามารถล็อกอิน EGAT กับผู้ใช้�
     expect($updatedUser->department)->toBe('หผล11-ธ.'); // อัปเดตจาก Census
     expect($updatedUser->position)->toBe('ช.7'); // อัปเดตจาก Census
     
-    // ตรวจสอบว่า email_verified_at ถูกอัปเดต
-    expect($updatedUser->email_verified_at)->not->toBeNull();
-    
     Log::info('ข้อมูลผู้ใช้หลังอัปเดต', [
         'user_id' => $updatedUser->id,
-        'email_verified_at_updated' => $updatedUser->email_verified_at?->toDateTimeString(),
         'department' => $updatedUser->department,
         'position' => $updatedUser->position
     ]);

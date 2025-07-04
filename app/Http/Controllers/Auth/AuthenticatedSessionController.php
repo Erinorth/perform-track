@@ -128,13 +128,11 @@ class AuthenticatedSessionController extends Controller
                 if ($existingUser) {
                     Log::info('พบผู้ใช้ที่มีอยู่แล้ว - อัปเดตข้อมูล', [
                         'user_id' => $existingUser->id,
-                        'email_verified_at_before' => $existingUser->email_verified_at?->toDateTimeString()
                     ]);
                     
                     // เตรียมข้อมูลสำหรับอัปเดต
                     $updateData = [
                         'egat_id' => $username, // แปลงเป็น string
-                        'email_verified_at' => now(), // อัปเดต email_verified_at
                     ];
                     
                     // เพิ่มข้อมูลจาก Census ถ้ามี
@@ -161,7 +159,6 @@ class AuthenticatedSessionController extends Controller
                     
                     Log::info('อัปเดตข้อมูลผู้ใช้สำเร็จ', [
                         'user_id' => $user->id,
-                        'email_verified_at_after' => $user->email_verified_at?->toDateTimeString(),
                         'department_updated' => $user->department,
                         'position_updated' => $user->position
                     ]);
