@@ -12,37 +12,46 @@ abstract class TestCase extends BaseTestCase
     use RefreshDatabase;
 
     /**
-     * กำหนดการเชื่อมต่อฐานข้อมูลที่จะใช้ในการทดสอบ
-     * 
-     * @var array
+     * กำหนด connections ที่จะใช้ transaction (เฉพาะ default connection)
      */
-    protected $connectionsToTransact = ['sqlite', 'testing_mmddata'];
+    protected $connectionsToTransact = ['sqlite'];
 
     /**
-     * การตั้งค่าเริ่มต้นก่อนการทดสอบแต่ละรอบ
+     * Setup การทดสอบ
      */
     protected function setUp(): void
     {
         parent::setUp();
         
-        // Log เพื่อติดตามการตั้งค่า testing
+        // Log การเริ่มต้น test
         Log::channel('testing')->info('Setting up test case', [
             'test_class' => static::class,
             'default_connection' => DB::getDefaultConnection(),
             'available_connections' => array_keys(config('database.connections'))
         ]);
         
-        // ตรวจสอบการเชื่อมต่อ testing_mmddata
-        $this->ensureTestingMmddataConnection();
+        // Setup testing_mmddata connection แยกต่างหาก
+        $this->setupTestingMmddataConnection();
     }
 
     /**
-     * ตรวจสอบและตั้งค่าการเชื่อมต่อ testing_mmddata
+     * Setup testing_mmddata connection แบบแยกจาก RefreshDatabase
      */
-    protected function ensureTestingMmddataConnection(): void
+    protected function setupTestingMmddataConnection(): void
     {
         try {
-            // ทดสอบการเชื่อมต่อ testing_mmddata
+            // กำหนดค่า connection testing_mmddata
+            config(['database.connections.testing_mmddata' => [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+                'foreign_key_constraints' => true,
+            ]]);
+            
+            // Clear connection cache
+            DB::purge('testing_mmddata');
+            
+            // ทดสอบการเชื่อมต่อ
             DB::connection('testing_mmddata')->getPdo();
             
             Log::channel('testing')->info('Testing mmddata connection established successfully');
@@ -57,11 +66,30 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * ใช้การเชื่อมต่อ testing_mmddata สำหรับ model หรือ query
-     * แก้ไข: กำหนด nullable type อย่างชัดเจน
-     * 
-     * @param string|null $model
-     * @return mixed
+     * ล้างข้อมูลหลังจาก test เสร็จ
+     */
+    protected function tearDown(): void
+    {
+        // ล้างข้อมูลใน testing_mmddata แบบ manual
+        try {
+            $tables = DB::connection('testing_mmddata')
+                ->select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+            
+            foreach ($tables as $table) {
+                DB::connection('testing_mmddata')->statement("DROP TABLE IF EXISTS {$table->name}");
+            }
+        } catch (\Exception $e) {
+            // ไม่ต้องทำอะไรถ้า clear ไม่ได้
+        }
+        
+        // Purge connection
+        DB::purge('testing_mmddata');
+        
+        parent::tearDown();
+    }
+
+    /**
+     * ใช้ mmddata connection สำหรับ testing
      */
     protected function useMmddataConnection(?string $model = null): mixed
     {
@@ -73,16 +101,14 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * สร้างข้อมูลทดสอบใน testing_mmddata connection
-     * 
-     * @param string $table
-     * @param array $data
-     * @return bool
+     * สร้างข้อมูลทดสอบใน mmddata connection
      */
     protected function createMmddataTestData(string $table, array $data): bool
     {
         try {
-            DB::connection('testing_mmddata')->table($table)->insert($data);
+            foreach ($data as $record) {
+                DB::connection('testing_mmddata')->table($table)->insert($record);
+            }
             
             Log::channel('testing')->info('Test data created in mmddata connection', [
                 'table' => $table,
@@ -101,16 +127,12 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * ล้างข้อมูลทดสอบจากตารางที่กำหนด
-     * 
-     * @param string $table
-     * @param string $connection
-     * @return void
+     * ล้างข้อมูลทดสอบ
      */
     protected function clearTestData(string $table, string $connection = 'testing_mmddata'): void
     {
         try {
-            DB::connection($connection)->table($table)->truncate();
+            DB::connection($connection)->table($table)->delete();
             
             Log::channel('testing')->info('Test data cleared', [
                 'table' => $table,
@@ -123,5 +145,24 @@ abstract class TestCase extends BaseTestCase
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * สร้าง view_census table สำหรับ testing
+     */
+    protected function createCensusTable(): void
+    {
+        DB::connection('testing_mmddata')->statement('
+            CREATE TABLE IF NOT EXISTS view_census (
+                EMPN VARCHAR(20) PRIMARY KEY,
+                TITLE VARCHAR(50),
+                NAME VARCHAR(255),
+                emp_ename VARCHAR(255),
+                fay VARCHAR(50),
+                gong VARCHAR(50),
+                pnang VARCHAR(50),
+                a_position VARCHAR(20)
+            )
+        ');
     }
 }

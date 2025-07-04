@@ -9,345 +9,418 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\Support\MockSoapClient;
 
-// ทดสอบการเข้าถึงหน้า loginEGAT
+beforeEach(function () {
+    // ล้าง rate limiting cache
+    RateLimiter::clear('login:127.0.0.1');
+    RateLimiter::clear('loginEGAT:127.0.0.1');
+    
+    // สร้างตาราง Census สำหรับทดสอบ
+    $this->createCensusTable();
+    
+    // ล้างข้อมูล User
+    User::truncate();
+});
+
 test('สามารถเข้าถึงหน้า loginEGAT ได้', function () {
     Log::info('เริ่มทดสอบการเข้าถึงหน้า loginEGAT');
     
+    // ทดสอบเข้าถึงหน้า loginEGAT
     $response = $this->get('/loginEGAT');
     
+    // ตรวจสอบผลลัพธ์
     $response->assertStatus(200);
-    $response->assertInertia(fn ($page) => 
-        $page->component('auth/LoginEGAT')
-            ->has('status')
-    );
+    $response->assertInertia(fn ($page) => $page->component('auth/LoginEGAT'));
     
     Log::info('ทดสอบการเข้าถึงหน้า loginEGAT สำเร็จ');
 });
 
-// ทดสอบการเชื่อมต่อ testing_mmddata
-test('สามารถเชื่อมต่อ testing_mmddata ได้', function () {
-    Log::info('เริ่มทดสอบการเชื่อมต่อ testing_mmddata');
+test('สามารถล็อกอิน EGAT ได้สำเร็จ', function () {
+    Log::info('เริ่มทดสอบการล็อกอิน EGAT สำเร็จ');
     
-    // ทดสอบการเชื่อมต่อ
-    $connection = DB::connection('testing_mmddata');
-    expect($connection)->not->toBeNull();
-    
-    // ทดสอบการ query พื้นฐาน
-    $result = $connection->select('SELECT 1 as test');
-    expect($result)->not->toBeEmpty();
-    expect($result[0]->test)->toBe(1);
-    
-    Log::info('ทดสอบการเชื่อมต่อ testing_mmddata สำเร็จ');
-});
-
-// ทดสอบการสร้างตาราง view_census ใน testing_mmddata
-test('สามารถสร้างตาราง view_census ใน testing_mmddata ได้', function () {
-    Log::info('เริ่มทดสอบการสร้างตาราง view_census');
-    
-    // สร้างตาราง view_census สำหรับทดสอบ
-    DB::connection('testing_mmddata')->statement('
-        CREATE TABLE IF NOT EXISTS view_census (
-            EMPN VARCHAR(20) PRIMARY KEY,
-            TITLE VARCHAR(50),
-            NAME VARCHAR(255),
-            emp_ename VARCHAR(255),
-            fay VARCHAR(50),
-            gong VARCHAR(50),
-            pnang VARCHAR(50),
-            a_position VARCHAR(20)
-        )
-    ');
-    
-    // ทดสอบว่าตารางถูกสร้างขึ้นแล้ว
-    $tables = DB::connection('testing_mmddata')->select(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='view_census'"
-    );
-    
-    expect($tables)->not->toBeEmpty();
-    expect($tables[0]->name)->toBe('view_census');
-    
-    Log::info('ทดสอบการสร้างตาราง view_census สำเร็จ');
-});
-
-// ทดสอบการสร้างข้อมูลทดสอบใน CenSus
-test('สามารถสร้างข้อมูลทดสอบใน CenSus ได้', function () {
-    Log::info('เริ่มทดสอบการสร้างข้อมูลทดสอบใน CenSus');
-    
-    // สร้างตาราง view_census
-    DB::connection('testing_mmddata')->statement('
-        CREATE TABLE IF NOT EXISTS view_census (
-            EMPN VARCHAR(20) PRIMARY KEY,
-            TITLE VARCHAR(50),
-            NAME VARCHAR(255),
-            emp_ename VARCHAR(255),
-            fay VARCHAR(50),
-            gong VARCHAR(50),
-            pnang VARCHAR(50),
-            a_position VARCHAR(20)
-        )
-    ');
-    
-    // สร้างข้อมูลทดสอบ
-    $testData = [
+    // เตรียมข้อมูล Census
+    $censusData = [
         'EMPN' => 'test123',
         'TITLE' => 'นาย',
-        'NAME' => 'สมชาย ใจดี',
-        'emp_ename' => 'Mr. Somchai Jaidee',
+        'NAME' => 'ทดสอบ ระบบ',
+        'emp_ename' => 'Mr. Test System',
         'fay' => 'อบค.',
         'gong' => 'กผงค-ธ.',
         'pnang' => 'หผค1-ธ.',
         'a_position' => 'วศ.8'
     ];
     
-    // บันทึกข้อมูลทดสอบ
-    $this->createMmddataTestData('view_census', [$testData]);
+    // สร้างข้อมูล Census ในฐานข้อมูลทดสอบ
+    $this->createMmddataTestData('view_census', [$censusData]);
     
-    // ทดสอบการดึงข้อมูลผ่าน CenSus model
-    $census = CenSus::on('testing_mmddata')->where('EMPN', 'test123')->first();
+    // สร้าง Mock SOAP Client
+    $this->app->bind('nusoap_client', function () {
+        $mock = new MockSoapClient('http://test.wsdl', true);
+        $mock->addValidCredentials('test123', 'password123');
+        return $mock;
+    });
     
-    expect($census)->not->toBeNull();
-    expect($census->EMPN)->toBe('test123');
-    expect($census->NAME)->toBe('สมชาย ใจดี');
-    expect($census->fay)->toBe('อบค.');
-    expect($census->a_position)->toBe('วศ.8');
-    
-    Log::info('ทดสอบการสร้างข้อมูลทดสอบใน CenSus สำเร็จ', [
-        'census_id' => $census->EMPN,
-        'census_name' => $census->NAME
+    // ทดสอบล็อกอิน
+    $response = $this->post('/loginEGAT', [
+        'egatid' => 'test123',
+        'password' => 'password123'
     ]);
+    
+    // ตรวจสอบผลลัพธ์
+    $response->assertRedirect('/dashboard');
+    
+    // ตรวจสอบว่าผู้ใช้ถูกสร้างขึ้น
+    $user = User::where('email', 'test123@egat.co.th')->first();
+    expect($user)->not->toBeNull();
+    expect($user->egat_id)->toBe('test123'); // ตรวจสอบเป็น string
+    expect($user->name)->toBe('test123');
+    expect($user->company)->toBe('EGAT');
+    expect($user->department)->toBe('หผค1-ธ.');
+    expect($user->position)->toBe('วศ.8');
+    
+    // ตรวจสอบว่าผู้ใช้ถูกล็อกอินแล้ว
+    $this->assertAuthenticated();
+    
+    Log::info('ทดสอบการล็อกอิน EGAT สำเร็จ สำเร็จ');
 });
 
-// ทดสอบการค้นหาพนักงานด้วย findByEgatId
-test('สามารถค้นหาพนักงานด้วย findByEgatId ได้', function () {
-    Log::info('เริ่มทดสอบการค้นหาพนักงานด้วย findByEgatId');
+test('สามารถล็อกอิน EGAT กับผู้ใช้ที่มีอยู่แล้ว', function () {
+    Log::info('เริ่มทดสอบการล็อกอิน EGAT กับผู้ใช้ที่มีอยู่แล้ว');
     
-    // สร้างตาราง view_census
-    DB::connection('testing_mmddata')->statement('
-        CREATE TABLE IF NOT EXISTS view_census (
-            EMPN VARCHAR(20) PRIMARY KEY,
-            TITLE VARCHAR(50),
-            NAME VARCHAR(255),
-            emp_ename VARCHAR(255),
-            fay VARCHAR(50),
-            gong VARCHAR(50),
-            pnang VARCHAR(50),
-            a_position VARCHAR(20)
-        )
-    ');
-    
-    // สร้างข้อมูลทดสอบ
-    $testData = [
-        'EMPN' => 'egat001',
+    // เตรียมข้อมูล Census
+    $censusData = [
+        'EMPN' => 'existing123',
         'TITLE' => 'นาย',
-        'NAME' => 'วิชัย สุขสันต์',
-        'emp_ename' => 'Mr. Wichai Suksan',
+        'NAME' => 'ผู้ใช้ เดิม',
+        'emp_ename' => 'Mr. Existing User',
         'fay' => 'อลก.',
         'gong' => 'กผล1-ธ.',
         'pnang' => 'หผล11-ธ.',
         'a_position' => 'ช.7'
     ];
     
-    $this->createMmddataTestData('view_census', [$testData]);
+    // สร้างข้อมูล Census ในฐานข้อมูลทดสอบ
+    $this->createMmddataTestData('view_census', [$censusData]);
     
-    // ทดสอบการค้นหาพนักงาน
-    $employee = CenSus::findByEgatId('egat001');
-    
-    expect($employee)->not->toBeNull();
-    expect($employee->EMPN)->toBe('egat001');
-    expect($employee->NAME)->toBe('วิชัย สุขสันต์');
-    expect($employee->fay)->toBe('อลก.');
-    expect($employee->a_position)->toBe('ช.7');
-    
-    // ทดสอบการค้นหาพนักงานที่ไม่มีอยู่
-    $nonExistentEmployee = CenSus::findByEgatId('notfound');
-    expect($nonExistentEmployee)->toBeNull();
-    
-    Log::info('ทดสอบการค้นหาพนักงานด้วย findByEgatId สำเร็จ');
-});
-
-// ทดสอบการใช้ CenSus Factory สำหรับสร้างข้อมูลทดสอบ
-test('สามารถใช้ CenSus Factory สำหรับสร้างข้อมูลทดสอบได้', function () {
-    Log::info('เริ่มทดสอบการใช้ CenSus Factory');
-    
-    // สร้างตาราง view_census
-    DB::connection('testing_mmddata')->statement('
-        CREATE TABLE IF NOT EXISTS view_census (
-            EMPN VARCHAR(20) PRIMARY KEY,
-            TITLE VARCHAR(50),
-            NAME VARCHAR(255),
-            emp_ename VARCHAR(255),
-            fay VARCHAR(50),
-            gong VARCHAR(50),
-            pnang VARCHAR(50),
-            a_position VARCHAR(20)
-        )
-    ');
-    
-    // สร้างข้อมูลทดสอบด้วย Factory
-    $employees = CenSus::factory()->count(5)->create();
-    
-    expect($employees)->toHaveCount(5);
-    
-    // ทดสอบการดึงข้อมูลจากฐานข้อมูล
-    $dbEmployees = CenSus::on('testing_mmddata')->get();
-    expect($dbEmployees)->toHaveCount(5);
-    
-    // ทดสอบโครงสร้างข้อมูล
-    $firstEmployee = $dbEmployees->first();
-    expect($firstEmployee->EMPN)->not->toBeNull();
-    expect($firstEmployee->NAME)->not->toBeNull();
-    expect($firstEmployee->fay)->not->toBeNull();
-    expect($firstEmployee->a_position)->not->toBeNull();
-    
-    Log::info('ทดสอบการใช้ CenSus Factory สำเร็จ', [
-        'employees_count' => $dbEmployees->count(),
-        'first_employee' => $firstEmployee->EMPN
+    // สร้างผู้ใช้เดิม
+    $existingUser = User::create([
+        'name' => 'ผู้ใช้ เก่า',
+        'email' => 'existing123@egat.co.th',
+        'password' => Hash::make('oldpassword'),
+        'egat_id' => 'existing123', // ใช้ string
+        'company' => 'EGAT',
+        'department' => 'กผงค-ธ.',
+        'position' => 'วศ.9',
+        'email_verified_at' => null, // ยังไม่ verify
     ]);
+    
+    Log::info('สร้างผู้ใช้เดิมสำเร็จ', [
+        'user_id' => $existingUser->id,
+        'email_verified_at_initial' => $existingUser->email_verified_at
+    ]);
+    
+    // สร้าง Mock SOAP Client
+    $this->app->bind('nusoap_client', function () {
+        $mock = new MockSoapClient('http://test.wsdl', true);
+        $mock->addValidCredentials('existing123', 'newpassword');
+        return $mock;
+    });
+    
+    // ทดสอบล็อกอิน
+    $response = $this->post('/loginEGAT', [
+        'egatid' => 'existing123',
+        'password' => 'newpassword'
+    ]);
+    
+    // ตรวจสอบผลลัพธ์
+    $response->assertRedirect('/dashboard');
+    
+    // ตรวจสอบข้อมูลผู้ใช้ที่อัปเดต
+    $updatedUser = User::where('email', 'existing123@egat.co.th')->first();
+    
+    // ตรวจสอบข้อมูลที่อัปเดต
+    expect($updatedUser)->not->toBeNull();
+    expect($updatedUser->id)->toBe($existingUser->id);
+    expect($updatedUser->department)->toBe('หผล11-ธ.'); // อัปเดตจาก Census
+    expect($updatedUser->position)->toBe('ช.7'); // อัปเดตจาก Census
+    
+    // ตรวจสอบว่า email_verified_at ถูกอัปเดต
+    expect($updatedUser->email_verified_at)->not->toBeNull();
+    
+    Log::info('ข้อมูลผู้ใช้หลังอัปเดต', [
+        'user_id' => $updatedUser->id,
+        'email_verified_at_updated' => $updatedUser->email_verified_at?->toDateTimeString(),
+        'department' => $updatedUser->department,
+        'position' => $updatedUser->position
+    ]);
+    
+    // ตรวจสอบว่าผู้ใช้ถูกล็อกอินแล้ว
+    $this->assertAuthenticated();
+    
+    Log::info('ทดสอบการล็อกอิน EGAT กับผู้ใช้ที่มีอยู่แล้ว สำเร็จ');
 });
 
-// ทดสอบการสร้างโครงสร้างองค์กรด้วย Factory
-test('สามารถสร้างโครงสร้างองค์กรด้วย Factory ได้', function () {
-    Log::info('เริ่มทดสอบการสร้างโครงสร้างองค์กรด้วย Factory');
+test('การล็อกอิน EGAT ล้มเหลวเมื่อข้อมูลไม่ถูกต้อง', function () {
+    Log::info('เริ่มทดสอบการล็อกอิน EGAT ล้มเหลว');
     
-    // สร้างตาราง view_census
-    DB::connection('testing_mmddata')->statement('
-        CREATE TABLE IF NOT EXISTS view_census (
-            EMPN VARCHAR(20) PRIMARY KEY,
-            TITLE VARCHAR(50),
-            NAME VARCHAR(255),
-            emp_ename VARCHAR(255),
-            fay VARCHAR(50),
-            gong VARCHAR(50),
-            pnang VARCHAR(50),
-            a_position VARCHAR(20)
-        )
-    ');
+    // สร้าง Mock SOAP Client ที่ไม่มี credentials ที่ถูกต้อง
+    $this->app->bind('nusoap_client', function () {
+        $mock = new MockSoapClient('http://test.wsdl', true);
+        // ไม่เพิ่ม valid credentials
+        return $mock;
+    });
     
-    // สร้างโครงสร้างองค์กรสำหรับฝ่ายเดียว
-    $hierarchyData = CenSus::createSingleDivisionHierarchy('อบค.');
+    // ทดสอบล็อกอินด้วยข้อมูลที่ผิด
+    $response = $this->post('/loginEGAT', [
+        'egatid' => 'wronguser',
+        'password' => 'wrongpass'
+    ]);
     
-    // บันทึกข้อมูลลงฐานข้อมูล
-    foreach ($hierarchyData as $employee) {
-        DB::connection('testing_mmddata')->table('view_census')->insert([
-            'EMPN' => $employee->EMPN,
-            'TITLE' => $employee->TITLE,
-            'NAME' => $employee->NAME,
-            'emp_ename' => $employee->emp_ename,
-            'fay' => $employee->fay,
-            'gong' => $employee->gong,
-            'pnang' => $employee->pnang,
-            'a_position' => $employee->a_position,
+    // ตรวจสอบว่ามี error
+    $response->assertSessionHasErrors(['egatid']);
+    
+    // ตรวจสอบว่าผู้ใช้ไม่ถูกล็อกอิน
+    $this->assertGuest();
+    
+    // ตรวจสอบว่าไม่มีผู้ใช้ถูกสร้าง
+    $user = User::where('email', 'wronguser@egat.co.th')->first();
+    expect($user)->toBeNull();
+    
+    Log::info('ทดสอบการล็อกอิน EGAT ล้มเหลว สำเร็จ');
+});
+
+test('การล็อกอิน EGAT ถูก rate limit เมื่อพยายามล็อกอินผิดหลายครั้ง', function () {
+    Log::info('เริ่มทดสอบ Rate Limiting สำหรับ loginEGAT');
+    
+    // สร้าง Mock SOAP Client ที่ไม่มี credentials ที่ถูกต้อง
+    $this->app->bind('nusoap_client', function () {
+        $mock = new MockSoapClient('http://test.wsdl', true);
+        return $mock;
+    });
+    
+    // พยายามล็อกอินผิด 5 ครั้ง
+    for ($i = 0; $i < 5; $i++) {
+        $response = $this->post('/loginEGAT', [
+            'egatid' => 'testuser',
+            'password' => 'wrongpass'
         ]);
+        
+        $response->assertSessionHasErrors(['egatid']);
     }
     
-    // ทดสอบการดึงข้อมูลจากฐานข้อมูล
-    $director = CenSus::on('testing_mmddata')->where('a_position', 'อ')->first();
-    expect($director)->not->toBeNull();
-    expect($director->fay)->toBe('อบค.');
-    
-    $chiefs = CenSus::on('testing_mmddata')->where('a_position', 'ก')->get();
-    expect($chiefs)->toHaveCount(5); // ตามโครงสร้างที่กำหนด
-    
-    $heads = CenSus::on('testing_mmddata')->where('a_position', 'ห')->get();
-    expect($heads->count())->toBeGreaterThan(0);
-    
-    Log::info('ทดสอบการสร้างโครงสร้างองค์กรด้วย Factory สำเร็จ', [
-        'director_count' => CenSus::on('testing_mmddata')->where('a_position', 'อ')->count(),
-        'chief_count' => $chiefs->count(),
-        'head_count' => $heads->count()
+    // ครั้งที่ 6 ควรถูก rate limit
+    $response = $this->post('/loginEGAT', [
+        'egatid' => 'testuser',
+        'password' => 'wrongpass'
     ]);
+    
+    $response->assertSessionHasErrors(['egatid']);
+    
+    // ตรวจสอบข้อความ rate limiting
+    $errors = session('errors');
+    expect($errors->get('egatid')[0])->toContain('Too many login attempts');
+    
+    Log::info('ทดสอบ Rate Limiting สำหรับ loginEGAT สำเร็จ');
 });
 
-// ทดสอบการทำงานของ CenSus model กับ testing_mmddata connection
-test('CenSus model สามารถทำงานกับ testing_mmddata connection ได้', function () {
-    Log::info('เริ่มทดสอบการทำงานของ CenSus model กับ testing_mmddata connection');
+test('การล็อกอิน EGAT สำเร็จโดยไม่มีข้อมูลใน Census', function () {
+    Log::info('เริ่มทดสอบการล็อกอิน EGAT โดยไม่มีข้อมูลใน Census');
     
-    // สร้างตาราง view_census
+    // สร้าง Mock SOAP Client
+    $this->app->bind('nusoap_client', function () {
+        $mock = new MockSoapClient('http://test.wsdl', true);
+        $mock->addValidCredentials('nocensus', 'password123');
+        return $mock;
+    });
+    
+    // ทดสอบล็อกอิน (ไม่มีข้อมูล Census)
+    $response = $this->post('/loginEGAT', [
+        'egatid' => 'nocensus',
+        'password' => 'password123'
+    ]);
+    
+    // ตรวจสอบผลลัพธ์
+    $response->assertRedirect('/dashboard');
+    
+    // ตรวจสอบว่าผู้ใช้ถูกสร้างขึ้น
+    $user = User::where('email', 'nocensus@egat.co.th')->first();
+    expect($user)->not->toBeNull();
+    expect($user->egat_id)->toBe('nocensus');
+    expect($user->company)->toBe('EGAT');
+    expect($user->department)->toBeNull(); // ไม่มีข้อมูลจาก Census
+    expect($user->position)->toBeNull(); // ไม่มีข้อมูลจาก Census
+    
+    // ตรวจสอบว่าผู้ใช้ถูกล็อกอินแล้ว
+    $this->assertAuthenticated();
+    
+    Log::info('ทดสอบการล็อกอิน EGAT โดยไม่มีข้อมูลใน Census สำเร็จ');
+});
+
+test('การล็อกอิน EGAT ต้องใช้ข้อมูลที่จำเป็น', function () {
+    Log::info('เริ่มทดสอบการ validation ของ loginEGAT');
+    
+    // ทดสอบไม่ส่งข้อมูลใดๆ
+    $response = $this->post('/loginEGAT', []);
+    
+    // ตรวจสอบว่ามี error ทั้งสองฟิลด์
+    $response->assertSessionHasErrors(['egatid', 'password']);
+    
+    // ทดสอบส่งเฉพาะ egatid
+    $response = $this->post('/loginEGAT', [
+        'egatid' => 'testuser'
+    ]);
+    
+    $response->assertSessionHasErrors(['password']);
+    
+    // ทดสอบส่งเฉพาะ password
+    $response = $this->post('/loginEGAT', [
+        'password' => 'testpass'
+    ]);
+    
+    $response->assertSessionHasErrors(['egatid']);
+    
+    Log::info('ทดสอบการ validation ของ loginEGAT สำเร็จ');
+});
+
+test('การล็อกอิน EGAT ล้มเหลวเมื่อมีข้อผิดพลาดของ SOAP Client', function () {
+    Log::info('เริ่มทดสอบการจัดการข้อผิดพลาดของ SOAP Client');
+    
+    // สร้าง Mock SOAP Client ที่ throw exception
+    $this->app->bind('nusoap_client', function () {
+        throw new \Exception('SOAP connection error');
+    });
+    
+    // ทดสอบล็อกอิน
+    $response = $this->post('/loginEGAT', [
+        'egatid' => 'erroruser',
+        'password' => 'password'
+    ]);
+    
+    // ตรวจสอบว่ามี error
+    $response->assertSessionHasErrors(['egatid']);
+    
+    // ตรวจสอบว่าผู้ใช้ไม่ถูกล็อกอิน
+    $this->assertGuest();
+    
+    Log::info('ทดสอบการจัดการข้อผิดพลาดของ SOAP Client สำเร็จ');
+});
+
+test('สามารถล็อกเอาท์หลังจากล็อกอิน EGAT ได้', function () {
+    Log::info('เริ่มทดสอบการล็อกเอาท์หลังจากล็อกอิน EGAT');
+    
+    // สร้างผู้ใช้และล็อกอิน
+    $user = User::create([
+        'name' => 'ผู้ใช้ ทดสอบ',
+        'email' => 'testlogout@egat.co.th',
+        'password' => Hash::make('password'),
+        'egat_id' => 'testlogout',
+        'company' => 'EGAT',
+        'email_verified_at' => now(),
+    ]);
+    
+    $this->actingAs($user);
+    
+    // ตรวจสอบว่าถูกล็อกอินแล้ว
+    $this->assertAuthenticated();
+    
+    // ทดสอบล็อกเอาท์
+    $response = $this->post('/logout');
+    
+    // ตรวจสอบผลลัพธ์
+    $response->assertRedirect('/');
+    
+    // ตรวจสอบว่าถูกล็อกเอาท์แล้ว
+    $this->assertGuest();
+    
+    Log::info('ทดสอบการล็อกเอาท์หลังจากล็อกอิน EGAT สำเร็จ');
+});
+
+test('สามารถเชื่อมต่อ testing_mmddata ได้', function () {
+    Log::info('เริ่มทดสอบการเชื่อมต่อฐานข้อมูล testing_mmddata');
+    
+    // ทดสอบการเชื่อมต่อ
+    expect(function () {
+        return DB::connection('testing_mmddata')->getPdo();
+    })->not->toThrow(\Exception::class);
+    
+    // สร้างตารางทดสอบ
     DB::connection('testing_mmddata')->statement('
-        CREATE TABLE IF NOT EXISTS view_census (
-            EMPN VARCHAR(20) PRIMARY KEY,
-            TITLE VARCHAR(50),
-            NAME VARCHAR(255),
-            emp_ename VARCHAR(255),
-            fay VARCHAR(50),
-            gong VARCHAR(50),
-            pnang VARCHAR(50),
-            a_position VARCHAR(20)
+        CREATE TABLE IF NOT EXISTS test_table (
+            id INTEGER PRIMARY KEY,
+            name VARCHAR(255)
         )
     ');
     
-    // สร้างข้อมูลทดสอบ
+    // เพิ่มข้อมูลทดสอบ
+    DB::connection('testing_mmddata')->table('test_table')->insert([
+        'name' => 'Test Record'
+    ]);
+    
+    // ทดสอบดึงข้อมูล
+    $record = DB::connection('testing_mmddata')->table('test_table')->first();
+    expect($record->name)->toBe('Test Record');
+    
+    Log::info('ทดสอบการเชื่อมต่อฐานข้อมูล testing_mmddata สำเร็จ');
+});
+
+test('สามารถค้นหาข้อมูล Census ได้', function () {
+    Log::info('เริ่มทดสอบการค้นหาข้อมูล Census');
+    
+    // เตรียมข้อมูลทดสอบ
     $testData = [
         [
-            'EMPN' => 'director001',
+            'EMPN' => 'EMP001',
             'TITLE' => 'นาย',
-            'NAME' => 'ผู้อำนวยการ ทดสอบ',
-            'emp_ename' => 'Mr. Director Test',
-            'fay' => 'อบค.',
-            'gong' => '',
-            'pnang' => '',
-            'a_position' => 'อ'
-        ],
-        [
-            'EMPN' => 'chief001',
-            'TITLE' => 'นาย',
-            'NAME' => 'หัวหน้ากอง ทดสอบ',
-            'emp_ename' => 'Mr. Chief Test',
-            'fay' => 'อบค.',
-            'gong' => 'กผงค-ธ.',
-            'pnang' => '',
-            'a_position' => 'ก'
-        ],
-        [
-            'EMPN' => 'head001',
-            'TITLE' => 'นาย',
-            'NAME' => 'หัวหน้าแผนก ทดสอบ',
-            'emp_ename' => 'Mr. Head Test',
+            'NAME' => 'ทดสอบ หนึ่ง',
+            'emp_ename' => 'Mr. Test One',
             'fay' => 'อบค.',
             'gong' => 'กผงค-ธ.',
             'pnang' => 'หผค1-ธ.',
-            'a_position' => 'ห'
+            'a_position' => 'วศ.8'
+        ],
+        [
+            'EMPN' => 'EMP002',
+            'TITLE' => 'นาง',
+            'NAME' => 'ทดสอบ สอง',
+            'emp_ename' => 'Mrs. Test Two',
+            'fay' => 'อลก.',
+            'gong' => 'กผล1-ธ.',
+            'pnang' => 'หผล11-ธ.',
+            'a_position' => 'ช.7'
         ]
     ];
     
+    // สร้างข้อมูลในฐานข้อมูลทดสอบ
     $this->createMmddataTestData('view_census', $testData);
     
-    // ทดสอบ scope methods
-    $directors = CenSus::on('testing_mmddata')->directors()->get();
-    expect($directors)->toHaveCount(1);
-    expect($directors->first()->a_position)->toBe('อ');
+    // ทดสอบค้นหาข้อมูลคนแรก
+    $census1 = DB::connection('testing_mmddata')
+        ->table('view_census')
+        ->where('EMPN', 'EMP001')
+        ->first();
     
-    $chiefs = CenSus::on('testing_mmddata')->chiefs()->get();
-    expect($chiefs)->toHaveCount(1);
-    expect($chiefs->first()->a_position)->toBe('ก');
+    expect($census1)->not->toBeNull();
+    expect($census1->NAME)->toBe('ทดสอบ หนึ่ง');
+    expect($census1->gong)->toBe('กผงค-ธ.');
+    expect($census1->a_position)->toBe('วศ.8');
     
-    $heads = CenSus::on('testing_mmddata')->heads()->get();
-    expect($heads)->toHaveCount(1);
-    expect($heads->first()->a_position)->toBe('ห');
+    // ทดสอบค้นหาข้อมูลคนที่สอง
+    $census2 = DB::connection('testing_mmddata')
+        ->table('view_census')
+        ->where('EMPN', 'EMP002')
+        ->first();
     
-    // ทดสอบการค้นหาตามฝ่าย
-    $divisionEmployees = CenSus::on('testing_mmddata')->byDivision('อบค.')->get();
-    expect($divisionEmployees)->toHaveCount(3);
+    expect($census2)->not->toBeNull();
+    expect($census2->NAME)->toBe('ทดสอบ สอง');
+    expect($census2->gong)->toBe('กผล1-ธ.');
+    expect($census2->a_position)->toBe('ช.7');
     
-    Log::info('ทดสอบการทำงานของ CenSus model กับ testing_mmddata connection สำเร็จ', [
-        'directors_count' => $directors->count(),
-        'chiefs_count' => $chiefs->count(),
-        'heads_count' => $heads->count(),
-        'division_employees_count' => $divisionEmployees->count()
-    ]);
-});
-
-// ทดสอบการตั้งค่า connection ใน CenSus model
-test('CenSus model ใช้ connection ที่ถูกต้องตาม environment', function () {
-    Log::info('เริ่มทดสอบการตั้งค่า connection ใน CenSus model');
+    // ทดสอบค้นหาข้อมูลที่ไม่มี
+    $nonExistent = DB::connection('testing_mmddata')
+        ->table('view_census')
+        ->where('EMPN', 'NOTFOUND')
+        ->first();
     
-    // ทดสอบในสภาพแวดล้อม testing
-    $census = new CenSus();
-    $connection = $census->getConnection();
+    expect($nonExistent)->toBeNull();
     
-    expect($connection->getName())->toBe('testing_mmddata');
-    
-    Log::info('ทดสอบการตั้งค่า connection ใน CenSus model สำเร็จ', [
-        'connection_name' => $connection->getName()
-    ]);
+    Log::info('ทดสอบการค้นหาข้อมูล Census สำเร็จ');
 });

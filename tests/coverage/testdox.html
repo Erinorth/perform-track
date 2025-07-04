@@ -54,14 +54,16 @@
         <h2>D:\xampp\htdocs\perform-track\tests\Feature\Auth\EgatAuthenticationTest.php</h2>
         <ul>
             <li class="success">สามารถเข้าถึงหน้า loginEGAT ได้</li>
+            <li class="success">สามารถล็อกอิน EGAT ได้สำเร็จ</li>
+            <li class="defect">สามารถล็อกอิน EGAT กับผู้ใช้ที่มีอยู่แล้ว</li>
+            <li class="success">การล็อกอิน EGAT ล้มเหลวเมื่อข้อมูลไม่ถูกต้อง</li>
+            <li class="success">การล็อกอิน EGAT ถูก rate limit เมื่อพยายามล็อกอินผิดหลายครั้ง</li>
+            <li class="success">การล็อกอิน EGAT สำเร็จโดยไม่มีข้อมูลใน Census</li>
+            <li class="success">การล็อกอิน EGAT ต้องใช้ข้อมูลที่จำเป็น</li>
+            <li class="success">การล็อกอิน EGAT ล้มเหลวเมื่อมีข้อผิดพลาดของ SOAP Client</li>
+            <li class="success">สามารถล็อกเอาท์หลังจากล็อกอิน EGAT ได้</li>
             <li class="success">สามารถเชื่อมต่อ testing_mmddata ได้</li>
-            <li class="success">สามารถสร้างตาราง view_census ใน testing_mmddata ได้</li>
-            <li class="success">สามารถสร้างข้อมูลทดสอบใน CenSus ได้</li>
-            <li class="success">สามารถค้นหาพนักงานด้วย findByEgatId ได้</li>
-            <li class="success">สามารถใช้ CenSus Factory สำหรับสร้างข้อมูลทดสอบได้</li>
-            <li class="success">สามารถสร้างโครงสร้างองค์กรด้วย Factory ได้</li>
-            <li class="success">CenSus model สามารถทำงานกับ testing_mmddata connection ได้</li>
-            <li class="success">CenSus model ใช้ connection ที่ถูกต้องตาม environment</li>
+            <li class="success">สามารถค้นหาข้อมูล Census ได้</li>
         </ul>
     </body>
 </html>

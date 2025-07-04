@@ -16,7 +16,7 @@ class User extends Authenticatable
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'egat_id',
@@ -24,14 +24,14 @@ class User extends Authenticatable
         'email',
         'password',
         'company',    // บริษัท
-        'department', // หน่วยงาน
+        'department', // แผนก
         'position',   // ตำแหน่ง
     ];
 
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -48,11 +48,12 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'egat_id' => 'string', // เพิ่ม casting เป็น string
         ];
     }
 
     /**
-     * ความสัมพันธ์กับตาราง census
+     * ความสัมพันธ์กับ Census
      */
     public function census()
     {
@@ -60,7 +61,7 @@ class User extends Authenticatable
     }
 
     /**
-     * ดึงชื่อเต็มพร้อมตำแหน่ง
+     * Accessor สำหรับชื่อเต็มพร้อมตำแหน่ง
      */
     public function getFullNameWithPositionAttribute(): string
     {
@@ -68,7 +69,7 @@ class User extends Authenticatable
     }
 
     /**
-     * ดึงข้อมูลองค์กรเต็ม
+     * Accessor สำหรับข้อมูลองค์กร
      */
     public function getOrganizationInfoAttribute(): string
     {

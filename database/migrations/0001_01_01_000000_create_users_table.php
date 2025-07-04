@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->unsignedInteger('egat_id')->nullable();
+            $table->string('egat_id')->nullable(); // เปลี่ยนจาก unsignedInteger เป็น string
             $table->string('company')->nullable();
             $table->string('department')->nullable();
             $table->string('position')->nullable();
