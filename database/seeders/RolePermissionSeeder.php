@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 class RolePermissionSeeder extends Seeder
 {
     /**
-     * เรียกใช้งาน seeder
+     * รัน seeder สำหรับ roles และ permissions
      */
     public function run()
     {
@@ -26,7 +26,7 @@ class RolePermissionSeeder extends Seeder
     }
 
     /**
-     * สร้าง Permissions ทั้งหมด
+     * สร้าง Permissions ทั้งหมดของระบบ
      */
     private function createPermissions()
     {
@@ -39,6 +39,7 @@ class RolePermissionSeeder extends Seeder
             'dashboard.view_all' => 'ดู Dashboard ทั้งหมด',
             'dashboard.view_division' => 'ดู Dashboard ระดับกอง',
             'dashboard.view_department' => 'ดู Dashboard ระดับแผนก',
+            'dashboard.filter' => 'กรองข้อมูล Dashboard',
             
             // Organizational Risk Permissions
             'organizational_risk.view' => 'ดูความเสี่ยงระดับองค์กร',
@@ -47,6 +48,9 @@ class RolePermissionSeeder extends Seeder
             'organizational_risk.delete' => 'ลบความเสี่ยงระดับองค์กร',
             'organizational_risk.export' => 'ส่งออกข้อมูลความเสี่ยงระดับองค์กร',
             'organizational_risk.import' => 'นำเข้าข้อมูลความเสี่ยงระดับองค์กร',
+            'organizational_risk.approve' => 'อนุมัติความเสี่ยงระดับองค์กร',
+            'organizational_risk.activate' => 'เปิดใช้งานความเสี่ยงระดับองค์กร',
+            'organizational_risk.deactivate' => 'ปิดใช้งานความเสี่ยงระดับองค์กร',
             
             // Division Risk Permissions (ระดับกอง)
             'division_risk.view' => 'ดูความเสี่ยงระดับกอง',
@@ -57,15 +61,7 @@ class RolePermissionSeeder extends Seeder
             'division_risk.view_own' => 'ดูความเสี่ยงระดับกองของตนเอง',
             'division_risk.manage_own' => 'จัดการความเสี่ยงระดับกองของตนเอง',
             'division_risk.approve' => 'อนุมัติความเสี่ยงระดับกอง',
-            
-            // Department Risk Permissions (ระดับแผนก)
-            'department_risk.view' => 'ดูความเสี่ยงระดับแผนก',
-            'department_risk.create' => 'สร้างความเสี่ยงระดับแผนก',
-            'department_risk.update' => 'แก้ไขความเสี่ยงระดับแผนก',
-            'department_risk.delete' => 'ลบความเสี่ยงระดับแผนก',
-            'department_risk.export' => 'ส่งออกข้อมูลความเสี่ยงระดับแผนก',
-            'department_risk.view_own' => 'ดูความเสี่ยงระดับแผนกของตนเอง',
-            'department_risk.manage_own' => 'จัดการความเสี่ยงระดับแผนกของตนเอง',
+            'division_risk.bulk_delete' => 'ลบความเสี่ยงระดับกองหลายรายการ',
             
             // Risk Assessment Permissions
             'risk_assessment.view' => 'ดูการประเมินความเสี่ยง',
@@ -77,6 +73,7 @@ class RolePermissionSeeder extends Seeder
             'risk_assessment.export' => 'ส่งออกข้อมูลการประเมินความเสี่ยง',
             'risk_assessment.view_own' => 'ดูการประเมินความเสี่ยงของตนเอง',
             'risk_assessment.manage_own' => 'จัดการการประเมินความเสี่ยงของตนเอง',
+            'risk_assessment.bulk_delete' => 'ลบการประเมินความเสี่ยงหลายรายการ',
             
             // Risk Control Permissions
             'risk_control.view' => 'ดูการควบคุมความเสี่ยง',
@@ -88,18 +85,22 @@ class RolePermissionSeeder extends Seeder
             'risk_control.export' => 'ส่งออกข้อมูลการควบคุมความเสี่ยง',
             'risk_control.view_own' => 'ดูการควบคุมความเสี่ยงของตนเอง',
             'risk_control.manage_own' => 'จัดการการควบคุมความเสี่ยงของตนเอง',
+            'risk_control.bulk_delete' => 'ลบการควบคุมความเสี่ยงหลายรายการ',
+            'risk_control.toggle_status' => 'เปลี่ยนสถานะการควบคุมความเสี่ยง',
             
             // Criteria Management Permissions
             'criteria.view' => 'ดูเกณฑ์การประเมิน',
             'criteria.create' => 'สร้างเกณฑ์การประเมิน',
             'criteria.update' => 'แก้ไขเกณฑ์การประเมิน',
             'criteria.delete' => 'ลบเกณฑ์การประเมิน',
+            'criteria.manage' => 'จัดการเกณฑ์การประเมิน',
             
             // Report Permissions
             'report.view' => 'ดูรายงาน',
             'report.create' => 'สร้างรายงาน',
             'report.export' => 'ส่งออกรายงาน',
             'report.schedule' => 'จัดกำหนดการรายงาน',
+            'report.advanced' => 'รายงานขั้นสูง',
             
             // User Management Permissions
             'user.view' => 'ดูผู้ใช้งาน',
@@ -108,6 +109,7 @@ class RolePermissionSeeder extends Seeder
             'user.delete' => 'ลบผู้ใช้งาน',
             'user.manage_permissions' => 'จัดการสิทธิ์ผู้ใช้งาน',
             'user.manage_roles' => 'จัดการบทบาทผู้ใช้งาน',
+            'user.reset_password' => 'รีเซ็ตรหัสผ่านผู้ใช้งาน',
             
             // Settings Permissions
             'settings.view' => 'ดูการตั้งค่า',
@@ -115,12 +117,19 @@ class RolePermissionSeeder extends Seeder
             'settings.system' => 'ตั้งค่าระบบ',
             'settings.backup' => 'สำรองข้อมูล',
             'settings.restore' => 'คืนค่าข้อมูล',
+            'settings.maintenance' => 'การบำรุงรักษาระบบ',
             
             // Attachment Permissions
             'attachment.view' => 'ดูเอกสารแนบ',
             'attachment.upload' => 'อัปโหลดเอกสารแนบ',
             'attachment.download' => 'ดาวน์โหลดเอกสารแนบ',
             'attachment.delete' => 'ลบเอกสารแนบ',
+            'attachment.manage' => 'จัดการเอกสารแนบ',
+            
+            // System Permissions
+            'system.logs' => 'ดู System Logs',
+            'system.monitoring' => 'ตรวจสอบระบบ',
+            'system.maintenance' => 'บำรุงรักษาระบบ',
         ];
         
         foreach ($permissions as $permission => $description) {
@@ -131,7 +140,7 @@ class RolePermissionSeeder extends Seeder
             Log::info("สร้าง Permission: {$permission}");
         }
     }
-    
+
     /**
      * สร้าง Roles และกำหนด Permissions
      */
@@ -147,87 +156,189 @@ class RolePermissionSeeder extends Seeder
         // Admin - ผู้ดูแลระบบ
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $adminPermissions = [
-            'dashboard.view', 'dashboard.export', 'dashboard.view_all',
-            'organizational_risk.view', 'organizational_risk.create', 'organizational_risk.update', 'organizational_risk.delete', 'organizational_risk.export', 'organizational_risk.import',
-            'division_risk.view', 'division_risk.create', 'division_risk.update', 'division_risk.delete', 'division_risk.export', 'division_risk.approve',
-            'department_risk.view', 'department_risk.create', 'department_risk.update', 'department_risk.delete', 'department_risk.export',
-            'risk_assessment.view', 'risk_assessment.create', 'risk_assessment.update', 'risk_assessment.delete', 'risk_assessment.approve', 'risk_assessment.export',
-            'risk_control.view', 'risk_control.create', 'risk_control.update', 'risk_control.delete', 'risk_control.export',
-            'criteria.view', 'criteria.create', 'criteria.update', 'criteria.delete',
-            'report.view', 'report.create', 'report.export', 'report.schedule',
-            'user.view', 'user.update',
-            'settings.view', 'settings.update',
-            'attachment.view', 'attachment.upload', 'attachment.download', 'attachment.delete',
+            // Dashboard
+            'dashboard.view', 'dashboard.export', 'dashboard.view_all', 'dashboard.filter',
+            
+            // Organizational Risk
+            'organizational_risk.view', 'organizational_risk.create', 'organizational_risk.update', 
+            'organizational_risk.delete', 'organizational_risk.export', 'organizational_risk.import', 
+            'organizational_risk.approve',
+            
+            // Division Risk
+            'division_risk.view', 'division_risk.create', 'division_risk.update', 
+            'division_risk.delete', 'division_risk.export', 'division_risk.approve', 
+            'division_risk.bulk_delete',
+            
+            // Risk Assessment
+            'risk_assessment.view', 'risk_assessment.create', 'risk_assessment.update', 
+            'risk_assessment.delete', 'risk_assessment.approve', 'risk_assessment.approve_high', 
+            'risk_assessment.export', 'risk_assessment.bulk_delete',
+            
+            // Risk Control
+            'risk_control.view', 'risk_control.create', 'risk_control.update', 
+            'risk_control.delete', 'risk_control.export', 'risk_control.activate', 
+            'risk_control.deactivate', 'risk_control.bulk_delete', 'risk_control.toggle_status',
+            
+            // Criteria
+            'criteria.view', 'criteria.create', 'criteria.update', 'criteria.delete', 'criteria.manage',
+            
+            // Report
+            'report.view', 'report.create', 'report.export', 'report.schedule', 'report.advanced',
+            
+            // User Management
+            'user.view', 'user.create', 'user.update', 'user.delete', 'user.manage_permissions', 
+            'user.manage_roles', 'user.reset_password',
+            
+            // Settings
+            'settings.view', 'settings.update', 'settings.system',
+            
+            // Attachment
+            'attachment.view', 'attachment.upload', 'attachment.download', 'attachment.delete', 'attachment.manage',
+            
+            // System
+            'system.logs', 'system.monitoring',
         ];
-        $admin->givePermissionTo($adminPermissions);
+        $admin->syncPermissions($adminPermissions);
         Log::info('สร้าง Role: Admin พร้อมสิทธิ์ที่กำหนด');
         
         // Director (ผู้อำนวยการฝ่าย)
         $director = Role::firstOrCreate(['name' => 'director', 'guard_name' => 'web']);
         $directorPermissions = [
-            'dashboard.view', 'dashboard.export', 'dashboard.view_all',
-            'organizational_risk.view', 'organizational_risk.export',
+            // Dashboard
+            'dashboard.view', 'dashboard.export', 'dashboard.view_all', 'dashboard.filter',
+            
+            // Organizational Risk
+            'organizational_risk.view', 'organizational_risk.export', 'organizational_risk.approve',
+            
+            // Division Risk
             'division_risk.view', 'division_risk.export', 'division_risk.approve',
-            'department_risk.view', 'department_risk.export',
+            
+            // Risk Assessment
             'risk_assessment.view', 'risk_assessment.approve_high', 'risk_assessment.export',
-            'risk_control.view', 'risk_control.export',
+            
+            // Risk Control
+            'risk_control.view', 'risk_control.export', 'risk_control.activate', 'risk_control.deactivate',
+            
+            // Criteria
             'criteria.view',
-            'report.view', 'report.create', 'report.export', 'report.schedule',
+            
+            // Report
+            'report.view', 'report.create', 'report.export', 'report.schedule', 'report.advanced',
+            
+            // User Management
             'user.view',
+            
+            // Settings
             'settings.view',
+            
+            // Attachment
             'attachment.view', 'attachment.download',
         ];
-        $director->givePermissionTo($directorPermissions);
+        $director->syncPermissions($directorPermissions);
         Log::info('สร้าง Role: Director พร้อมสิทธิ์ที่กำหนด');
         
         // Chief (หัวหน้ากอง)
         $chief = Role::firstOrCreate(['name' => 'chief', 'guard_name' => 'web']);
         $chiefPermissions = [
-            'dashboard.view', 'dashboard.view_division',
+            // Dashboard
+            'dashboard.view', 'dashboard.view_division', 'dashboard.filter',
+            
+            // Organizational Risk
             'organizational_risk.view',
-            'division_risk.view', 'division_risk.view_own', 'division_risk.manage_own',
-            'department_risk.view', 'department_risk.export',
-            'risk_assessment.view', 'risk_assessment.view_own', 'risk_assessment.manage_own', 'risk_assessment.approve',
-            'risk_control.view', 'risk_control.view_own', 'risk_control.manage_own',
-            'criteria.view',
+            
+            // Division Risk
+            'division_risk.view', 'division_risk.view_own', 'division_risk.manage_own', 
+            'division_risk.create', 'division_risk.update', 'division_risk.export',
+            
+            // Risk Assessment
+            'risk_assessment.view', 'risk_assessment.view_own', 'risk_assessment.manage_own', 
+            'risk_assessment.create', 'risk_assessment.update', 'risk_assessment.approve',
+            
+            // Risk Control
+            'risk_control.view', 'risk_control.view_own', 'risk_control.manage_own', 
+            'risk_control.create', 'risk_control.update', 'risk_control.toggle_status',
+            
+            // Criteria
+            'criteria.view', 'criteria.create', 'criteria.update',
+            
+            // Report
             'report.view', 'report.export',
+            
+            // Settings
             'settings.view',
-            'attachment.view', 'attachment.upload', 'attachment.download',
+            
+            // Attachment
+            'attachment.view', 'attachment.upload', 'attachment.download', 'attachment.delete',
         ];
-        $chief->givePermissionTo($chiefPermissions);
+        $chief->syncPermissions($chiefPermissions);
         Log::info('สร้าง Role: Chief พร้อมสิทธิ์ที่กำหนด');
         
         // Head (หัวหน้าแผนก)
         $head = Role::firstOrCreate(['name' => 'head', 'guard_name' => 'web']);
         $headPermissions = [
+            // Dashboard
             'dashboard.view', 'dashboard.view_department',
+            
+            // Organizational Risk
             'organizational_risk.view',
+            
+            // Division Risk
             'division_risk.view', 'division_risk.view_own',
-            'department_risk.view', 'department_risk.view_own', 'department_risk.manage_own',
-            'risk_assessment.view', 'risk_assessment.view_own', 'risk_assessment.manage_own',
-            'risk_control.view', 'risk_control.update', 'risk_control.view_own',
+            
+            // Risk Assessment
+            'risk_assessment.view', 'risk_assessment.view_own', 'risk_assessment.manage_own', 
+            'risk_assessment.create', 'risk_assessment.update',
+            
+            // Risk Control
+            'risk_control.view', 'risk_control.view_own', 'risk_control.create', 
+            'risk_control.update', 'risk_control.toggle_status',
+            
+            // Criteria
             'criteria.view',
+            
+            // Report
             'report.view',
+            
+            // Settings
             'settings.view',
+            
+            // Attachment
             'attachment.view', 'attachment.upload', 'attachment.download',
         ];
-        $head->givePermissionTo($headPermissions);
+        $head->syncPermissions($headPermissions);
         Log::info('สร้าง Role: Head พร้อมสิทธิ์ที่กำหนด');
         
         // User (ผู้ใช้งานทั่วไป)
         $user = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
         $userPermissions = [
+            // Dashboard
             'dashboard.view',
+            
+            // Organizational Risk
             'organizational_risk.view',
-            'department_risk.view_own',
-            'risk_assessment.view_own',
-            'risk_control.view_own',
+            
+            // Division Risk
+            'division_risk.view',
+            
+            // Risk Assessment
+            'risk_assessment.view_own', 'risk_assessment.create', 'risk_assessment.update',
+            
+            // Risk Control
+            'risk_control.view_own', 'risk_control.create', 'risk_control.update',
+            
+            // Criteria
             'criteria.view',
+            
+            // Report
             'report.view',
+            
+            // Settings
             'settings.view',
-            'attachment.view', 'attachment.download',
+            
+            // Attachment
+            'attachment.view', 'attachment.upload', 'attachment.download',
         ];
-        $user->givePermissionTo($userPermissions);
+        $user->syncPermissions($userPermissions);
         Log::info('สร้าง Role: User พร้อมสิทธิ์ที่กำหนด');
         
         // Guest (ผู้เยี่ยมชม)
@@ -235,9 +346,10 @@ class RolePermissionSeeder extends Seeder
         $guestPermissions = [
             'dashboard.view',
             'organizational_risk.view',
+            'division_risk.view',
             'attachment.view',
         ];
-        $guest->givePermissionTo($guestPermissions);
+        $guest->syncPermissions($guestPermissions);
         Log::info('สร้าง Role: Guest พร้อมสิทธิ์ที่กำหนด');
     }
 }
