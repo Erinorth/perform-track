@@ -161,17 +161,6 @@ class RiskControlPolicy
     }
 
     /**
-     * ตรวจสอบสิทธิ์ลบหลายรายการ
-     */
-    public function bulkDelete(User $user): bool
-    {
-        Log::info('ตรวจสอบสิทธิ์ bulkDelete RiskControl สำหรับ User ID: ' . $user->id);
-        
-        return $user->hasPermissionTo('risk_control.bulk_delete') ||
-               $user->hasPermissionTo('risk_control.delete');
-    }
-
-    /**
      * ตรวจสอบ ownership ของ Risk Control
      */
     private function checkOwnership(User $user, RiskControl $riskControl): bool

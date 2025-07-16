@@ -261,49 +261,6 @@ class RiskAssessmentController extends Controller
         return redirect()->back()->with('success', 'ลบการประเมินความเสี่ยงเรียบร้อยแล้ว');
     }
 
-    /**
-     * ลบข้อมูลการประเมินความเสี่ยงหลายรายการพร้อมกัน (Bulk Delete)
-     * 
-     * @param \Illuminate\Http\Request $request คำขอพร้อมรายการ ID ที่ต้องการลบ
-     * @return \Illuminate\Http\Response ผลลัพธ์การดำเนินการพร้อมข้อความแจ้งผล
-     */
-    public function bulkDestroy(Request $request)
-    {
-        // ตรวจสอบความถูกต้องของข้อมูล ID ที่ส่งมา
-        $validated = $request->validate([
-            'ids' => 'required|array',  // ต้องเป็น array ไม่เป็นค่าว่าง
-            'ids.*' => 'integer|exists:risk_assessments,id'  // แต่ละ ID ต้องเป็นตัวเลขและมีอยู่ในฐานข้อมูล
-        ]);
-        
-        // ดึง IDs ที่ต้องการลบจากข้อมูลที่ตรวจสอบแล้ว
-        $ids = $validated['ids'];
-        
-        // ลบข้อมูลตามรายการที่สามารถลบได้
-        $deletedCount = RiskAssessment::whereIn('id', $ids)->delete();
-        
-        // บันทึก log สำหรับการตรวจสอบ
-        Log::info('ลบการประเมินความเสี่ยงหลายรายการ', [
-            'deleted_count' => $deletedCount,
-            'requested_ids' => $validated['ids'],
-            'actual_deleted_ids' => $ids,
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-        
-        // สร้างข้อความแจ้งผลลัพธ์
-        $successMessage = 'ลบการประเมินความเสี่ยงจำนวน ' . $deletedCount . ' รายการเรียบร้อยแล้ว';
-
-            // ดึงข้อมูลความเสี่ยงที่อัปเดตล่าสุดเพื่อส่งกลับไป
-    $updatedAssessments = RiskAssessment::with(['attachments', 'divisionRisk'])
-        ->orderByDesc('assessment_year')
-        ->orderByDesc('assessment_period')
-        ->get();
-
-    // กลับไปยังหน้าเดิมพร้อมข้อมูลล่าสุด
-    return redirect()->back()
-        ->with('success', $successMessage)
-        ->with('assessments', $updatedAssessments);
-  }
 
   /**
    * จัดการไฟล์แนบสำหรับการประเมินความเสี่ยง

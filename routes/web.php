@@ -37,10 +37,6 @@ Route::get('dashboard', [DashboardController::class, 'index'])
  */
 Route::middleware('auth')->group(function () {
 
-    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
-    Route::delete('organizational-risks/bulk-destroy', [OrganizationalRiskController::class, 'bulkDestroy'])
-        ->name('organizational-risks.bulk-destroy');
-
     /**
      * จัดการความเสี่ยงระดับองค์กร - ใช้ resource routes
      * สร้างเส้นทาง index, create, store, show, edit, update, destroy อัตโนมัติ
@@ -54,10 +50,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/{attachmentId}/download', [OrganizationalRiskController::class, 'downloadAttachment'])->name('download');
         Route::get('/{attachmentId}/view', [OrganizationalRiskController::class, 'viewAttachment'])->name('view');
     });
-
-    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
-    Route::delete('division-risks/bulk-destroy', [DivisionRiskController::class, 'bulkDestroy'])
-        ->name('division-risks.bulk-destroy');
 
     /**
      * จัดการความเสี่ยงระดับฝ่าย - ใช้ resource routes
@@ -79,10 +71,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/impact-criteria', [DivisionRiskController::class, 'storeImpactCriteria'])->name('impact-criteria.store');
     });
 
-    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
-    Route::delete('risk-assessments/bulk-destroy', [RiskAssessmentController::class, 'bulkDestroy'])
-        ->name('risk-assessments.bulk-destroy');
-
     /**
      * จัดการการประเมินความเสี่ยง - ใช้ resource routes
      */
@@ -95,10 +83,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/{attachmentId}/download', [RiskAssessmentController::class, 'downloadAttachment'])->name('download');
         Route::get('/{attachmentId}/view', [RiskAssessmentController::class, 'viewAttachment'])->name('view');
     });
-
-    // เส้นทางพิเศษเพิ่มเติมสำหรับลบหลายรายการ
-    Route::delete('risk-controls/bulk-destroy', [RiskControlController::class, 'bulkDestroy'])
-        ->name('risk-controls.bulk-destroy');
 
     /**
      * จัดการการควบคุมความเสี่ยง - ใช้ resource routes

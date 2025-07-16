@@ -162,14 +162,4 @@ class RiskAssessmentPolicy
         
         return $user->hasPermissionTo('risk_assessment.export');
     }
-
-    /**
-     * ตรวจสอบสิทธิ์การลบหลายรายการ
-     */
-    public function bulkDelete(User $user): bool
-    {
-        Log::info('ตรวจสอบสิทธิ์ bulkDelete RiskAssessment สำหรับ User ID: ' . $user->id);
-        
-        return $user->hasPermissionTo('risk_assessment.delete');
-    }
 }

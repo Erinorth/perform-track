@@ -265,50 +265,6 @@ class RiskControlController extends Controller
     }
 
     /**
-     * ลบข้อมูลการควบคุมความเสี่ยงหลายรายการพร้อมกัน (Bulk Delete)
-     * 
-     * @param \Illuminate\Http\Request $request คำขอพร้อมรายการ ID ที่ต้องการลบ
-     * @return \Illuminate\Http\Response ผลลัพธ์การดำเนินการพร้อมข้อความแจ้งผล
-     */
-    public function bulkDestroy(Request $request)
-    {
-        // ตรวจสอบความถูกต้องของข้อมูล ID ที่ส่งมา
-        $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'integer|exists:risk_controls,id'
-        ]);
-        
-        // ดึง IDs ที่ต้องการลบจากข้อมูลที่ตรวจสอบแล้ว
-        $ids = $validated['ids'];
-        
-        // ลบข้อมูลตามรายการที่สามารถลบได้
-        $deletedCount = RiskControl::whereIn('id', $ids)->delete();
-        
-        // บันทึก log สำหรับการตรวจสอบ
-        Log::info('ลบการควบคุมความเสี่ยงหลายรายการ', [
-            'deleted_count' => $deletedCount,
-            'requested_ids' => $validated['ids'],
-            'user' => Auth::check() ? Auth::user()->name : 'ไม่ระบุ',
-            'timestamp' => now()->format('Y-m-d H:i:s')
-        ]);
-        
-        // สร้างข้อความแจ้งผลลัพธ์
-        $successMessage = 'ลบการควบคุมความเสี่ยงจำนวน ' . $deletedCount . ' รายการเรียบร้อยแล้ว';
-
-        // ดึงข้อมูลที่อัปเดตล่าสุดเพื่อส่งกลับไป
-        $updatedControls = RiskControl::with(['divisionRisk'])
-            ->orderBy('status', 'desc')
-            ->orderBy('control_type')
-            ->orderBy('control_name')
-            ->get();
-
-        // กลับไปยังหน้าเดิมพร้อมข้อมูลล่าสุด
-        return redirect()->back()
-            ->with('success', $successMessage)
-            ->with('controls', $updatedControls);
-    }
-
-    /**
      * เปลี่ยนสถานะการควบคุมความเสี่ยง
      */
     public function toggleStatus(RiskControl $riskControl)

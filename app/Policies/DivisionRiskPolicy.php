@@ -153,14 +153,4 @@ class DivisionRiskPolicy
         
         return $user->hasPermissionTo('division_risk.export');
     }
-
-    /**
-     * ตรวจสอบสิทธิ์การลบหลายรายการ
-     */
-    public function bulkDelete(User $user): bool
-    {
-        Log::info('ตรวจสอบสิทธิ์ bulkDelete DivisionRisk สำหรับ User ID: ' . $user->id);
-        
-        return $user->hasPermissionTo('division_risk.delete');
-    }
 }

@@ -61,7 +61,6 @@ class RolePermissionSeeder extends Seeder
             'division_risk.view_own' => 'ดูความเสี่ยงระดับกองของตนเอง',
             'division_risk.manage_own' => 'จัดการความเสี่ยงระดับกองของตนเอง',
             'division_risk.approve' => 'อนุมัติความเสี่ยงระดับกอง',
-            'division_risk.bulk_delete' => 'ลบความเสี่ยงระดับกองหลายรายการ',
             
             // Risk Assessment Permissions
             'risk_assessment.view' => 'ดูการประเมินความเสี่ยง',
@@ -73,7 +72,6 @@ class RolePermissionSeeder extends Seeder
             'risk_assessment.export' => 'ส่งออกข้อมูลการประเมินความเสี่ยง',
             'risk_assessment.view_own' => 'ดูการประเมินความเสี่ยงของตนเอง',
             'risk_assessment.manage_own' => 'จัดการการประเมินความเสี่ยงของตนเอง',
-            'risk_assessment.bulk_delete' => 'ลบการประเมินความเสี่ยงหลายรายการ',
             
             // Risk Control Permissions
             'risk_control.view' => 'ดูการควบคุมความเสี่ยง',
@@ -85,7 +83,6 @@ class RolePermissionSeeder extends Seeder
             'risk_control.export' => 'ส่งออกข้อมูลการควบคุมความเสี่ยง',
             'risk_control.view_own' => 'ดูการควบคุมความเสี่ยงของตนเอง',
             'risk_control.manage_own' => 'จัดการการควบคุมความเสี่ยงของตนเอง',
-            'risk_control.bulk_delete' => 'ลบการควบคุมความเสี่ยงหลายรายการ',
             'risk_control.toggle_status' => 'เปลี่ยนสถานะการควบคุมความเสี่ยง',
             
             // Criteria Management Permissions
@@ -166,18 +163,17 @@ class RolePermissionSeeder extends Seeder
             
             // Division Risk
             'division_risk.view', 'division_risk.create', 'division_risk.update', 
-            'division_risk.delete', 'division_risk.export', 'division_risk.approve', 
-            'division_risk.bulk_delete',
+            'division_risk.delete', 'division_risk.export', 'division_risk.approve',
             
             // Risk Assessment
             'risk_assessment.view', 'risk_assessment.create', 'risk_assessment.update', 
             'risk_assessment.delete', 'risk_assessment.approve', 'risk_assessment.approve_high', 
-            'risk_assessment.export', 'risk_assessment.bulk_delete',
+            'risk_assessment.export',
             
             // Risk Control
             'risk_control.view', 'risk_control.create', 'risk_control.update', 
             'risk_control.delete', 'risk_control.export', 'risk_control.activate', 
-            'risk_control.deactivate', 'risk_control.bulk_delete', 'risk_control.toggle_status',
+            'risk_control.deactivate', 'risk_control.toggle_status',
             
             // Criteria
             'criteria.view', 'criteria.create', 'criteria.update', 'criteria.delete', 'criteria.manage',
